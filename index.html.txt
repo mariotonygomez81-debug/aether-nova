@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#050711" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>AETHER NOVA: ECLIPSE</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD Superior -->
+  <header id="hud" class="hidden">
+    <div class="hud-group">
+      <div class="pill"><span class="lbl">PUNTOS</span><strong id="ui-score">0</strong></div>
+      <div class="pill"><span class="lbl">SECTOR</span><strong id="ui-level">1/100</strong></div>
+      <div class="pill"><span class="lbl">CASCO</span><strong id="ui-lives">3</strong></div>
+    </div>
+    <div class="hud-center">
+      <div id="ui-sector-name">ÓRBITA DE EXODUS</div>
+      <div class="progress-bar"><div id="ui-progress"></div></div>
+      <div id="boss-bar-wrap" class="hidden">
+        <span id="boss-name">ACORAZADO OMEGA</span>
+        <div class="boss-bar"><div id="boss-hp"></div></div>
+      </div>
+    </div>
+    <div class="hud-actions">
+      <button id="btn-gyro" class="icon-btn" title="Giroscopio">📱</button>
+      <button id="btn-audio" class="icon-btn" title="Audio">🔊</button>
+      <button id="btn-save" class="icon-btn" title="Guardar en Nube">💾</button>
+      <button id="btn-pause" class="icon-btn pause-btn" title="Pausar">❚❚</button>
+    </div>
+  </header>
+
+  <!-- Indicadores de Poderes Activos -->
+  <div id="active-buffs"></div>
+
+  <!-- Controles Táctiles Inferiores (Debajo de la línea de vuelo de la nave) -->
+  <div id="touch-controls" class="hidden">
+    <button id="btn-left" class="ctrl-btn">◀</button>
+    <button id="btn-bomb" class="ctrl-btn bomb-btn">💣 <span id="ui-bombs">1</span></button>
+    <button id="btn-right" class="ctrl-btn">▶</button>
+  </div>
+
+  <!-- Pantalla Principal / Logueo / Hangar -->
+  <section id="screen-menu" class="overlay">
+    <div class="card main-card">
+      <div class="badge">EDICIÓN GALÁCTICA • 100 SECTORES</div>
+      <h1 class="game-title">AETHER NOVA<span>ECLIPSE</span></h1>
+      <p class="lore-intro">
+        Año 3142. La Singularidad oscura avanza devorando sistemas estelares. Como comandante de la flota Aether, deberás atravesar 100 sectores hostiles para sellar el núcleo del Eclipse.
+      </p>
+
+      <!-- Estado de Sesión -->
+      <div id="auth-box" class="auth-panel">
+        <div id="auth-logged-out">
+          <p class="auth-hint">Inicia sesión para sincronizar tus 100 niveles y récords en la nube:</p>
+          <div class="auth-buttons">
+            <button id="btn-google" class="social-btn google-btn">G Continuar con Google</button>
+            <button id="btn-facebook" class="social-btn fb-btn">f Continuar con Facebook</button>
+          </div>
+          <div class="guest-row">
+            <input type="text" id="guest-name" maxlength="16" placeholder="Nombre de Comandante (Invitado)" />
+          </div>
+        </div>
+        <div id="auth-logged-in" class="hidden">
+          <div class="user-profile">
+            <img id="user-avatar" src="" alt="Avatar" />
+            <div>
+              <strong id="user-display-name">Comandante</strong>
+              <small id="user-cloud-status">Sincronizado en la nube</small>
+            </div>
+            <button id="btn-logout" class="mini-btn">Salir</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selección de Nave -->
+      <div class="ship-selector">
+        <button class="ship-opt active" data-ship="valkyrie">
+          <strong>VALKYRIE</strong>
+          <small>Equilibrada • Láser Dual</small>
+        </button>
+        <button class="ship-opt" data-ship="viper">
+          <strong>VIPER-X</strong>
+          <small>Alta Velocidad • Cadencia+</small>
+        </button>
+        <button class="ship-opt" data-ship="titan">
+          <strong>TITÁN</strong>
+          <small>4 Vidas • Blindaje Pesado</small>
+        </button>
+      </div>
+
+      <div class="menu-actions">
+        <button id="btn-play" class="primary-btn">INICIAR EXPEDICIÓN</button>
+        <button id="btn-continue" class="secondary-btn hidden">CONTINUAR SECTOR GUARDADO</button>
+        <button id="btn-install" class="install-btn hidden">📲 INSTALAR APP EN DISPOSITIVO</button>
+      </div>
+
+      <!-- Ranking Global / Local -->
+      <div class="ranking-box">
+        <div class="rank-header">
+          <span>🏆 SALÓN DE LA FAMA ESTELAR</span>
+          <button id="btn-clear-rank" class="mini-btn">Reiniciar</button>
+        </div>
+        <ol id="ranking-list"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pantalla de Crónica Galáctica (Cada 10 Niveles) -->
+  <section id="screen-story" class="overlay hidden">
+    <div class="card story-card">
+      <div class="badge" id="story-chapter">BITÁCORA ESTELAR • SECTOR 10</div>
+      <h2 id="story-title">EL DESPERTAR DEL ABISMO</h2>
+      <p id="story-text"></p>
+      <div class="evolution-alert" id="story-upgrade">¡NAVE EVOLUCIONADA A MK-II! POTENCIA DE FUEGO AUMENTADA</div>
+      <button id="btn-story-next" class="primary-btn">CONTINUAR MISIÓN</button>
+    </div>
+  </section>
+
+  <!-- Pantalla de Pausa -->
+  <section id="screen-pause" class="overlay hidden">
+    <div class="card compact-card">
+      <h2>SISTEMAS EN PAUSA</h2>
+      <p id="pause-stats">Sector 1 • Puntos: 0</p>
+      <div class="menu-actions">
+        <button id="btn-resume" class="primary-btn">REANUDAR VUELO</button>
+        <button id="btn-save-pause" class="secondary-btn">GUARDAR PROGRESO</button>
+        <button id="btn-quit" class="danger-btn">ABANDONAR AL HANGAR</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pantalla de Fin de Partida / Victoria Final -->
+  <section id="screen-gameover" class="overlay hidden">
+    <div class="card compact-card">
+      <div class="badge" id="end-badge">TRANSMISIÓN FINALIZADA</div>
+      <h2 id="end-title">NAVE DESTRUIDA</h2>
+      <p id="end-summary">Alcanzaste el Sector 1 con 0 puntos.</p>
+      <div class="menu-actions">
+        <button id="btn-restart" class="primary-btn">REINTENTAR DESDE SECTOR 1</button>
+        <button id="btn-to-menu" class="secondary-btn">VOLVER AL HANGAR</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Firebase SDK (Compatibilidad directa sin compiladores) -->
+  <script src="https://gstatic.com"></script>
+  <script src="https://gstatic.com"></script>
+  <script src="https://gstatic.com"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
