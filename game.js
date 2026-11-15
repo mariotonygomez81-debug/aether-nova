@@ -5,7 +5,7 @@
 // 1. CONFIGURACIÓN DE FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyDz0HrlwvKTfpwAjUJzTfcNvzzbXnaOA0I",
-  authDomain: "://firebaseapp.com",
+  authDomain: "aether-nova-54f86.firebaseapp.com",
   projectId: "aether-nova-54f86",
   storageBucket: "aether-nova-54f86.firebasestorage.app",
   messagingSenderId: "249474043468",
