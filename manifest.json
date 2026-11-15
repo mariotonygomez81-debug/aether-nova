@@ -1,4 +1,5 @@
 {
+  "id": "com.aethernova.eclipse",
   "name": "AETHER NOVA: ECLIPSE",
   "short_name": "Aether Nova",
   "description": "Shooter espacial progresivo de 100 sectores con fenómenos cósmicos, evolución de naves y sincronización en la nube.",
@@ -11,10 +12,25 @@
   "categories": ["games", "action", "arcade"],
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://w3.org' viewBox='0 0 512 512'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='50%25' r='50%25'%3E%3Cstop offset='0%25' stop-color='%2300f0ff'/%3E%3Cstop offset='100%25' stop-color='%23050711'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='512' height='512' rx='110' fill='%23050711'/%3E%3Ccircle cx='256' cy='256' r='210' fill='url(%23g)' opacity='0.35'/%3E%3Cpath d='M256 72 L348 356 L256 304 L164 356 Z' fill='%2300f0ff'/%3E%3Cpath d='M256 125 L292 270 L256 248 L220 270 Z' fill='%23ffffff'/%3E%3Ccircle cx='256' cy='385' r='28' fill='%23ff5500'/%3E%3C/svg%3E",
+      "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Combate espacial en Aether Nova: Eclipse"
     }
   ]
 }
