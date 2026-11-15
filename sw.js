@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aether-nova-v2';
+const CACHE_NAME = 'aether-nova-v4';
 const ASSETS = [
   './',
   './index.html',
