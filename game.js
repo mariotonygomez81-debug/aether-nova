@@ -18,14 +18,16 @@ let db = null;
 let currentUser = null;
 
 try {
-  if (window.firebase && firebaseConfig.apiKey !== "TU_API_KEY_AQUI") {
+  if (window.firebase) {
     firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     db = firebase.firestore();
   }
 } catch (err) {
-  console.warn("Firebase en modo local:", err);
+  console.error("Error iniciando Firebase:", err);
 }
+
+
 
 // Registro del Service Worker para PWA instalable
 if ("serviceWorker" in navigator) {
