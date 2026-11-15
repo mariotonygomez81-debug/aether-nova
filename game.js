@@ -1,6 +1,335 @@
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 2A)
+   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 1 DE 6)
    ============================================================================ */
+
+// 1. CONFIGURACIÓN DE FIREBASE
+const firebaseConfig = {
+  apiKey: "AIzaSyDz0HrlwvKTfpwAjUJzTfcNvzzbXnaOA0I",
+  authDomain: "://firebaseapp.com",
+  projectId: "aether-nova-54f86",
+  storageBucket: "aether-nova-54f86.firebasestorage.app",
+  messagingSenderId: "249474043468",
+  appId: "1:249474043468:web:9545dd3a084fd0a2f1aee9",
+  measurementId: "G-5QE1NGEKDG"
+};
+
+let auth = null;
+let db = null;
+let currentUser = null;
+
+try {
+  if (window.firebase && firebaseConfig.apiKey !== "TU_API_KEY_AQUI") {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+  }
+} catch (err) {
+  console.warn("Firebase en modo local:", err);
+}
+
+// Registro del Service Worker para PWA instalable
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+
+// 2. DATOS DE LA HISTORIA GALÁCTICA (100 NIVELES / 10 CRÓNICAS)
+const ERAS = [
+  {
+    name: "ÓRBITA DE EXODUS",
+    bgTop: "#050814",
+    bgBot: "#0c1836",
+    nebula: "rgba(0, 240, 255, 0.14)",
+    rockMain: "#7c8ba1",
+    rockDark: "#364152",
+    chapter: "BITÁCORA ESTELAR • SECTOR 10",
+    title: "LA FRONTERA QUEBRADA",
+    story: "Has despejado el cinturón exterior de Exodus. Los sensores detectan fluctuaciones gravitacionales anómalas provenientes del núcleo interior: la Singularidad del Eclipse ha comenzado a despertar."
+  },
+  {
+    name: "NEBULOSA ESMERALDA",
+    bgTop: "#04120e",
+    bgBot: "#0a2e25",
+    nebula: "rgba(0, 255, 163, 0.14)",
+    rockMain: "#52b788",
+    rockDark: "#1b4332",
+    chapter: "BITÁCORA ESTELAR • SECTOR 20",
+    title: "ECOS EN LA NEBULOSA",
+    story: "Entre las nubes ionizadas de Esmeralda, las flotas autónomas del Eclipse intentaron bloquear tu avance. El núcleo de tu caza ha absorbido energía estelar para duplicar su cadencia."
+  },
+  {
+    name: "ABISMO CARMESÍ",
+    bgTop: "#14040a",
+    bgBot: "#330a18",
+    nebula: "rgba(255, 42, 109, 0.15)",
+    rockMain: "#d9536f",
+    rockDark: "#591826",
+    chapter: "BITÁCORA ESTELAR • SECTOR 30",
+    title: "SANGRE DE ESTRELLAS",
+    story: "Cruzas el cementerio de supernovas del Abismo Carmesí. Los restos radiactivos forjaron aleaciones hiperdensas, pero los ingenieros de la flota han recalibrado tus cañones de plasma."
+  },
+  {
+    name: "CINTURÓN DE MAGNETARES",
+    bgTop: "#0e051c",
+    bgBot: "#240d42",
+    nebula: "rgba(157, 78, 221, 0.16)",
+    rockMain: "#9d75cb",
+    rockDark: "#3c1e5e",
+    chapter: "BITÁCORA ESTELAR • SECTOR 40",
+    title: "TORMENTA MAGNÉTICA",
+    story: "Los campos electromagnéticos de este cuadrante desgarrarían cualquier nave convencional. Gracias al blindaje cuántico, has superado el cuarenta por ciento de la travesía."
+  },
+  {
+    name: "CORONA SOLAR MUERTA",
+    bgTop: "#170e03",
+    bgBot: "#3b2307",
+    nebula: "rgba(255, 170, 0, 0.15)",
+    rockMain: "#e09f3e",
+    rockDark: "#5c3a0a",
+    chapter: "BITÁCORA ESTELAR • SECTOR 50",
+    title: "EL ECUADOR DEL ECLIPSE",
+    story: "Mitad del camino alcanzado. Las balizas antiguas confirman que una inteligencia hostil dirige los púlsares y agujeros negros hacia la Tierra. No hay vuelta atrás."
+  },
+  {
+    name: "GRIETA CRIOGÉNICA",
+    bgTop: "#03101a",
+    bgBot: "#092b42",
+    nebula: "rgba(72, 202, 228, 0.16)",
+    rockMain: "#90e0ef",
+    rockDark: "#1d4e68",
+    chapter: "BITÁCORA ESTELAR • SECTOR 60",
+    title: "SILENCIO ABSOLUTO",
+    story: "En el cero absoluto de la Grieta, los asteroides cristalinos reflejan cada disparo. Tu reactor Nova ahora canaliza rayos de antimateria capaces de perforar cualquier coraza."
+  },
+  {
+    name: "FORJA DE PÚLSARES",
+    bgTop: "#120417",
+    bgBot: "#2e0938",
+    nebula: "rgba(247, 37, 133, 0.16)",
+    rockMain: "#e06d9f",
+    rockDark: "#4f1430",
+    chapter: "BITÁCORA ESTELAR • SECTOR 70",
+    title: "RADIACIÓN GAMMA",
+    story: "Sobreviviste a los haces relativistas de la Forja. La vanguardia imperial del Eclipse se retira hacia el horizonte de sucesos central mientras tu nave alcanza fase de asalto pesado."
+  },
+  {
+    name: "HORIZONTE DE SUCESOS",
+    bgTop: "#07070c",
+    bgBot: "#171929",
+    nebula: "rgba(130, 150, 255, 0.15)",
+    rockMain: "#8d99ae",
+    rockDark: "#2b2d42",
+    chapter: "BITÁCORA ESTELAR • SECTOR 80",
+    title: "DONDE LA LUZ SE CURVA",
+    story: "La gravedad aquí distorsiona el tiempo. Cada segundo equivale a horas en la Tierra. Tus sistemas de navegación cuántica mantienen el rumbo firme hacia el corazón oscuro."
+  },
+  {
+    name: "SANTUARIO DEL VACÍO",
+    bgTop: "#140905",
+    bgBot: "#36150b",
+    nebula: "rgba(255, 84, 0, 0.16)",
+    rockMain: "#f48c06",
+    rockDark: "#6a1b09",
+    chapter: "BITÁCORA ESTELAR • SECTOR 90",
+    title: "ÚLTIMA LÍNEA DE DEFENSA",
+    story: "Has derribado a los guardianes del Santuario. Solo diez sectores te separan del núcleo de la Singularidad. Tu caza ha alcanzado su forma definitiva de batalla."
+  },
+  {
+    name: "NÚCLEO DEL ECLIPSE",
+    bgTop: "#090212",
+    bgBot: "#1f063d",
+    nebula: "rgba(0, 255, 213, 0.18)",
+    rockMain: "#b8c0ff",
+    rockDark: "#240046",
+    chapter: "CRÓNICA FINAL • SECTOR 100",
+    title: "AMANECER DE AETHER NOVA",
+    story: "¡VICTORIA GALÁCTICA! Has destruido el corazón del Eclipse y sellado la Singularidad para siempre. Tu nombre queda grabado eternamente entre las estrellas como salvador de la humanidad."
+  }
+];
+
+// 3. CONFIGURACIÓN DE NAVES BASE
+const SHIP_TYPES = {
+  valkyrie: { name: "VALKYRIE", speed: 6.4, fireRate: 11, lives: 3, color: "#00f0ff", accent: "#0077ff" },
+  viper:    { name: "VIPER-X",  speed: 8.2, fireRate: 8,  lives: 3, color: "#00ff9d", accent: "#00a86b" },
+  titan:    { name: "TITÁN",    speed: 5.4, fireRate: 13, lives: 4, color: "#ffcc33", accent: "#ff6600" }
+};
+
+// 4. REFERENCIAS AL DOM Y CANVAS
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+let W = (canvas.width = window.innerWidth);
+let H = (canvas.height = window.innerHeight);
+
+window.addEventListener("resize", () => {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  if (player) player.y = H - 185;
+});
+
+// 5. MOTOR DE AUDIO SINTETIZADO
+const SoundFX = {
+  ctx: null,
+  enabled: true,
+  bgmTimer: null,
+  step: 0,
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (this.ctx.state === "suspended") this.ctx.resume();
+  },
+  play(type) {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    if (type === "laser") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(760, now);
+      osc.frequency.exponentialRampToValueAtTime(160, now + 0.09);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    } else if (type === "missile") {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(920, now + 0.18);
+      gain.gain.setValueAtTime(0.11, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } else if (type === "boom") {
+      osc.type = "square";
+      osc.frequency.setValueAtTime(125, now);
+      osc.frequency.exponentialRampToValueAtTime(24, now + 0.32);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc.start(now);
+      osc.stop(now + 0.32);
+    } else if (type === "supernova") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(95, now);
+      osc.frequency.exponentialRampToValueAtTime(18, now + 0.9);
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+      osc.start(now);
+      osc.stop(now + 0.9);
+    } else if (type === "powerup") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(1180, now + 0.22);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } else if (type === "hit") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(190, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.25);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+  },
+  startMusic() {
+    if (this.bgmTimer) return;
+    const notes = [110, 110, 130.8, 146.8, 110, 110, 164.8, 146.8];
+    this.bgmTimer = setInterval(() => {
+      if (!this.enabled || state.mode !== "PLAYING") return;
+      this.init();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(notes[this.step % notes.length], now);
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.22);
+      this.step++;
+    }, 260);
+  }
+};
+/* ============================================================================
+   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 2 DE 6)
+   ============================================================================ */
+
+// 6. GENERADOR DE TEXTURAS 3D PRE-RENDERIZADAS PARA ASTEROIDES
+const RockCache = {};
+function getRockSprite(eraIndex, kind, radius) {
+  const key = `${eraIndex}_${kind}_${Math.round(radius)}`;
+  if (RockCache[key]) return RockCache[key];
+
+  const size = Math.ceil(radius * 2.5);
+  const off = document.createElement("canvas");
+  off.width = size;
+  off.height = size;
+  const c = off.getContext("2d");
+  const cx = size / 2;
+  const cy = size / 2;
+  const era = ERAS[eraIndex % ERAS.length];
+
+  let c1 = era.rockMain;
+  let c2 = era.rockDark;
+  let glow = null;
+
+  if (kind === "explosive") { c1 = "#ff595e"; c2 = "#6a040f"; glow = "#ff2a55"; }
+  if (kind === "magnetic")  { c1 = "#b5179e"; c2 = "#3a0ca3"; glow = "#d000ff"; }
+  if (kind === "crystal")   { c1 = "#90e0ef"; c2 = "#0077b6"; glow = "#00f0ff"; }
+
+  c.save();
+  c.translate(cx, cy);
+  if (glow) {
+    c.shadowBlur = 14;
+    c.shadowColor = glow;
+  }
+
+  const pts = [];
+  const count = 11;
+  for (let i = 0; i < count; i++) {
+    const ang = (i / count) * Math.PI * 2;
+    const r = radius * (0.82 + ((i * 37) % 10) * 0.025);
+    pts.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
+  }
+
+  const grad = c.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.1, 0, 0, radius * 1.1);
+  grad.addColorStop(0, c1);
+  grad.addColorStop(1, c2);
+
+  c.fillStyle = grad;
+  c.beginPath();
+  c.moveTo(pts.x, pts.y);
+  for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
+  c.closePath();
+  c.fill();
+
+  c.lineWidth = 1.8;
+  c.strokeStyle = glow || "rgba(255,255,255,0.22)";
+  c.stroke();
+
+  for (let i = 0; i < 4; i++) {
+    const a = i * 1.6 + 0.4;
+    const dist = radius * (0.28 + (i % 2) * 0.22);
+    const cr = radius * (0.14 + (i % 3) * 0.05);
+    c.fillStyle = "rgba(0,0,0,0.28)";
+    c.beginPath();
+    c.arc(Math.cos(a) * dist, Math.sin(a) * dist, cr, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  c.restore();
+  RockCache[key] = off;
+  return off;
+}
 
 // 7. ESTADO GLOBAL DEL JUEGO
 const state = {
@@ -257,10 +586,10 @@ class Player {
   }
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 2B)
+   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 3 DE 6)
    ============================================================================ */
 
-// 9. CLASE FENÓMENOS CÓSMICOS
+// 9. CLASE FENÓMENOS CÓSMICOS (SUPERNOVA, AGUJERO NEGRO, MAGNETAR, PÚLSAR GAMMA)
 class CosmicPhenomenon {
   constructor(kind) {
     this.kind = kind;
@@ -356,7 +685,7 @@ class CosmicPhenomenon {
     SoundFX.play("supernova");
     state.shake = 32;
     state.flash = 0.85;
-    if (navigator.vibrate) navigator.vibrate();
+    if (navigator.vibrate) navigator.vibrate([300, 100, 400]);
 
     asteroids.forEach((a) => {
       spawnExplosion(a.x, a.y, "#ffcc33", 10);
@@ -382,7 +711,7 @@ class CosmicPhenomenon {
 
     if (this.kind === "supernova") {
       ctx.strokeStyle = "rgba(255, 85, 0, 0.45)";
-      ctx.setLineDash();
+      ctx.setLineDash([6, 6]);
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(0, 0, 168, 0, Math.PI * 2);
@@ -448,10 +777,10 @@ class CosmicPhenomenon {
   }
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 3A)
+   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 4 DE 6)
    ============================================================================ */
 
-// 10. CLASE ASTEROIDES (NORMAL, EXPLOSIVO, ESTRELLA FUGAZ, MAGNÉTICO, CRISTAL)
+// 10. CLASE ASTEROIDES
 class Asteroid {
   constructor(x, y, radius, kind = "normal") {
     this.x = x ?? Math.random() * (W - 60) + 30;
@@ -534,10 +863,10 @@ class Asteroid {
   }
 }
 
-// 11. CLASE NAVES ENEMIGAS (CAZA LIGERO, INTERCEPTOR DOBLE, BOMBARDERO PESADO)
+// 11. CLASE NAVES ENEMIGAS
 class EnemyShip {
   constructor(variant) {
-    this.variant = variant; // "scout", "interceptor", "bomber"
+    this.variant = variant;
     this.x = Math.random() * (W - 90) + 45;
     this.y = -45;
     this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" ? 2.8 : 1.6);
@@ -597,7 +926,7 @@ class EnemyShip {
   }
 }
 
-// 12. CLASE JEFE ACORAZADO (CADA 5 NIVELES)
+// 12. CLASE JEFE ACORAZADO
 class BossShip {
   constructor() {
     this.x = W / 2;
@@ -659,7 +988,7 @@ class BossShip {
   }
 }
 
-// 13. POTENCIADORES (OFENSIVOS Y DEFENSAS CÓSMICAS)
+// 13. POTENCIADORES
 const POWERUP_POOL = [
   { id: "triple",    label: "W", color: "#00f0ff", text: "DISPARO TRIPLE" },
   { id: "rapid",     label: "R", color: "#00ff88", text: "FUEGO RÁPIDO" },
@@ -693,7 +1022,7 @@ function applyPowerup(p) {
   updateHUD();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 3B-1)
+   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (BLOQUE 5A)
    ============================================================================ */
 
 // 14. EFECTOS VISUALES Y TEXTOS FLOTANTES
@@ -725,7 +1054,7 @@ function triggerSuperBomb() {
   SoundFX.play("supernova");
   state.shake = 26;
   state.flash = 0.75;
-  if (navigator.vibrate) navigator.vibrate([120, 60, 200]);
+  if (navigator.vibrate) navigator.vibrate();
 
   asteroids.forEach((a) => {
     spawnExplosion(a.x, a.y, "#ffcc33", 10);
@@ -757,13 +1086,11 @@ function updateSpawner() {
   spawnClock++;
   const diff = 1 + (state.level - 1) * 0.03;
 
-  // Jefe cada 5 niveles
   if (state.level % 5 === 0 && !boss && state.levelProgress >= state.levelTarget - 1) {
     boss = new BossShip();
     return;
   }
 
-  // Asteroides regulares y especiales
   const rockInterval = Math.max(18, Math.round(52 / diff));
   if (spawnClock % rockInterval === 0 && !boss) {
     const r = Math.random();
@@ -777,7 +1104,6 @@ function updateSpawner() {
     asteroids.push(new Asteroid(null, null, radius, kind));
   }
 
-  // Naves enemigas variadas desde el nivel 3
   const enemyInterval = Math.max(75, Math.round(210 / diff));
   if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss) {
     const roll = Math.random();
@@ -785,7 +1111,6 @@ function updateSpawner() {
     enemies.push(new EnemyShip(variant));
   }
 
-  // Fenómenos cósmicos aleatorios (baja frecuencia para mantener equilibrio)
   if (spawnClock % 480 === 0 && phenomena.length === 0 && state.level >= 2) {
     const pool = ["blackhole", "supernova"];
     if (state.level >= 4) pool.push("magnetar");
@@ -823,7 +1148,7 @@ function defeatBoss() {
 
 function completeSector() {
   if (state.level >= state.maxLevels) {
-    showStoryChronicle(10);
+    showStoryChronicle(9);
     return;
   }
 
@@ -833,7 +1158,6 @@ function completeSector() {
   state.levelTarget = 14 + Math.floor(state.level * 1.4);
   player.invuln = 90;
 
-  // Cada 10 niveles muestra reseña de la historia galáctica y evolución MK
   if (completed % 10 === 0) {
     const eraIndex = Math.min(9, Math.floor(completed / 10) - 1);
     showStoryChronicle(eraIndex);
@@ -845,7 +1169,7 @@ function completeSector() {
 
 function showStoryChronicle(eraIndex) {
   state.mode = "STORY";
-  const era = ERAS[eraIndex] || ERAS[0];
+  const era = ERAS[eraIndex] || ERAS;
   const mk = player.getEvolutionTier();
 
   document.getElementById("story-chapter").textContent = era.chapter;
@@ -860,7 +1184,7 @@ function showStoryChronicle(eraIndex) {
   saveCloudProgress();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 3B-2A)
+   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (BLOQUE 5B)
    ============================================================================ */
 
 // 17. BUCLE PRINCIPAL DE ACTUALIZACIÓN Y DIBUJO
@@ -1071,7 +1395,7 @@ function updateAndDraw() {
   player.draw();
 
   bullets = bullets.filter((b) => !b.dead);
-  enemyBullets = enemyBullets.filter((b) => !b.dead);
+  enemyBullets = enemyBullets.filter((eb) => !eb.dead);
   asteroids = asteroids.filter((a) => !a.dead);
   enemies = enemies.filter((e) => !e.dead);
   powerups = powerups.filter((p) => !p.dead);
@@ -1089,7 +1413,7 @@ function updateAndDraw() {
   renderBuffTags();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 3B-2B - BLOQUE 1)
+   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (BLOQUE 6A)
    ============================================================================ */
 
 // 18. INTERFAZ HUD, PAUSA Y FIN DE PARTIDA
@@ -1306,7 +1630,7 @@ function renderRanking() {
     .join("");
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 3B-2B - BLOQUE 2 FINAL)
+   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (BLOQUE 6B - FINAL)
    ============================================================================ */
 
 // 20. EVENTOS DE BOTONES, TECLADO, GIROSCOPIO E INSTALACIÓN PWA
