@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aether-nova-v4';
+const CACHE_NAME = 'aether-nova-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -29,3 +29,4 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
+
