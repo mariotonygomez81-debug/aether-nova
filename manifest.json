@@ -1,14 +1,14 @@
 {
-  "id": "com.aethernova.eclipse",
+  "id": "com.aethernova.eclipse.v3",
   "name": "AETHER NOVA: ECLIPSE",
   "short_name": "Aether Nova",
-  "description": "Shooter espacial progresivo de 100 sectores con fenómenos cósmicos, evolución de naves y sincronización en la nube.",
+  "description": "Shooter espacial progresivo de 100 sectores con fenómenos cósmicos, evolución de naves y guardado en la nube.",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
-  "background_color": "#050711",
-  "theme_color": "#050711",
+  "background_color": "#04060e",
+  "theme_color": "#04060e",
   "categories": ["games", "action", "arcade"],
   "icons": [
     {
@@ -30,7 +30,7 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Combate espacial en Aether Nova: Eclipse"
+      "label": "Aether Nova Eclipse Combate Espacial"
     }
   ]
 }
