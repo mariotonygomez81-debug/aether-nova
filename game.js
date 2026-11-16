@@ -1,11 +1,11 @@
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 1 DE 6)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 1A)
    ============================================================================ */
 
-// 1. CONFIGURACIÓN DE FIREBASE
+// 1. CONFIGURACIÓN DE FIREBASE FIRESTORE
 const firebaseConfig = {
   apiKey: "AIzaSyDz0HrlwvKTfpwAjUJzTfcNvzzbXnaOA0I",
-  authDomain: "aether-nova-54f86.firebaseapp.com",
+  authDomain: "://firebaseapp.com",
   projectId: "aether-nova-54f86",
   storageBucket: "aether-nova-54f86.firebasestorage.app",
   messagingSenderId: "249474043468",
@@ -13,47 +13,43 @@ const firebaseConfig = {
   measurementId: "G-5QE1NGEKDG"
 };
 
-let auth = null;
 let db = null;
-let currentUser = null;
-
 try {
   if (window.firebase) {
-    firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
   }
 } catch (err) {
-  console.error("Error iniciando Firebase:", err);
+  console.warn("Modo local activo:", err);
 }
 
-
-
-// Registro del Service Worker para PWA instalable
+// Registro del Service Worker
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   });
 }
 
-// 2. DATOS DE LA HISTORIA GALÁCTICA (100 NIVELES / 10 CRÓNICAS)
+// 2. HISTORIA GALÁCTICA Y AMBIENTACIÓN (SECTORES 1 AL 50)
 const ERAS = [
   {
     name: "ÓRBITA DE EXODUS",
-    bgTop: "#050814",
-    bgBot: "#0c1836",
-    nebula: "rgba(0, 240, 255, 0.14)",
-    rockMain: "#7c8ba1",
-    rockDark: "#364152",
+    bgTop: "#030612",
+    bgBot: "#0b1a3d",
+    nebula1: "rgba(0, 240, 255, 0.16)",
+    nebula2: "rgba(0, 119, 255, 0.12)",
+    rockMain: "#8d99ae",
+    rockDark: "#2b2d42",
     chapter: "BITÁCORA ESTELAR • SECTOR 10",
     title: "LA FRONTERA QUEBRADA",
     story: "Has despejado el cinturón exterior de Exodus. Los sensores detectan fluctuaciones gravitacionales anómalas provenientes del núcleo interior: la Singularidad del Eclipse ha comenzado a despertar."
   },
   {
     name: "NEBULOSA ESMERALDA",
-    bgTop: "#04120e",
-    bgBot: "#0a2e25",
-    nebula: "rgba(0, 255, 163, 0.14)",
+    bgTop: "#03120e",
+    bgBot: "#093328",
+    nebula1: "rgba(0, 255, 163, 0.18)",
+    nebula2: "rgba(16, 185, 129, 0.12)",
     rockMain: "#52b788",
     rockDark: "#1b4332",
     chapter: "BITÁCORA ESTELAR • SECTOR 20",
@@ -62,10 +58,11 @@ const ERAS = [
   },
   {
     name: "ABISMO CARMESÍ",
-    bgTop: "#14040a",
-    bgBot: "#330a18",
-    nebula: "rgba(255, 42, 109, 0.15)",
-    rockMain: "#d9536f",
+    bgTop: "#140309",
+    bgBot: "#380919",
+    nebula1: "rgba(255, 42, 109, 0.18)",
+    nebula2: "rgba(220, 38, 38, 0.12)",
+    rockMain: "#e05773",
     rockDark: "#591826",
     chapter: "BITÁCORA ESTELAR • SECTOR 30",
     title: "SANGRE DE ESTRELLAS",
@@ -73,10 +70,11 @@ const ERAS = [
   },
   {
     name: "CINTURÓN DE MAGNETARES",
-    bgTop: "#0e051c",
-    bgBot: "#240d42",
-    nebula: "rgba(157, 78, 221, 0.16)",
-    rockMain: "#9d75cb",
+    bgTop: "#0d041c",
+    bgBot: "#260c47",
+    nebula1: "rgba(168, 85, 247, 0.20)",
+    nebula2: "rgba(126, 34, 206, 0.14)",
+    rockMain: "#a67fd4",
     rockDark: "#3c1e5e",
     chapter: "BITÁCORA ESTELAR • SECTOR 40",
     title: "TORMENTA MAGNÉTICA",
@@ -84,20 +82,25 @@ const ERAS = [
   },
   {
     name: "CORONA SOLAR MUERTA",
-    bgTop: "#170e03",
-    bgBot: "#3b2307",
-    nebula: "rgba(255, 170, 0, 0.15)",
-    rockMain: "#e09f3e",
+    bgTop: "#170d02",
+    bgBot: "#402506",
+    nebula1: "rgba(255, 183, 3, 0.18)",
+    nebula2: "rgba(249, 115, 22, 0.13)",
+    rockMain: "#e6a545",
     rockDark: "#5c3a0a",
     chapter: "BITÁCORA ESTELAR • SECTOR 50",
     title: "EL ECUADOR DEL ECLIPSE",
     story: "Mitad del camino alcanzado. Las balizas antiguas confirman que una inteligencia hostil dirige los púlsares y agujeros negros hacia la Tierra. No hay vuelta atrás."
   },
+/* ============================================================================
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 1B)
+   ============================================================================ */
   {
     name: "GRIETA CRIOGÉNICA",
-    bgTop: "#03101a",
-    bgBot: "#092b42",
-    nebula: "rgba(72, 202, 228, 0.16)",
+    bgTop: "#02101a",
+    bgBot: "#082f49",
+    nebula1: "rgba(56, 189, 248, 0.20)",
+    nebula2: "rgba(14, 165, 233, 0.14)",
     rockMain: "#90e0ef",
     rockDark: "#1d4e68",
     chapter: "BITÁCORA ESTELAR • SECTOR 60",
@@ -106,10 +109,11 @@ const ERAS = [
   },
   {
     name: "FORJA DE PÚLSARES",
-    bgTop: "#120417",
-    bgBot: "#2e0938",
-    nebula: "rgba(247, 37, 133, 0.16)",
-    rockMain: "#e06d9f",
+    bgTop: "#140319",
+    bgBot: "#33083e",
+    nebula1: "rgba(244, 63, 94, 0.20)",
+    nebula2: "rgba(217, 70, 239, 0.14)",
+    rockMain: "#e673a5",
     rockDark: "#4f1430",
     chapter: "BITÁCORA ESTELAR • SECTOR 70",
     title: "RADIACIÓN GAMMA",
@@ -117,21 +121,23 @@ const ERAS = [
   },
   {
     name: "HORIZONTE DE SUCESOS",
-    bgTop: "#07070c",
-    bgBot: "#171929",
-    nebula: "rgba(130, 150, 255, 0.15)",
-    rockMain: "#8d99ae",
-    rockDark: "#2b2d42",
+    bgTop: "#06070d",
+    bgBot: "#181b2e",
+    nebula1: "rgba(129, 140, 248, 0.18)",
+    nebula2: "rgba(99, 102, 241, 0.13)",
+    rockMain: "#94a3b8",
+    rockDark: "#1e293b",
     chapter: "BITÁCORA ESTELAR • SECTOR 80",
     title: "DONDE LA LUZ SE CURVA",
     story: "La gravedad aquí distorsiona el tiempo. Cada segundo equivale a horas en la Tierra. Tus sistemas de navegación cuántica mantienen el rumbo firme hacia el corazón oscuro."
   },
   {
     name: "SANTUARIO DEL VACÍO",
-    bgTop: "#140905",
-    bgBot: "#36150b",
-    nebula: "rgba(255, 84, 0, 0.16)",
-    rockMain: "#f48c06",
+    bgTop: "#160803",
+    bgBot: "#3d1609",
+    nebula1: "rgba(251, 146, 60, 0.20)",
+    nebula2: "rgba(234, 88, 12, 0.14)",
+    rockMain: "#f59e0b",
     rockDark: "#6a1b09",
     chapter: "BITÁCORA ESTELAR • SECTOR 90",
     title: "ÚLTIMA LÍNEA DE DEFENSA",
@@ -139,10 +145,11 @@ const ERAS = [
   },
   {
     name: "NÚCLEO DEL ECLIPSE",
-    bgTop: "#090212",
-    bgBot: "#1f063d",
-    nebula: "rgba(0, 255, 213, 0.18)",
-    rockMain: "#b8c0ff",
+    bgTop: "#080214",
+    bgBot: "#220545",
+    nebula1: "rgba(45, 212, 191, 0.22)",
+    nebula2: "rgba(168, 85, 247, 0.16)",
+    rockMain: "#c4b5fd",
     rockDark: "#240046",
     chapter: "CRÓNICA FINAL • SECTOR 100",
     title: "AMANECER DE AETHER NOVA",
@@ -150,14 +157,14 @@ const ERAS = [
   }
 ];
 
-// 3. CONFIGURACIÓN DE NAVES BASE
+// 3. ESPECIFICACIONES DE FLOTA
 const SHIP_TYPES = {
-  valkyrie: { name: "VALKYRIE", speed: 6.4, fireRate: 11, lives: 3, color: "#00f0ff", accent: "#0077ff" },
-  viper:    { name: "VIPER-X",  speed: 8.2, fireRate: 8,  lives: 3, color: "#00ff9d", accent: "#00a86b" },
-  titan:    { name: "TITÁN",    speed: 5.4, fireRate: 13, lives: 4, color: "#ffcc33", accent: "#ff6600" }
+  valkyrie: { name: "VALKYRIE", speed: 6.6, fireRate: 11, lives: 3, color: "#00f0ff", accent: "#0066ff" },
+  viper:    { name: "VIPER-X",  speed: 8.4, fireRate: 8,  lives: 3, color: "#00ff9d", accent: "#059669" },
+  titan:    { name: "TITÁN",    speed: 5.6, fireRate: 13, lives: 4, color: "#ffcc33", accent: "#ea580c" }
 };
 
-// 4. REFERENCIAS AL DOM Y CANVAS
+// 4. LIENZO Y RESPONSIVIDAD
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 let W = (canvas.width = window.innerWidth);
@@ -192,52 +199,52 @@ const SoundFX = {
 
     if (type === "laser") {
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(760, now);
-      osc.frequency.exponentialRampToValueAtTime(160, now + 0.09);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.frequency.setValueAtTime(820, now);
+      osc.frequency.exponentialRampToValueAtTime(170, now + 0.08);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
       osc.start(now);
-      osc.stop(now + 0.09);
+      osc.stop(now + 0.08);
     } else if (type === "missile") {
       osc.type = "triangle";
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.exponentialRampToValueAtTime(920, now + 0.18);
-      gain.gain.setValueAtTime(0.11, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.frequency.setValueAtTime(340, now);
+      osc.frequency.exponentialRampToValueAtTime(980, now + 0.16);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
       osc.start(now);
-      osc.stop(now + 0.18);
+      osc.stop(now + 0.16);
     } else if (type === "boom") {
       osc.type = "square";
-      osc.frequency.setValueAtTime(125, now);
-      osc.frequency.exponentialRampToValueAtTime(24, now + 0.32);
-      gain.gain.setValueAtTime(0.18, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc.frequency.setValueAtTime(130, now);
+      osc.frequency.exponentialRampToValueAtTime(22, now + 0.3);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
       osc.start(now);
-      osc.stop(now + 0.32);
+      osc.stop(now + 0.3);
     } else if (type === "supernova") {
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(95, now);
-      osc.frequency.exponentialRampToValueAtTime(18, now + 0.9);
+      osc.frequency.setValueAtTime(90, now);
+      osc.frequency.exponentialRampToValueAtTime(16, now + 0.95);
       gain.gain.setValueAtTime(0.32, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
       osc.start(now);
-      osc.stop(now + 0.9);
+      osc.stop(now + 0.95);
     } else if (type === "powerup") {
       osc.type = "sine";
-      osc.frequency.setValueAtTime(440, now);
-      osc.frequency.exponentialRampToValueAtTime(1180, now + 0.22);
-      gain.gain.setValueAtTime(0.14, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.frequency.setValueAtTime(460, now);
+      osc.frequency.exponentialRampToValueAtTime(1220, now + 0.2);
+      gain.gain.setValueAtTime(0.13, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
       osc.start(now);
-      osc.stop(now + 0.22);
+      osc.stop(now + 0.2);
     } else if (type === "hit") {
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(190, now);
-      osc.frequency.exponentialRampToValueAtTime(45, now + 0.25);
+      osc.frequency.setValueAtTime(195, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.24);
       gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
       osc.start(now);
-      osc.stop(now + 0.25);
+      osc.stop(now + 0.24);
     }
   },
   startMusic() {
@@ -251,7 +258,7 @@ const SoundFX = {
       const gain = this.ctx.createGain();
       osc.type = "triangle";
       osc.frequency.setValueAtTime(notes[this.step % notes.length], now);
-      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.setValueAtTime(0.035, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
@@ -261,17 +268,14 @@ const SoundFX = {
     }, 260);
   }
 };
-/* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 2 DE 6)
-   ============================================================================ */
 
-// 6. GENERADOR DE TEXTURAS 3D PRE-RENDERIZADAS PARA ASTEROIDES
+// 6. GENERADOR DE TEXTURAS 3D REALISTAS PARA ASTEROIDES
 const RockCache = {};
 function getRockSprite(eraIndex, kind, radius) {
   const key = `${eraIndex}_${kind}_${Math.round(radius)}`;
   if (RockCache[key]) return RockCache[key];
 
-  const size = Math.ceil(radius * 2.5);
+  const size = Math.ceil(radius * 2.6);
   const off = document.createElement("canvas");
   off.width = size;
   off.height = size;
@@ -280,32 +284,34 @@ function getRockSprite(eraIndex, kind, radius) {
   const cy = size / 2;
   const era = ERAS[eraIndex % ERAS.length];
 
-  let c1 = era.rockMain;
-  let c2 = era.rockDark;
+  let cLight = "#ffffff";
+  let cMid = era.rockMain;
+  let cDark = era.rockDark;
   let glow = null;
 
-  if (kind === "explosive") { c1 = "#ff595e"; c2 = "#6a040f"; glow = "#ff2a55"; }
-  if (kind === "magnetic")  { c1 = "#b5179e"; c2 = "#3a0ca3"; glow = "#d000ff"; }
-  if (kind === "crystal")   { c1 = "#90e0ef"; c2 = "#0077b6"; glow = "#00f0ff"; }
+  if (kind === "explosive") { cMid = "#ff4d6d"; cDark = "#590d22"; glow = "#ff2a55"; }
+  if (kind === "magnetic")  { cMid = "#c77dff"; cDark = "#240046"; glow = "#d000ff"; }
+  if (kind === "crystal")   { cMid = "#90e0ef"; cDark = "#023e8a"; glow = "#00f0ff"; }
 
   c.save();
   c.translate(cx, cy);
   if (glow) {
-    c.shadowBlur = 14;
+    c.shadowBlur = 16;
     c.shadowColor = glow;
   }
 
   const pts = [];
-  const count = 11;
+  const count = 12;
   for (let i = 0; i < count; i++) {
     const ang = (i / count) * Math.PI * 2;
-    const r = radius * (0.82 + ((i * 37) % 10) * 0.025);
+    const r = radius * (0.8 + ((i * 41) % 10) * 0.024);
     pts.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
   }
 
-  const grad = c.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.1, 0, 0, radius * 1.1);
-  grad.addColorStop(0, c1);
-  grad.addColorStop(1, c2);
+  const grad = c.createRadialGradient(-radius * 0.35, -radius * 0.35, radius * 0.08, 0, 0, radius * 1.15);
+  grad.addColorStop(0, cLight);
+  grad.addColorStop(0.28, cMid);
+  grad.addColorStop(1, cDark);
 
   c.fillStyle = grad;
   c.beginPath();
@@ -314,24 +320,32 @@ function getRockSprite(eraIndex, kind, radius) {
   c.closePath();
   c.fill();
 
-  c.lineWidth = 1.8;
-  c.strokeStyle = glow || "rgba(255,255,255,0.22)";
+  c.lineWidth = 1.6;
+  c.strokeStyle = glow || "rgba(255,255,255,0.28)";
   c.stroke();
 
-  for (let i = 0; i < 4; i++) {
-    const a = i * 1.6 + 0.4;
-    const dist = radius * (0.28 + (i % 2) * 0.22);
-    const cr = radius * (0.14 + (i % 3) * 0.05);
-    c.fillStyle = "rgba(0,0,0,0.28)";
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.35 + 0.3;
+    const dist = radius * (0.26 + (i % 2) * 0.24);
+    const cr = radius * (0.13 + (i % 3) * 0.045);
+    const kx = Math.cos(a) * dist;
+    const ky = Math.sin(a) * dist;
+    c.fillStyle = "rgba(0,0,0,0.34)";
     c.beginPath();
-    c.arc(Math.cos(a) * dist, Math.sin(a) * dist, cr, 0, Math.PI * 2);
+    c.arc(kx, ky, cr, 0, Math.PI * 2);
     c.fill();
+    c.strokeStyle = "rgba(255,255,255,0.16)";
+    c.lineWidth = 1;
+    c.stroke();
   }
 
   c.restore();
   RockCache[key] = off;
   return off;
 }
+/* ============================================================================
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 2A)
+   ============================================================================ */
 
 // 7. ESTADO GLOBAL DEL JUEGO
 const state = {
@@ -347,8 +361,7 @@ const state = {
   shake: 0,
   flash: 0,
   gyroEnabled: false,
-  gyroTilt: 0,
-  deferredPrompt: null
+  gyroTilt: 0
 };
 
 const keys = { Left: false, Right: false };
@@ -366,18 +379,20 @@ let stars = [];
 
 function initStars() {
   stars = [];
-  for (let i = 0; i < 110; i++) {
+  for (let i = 0; i < 120; i++) {
+    const layer = i % 3;
     stars.push({
       x: Math.random() * W,
       y: Math.random() * H,
-      size: Math.random() * 2.2 + 0.5,
-      speed: Math.random() * 1.8 + 0.4,
-      alpha: Math.random() * 0.7 + 0.3
+      size: layer === 0 ? 1.1 : layer === 1 ? 1.8 : 2.6,
+      speed: layer === 0 ? 0.5 : layer === 1 ? 1.3 : 2.4,
+      alpha: layer === 0 ? 0.35 : layer === 1 ? 0.65 : 0.95,
+      tint: layer === 2 && Math.random() < 0.3 ? "#a5f3fc" : "#ffffff"
     });
   }
 }
 
-// 8. CLASE JUGADOR (CON EVOLUCIÓN CADA 10 NIVELES: MK-I A MK-X)
+// 8. CLASE JUGADOR (EVOLUCIÓN MK-I A MK-X)
 class Player {
   constructor(typeKey) {
     const spec = SHIP_TYPES[typeKey] || SHIP_TYPES.valkyrie;
@@ -438,16 +453,16 @@ class Player {
       if (this.buffs[k] > 0) this.buffs[k]--;
     }
 
-    if (Math.random() < 0.85) {
+    if (Math.random() < 0.9) {
       particles.push({
-        x: this.x + (Math.random() - 0.5) * 10,
+        x: this.x + (Math.random() - 0.5) * 12,
         y: this.y + 22,
-        vx: (Math.random() - 0.5) * 0.8,
-        vy: Math.random() * 3 + 2,
+        vx: (Math.random() - 0.5) * 0.9,
+        vy: Math.random() * 3.5 + 2.2,
         life: 16,
         maxLife: 16,
         color: this.color,
-        size: 3
+        size: 3.2
       });
     }
   }
@@ -457,29 +472,29 @@ class Player {
     const dmg = 1 + Math.floor((mk - 1) * 0.5);
     SoundFX.play("laser");
 
-    bullets.push({ x: this.x, y: this.y - 24, vx: 0, vy: -13, dmg, color: this.color, missile: false });
+    bullets.push({ x: this.x, y: this.y - 24, vx: 0, vy: -13.5, dmg, color: this.color, missile: false });
 
     if (mk >= 2 || this.buffs.triple > 0) {
-      bullets.push({ x: this.x - 14, y: this.y - 16, vx: -1.4, vy: -12.5, dmg, color: this.color, missile: false });
-      bullets.push({ x: this.x + 14, y: this.y - 16, vx: 1.4, vy: -12.5, dmg, color: this.color, missile: false });
+      bullets.push({ x: this.x - 14, y: this.y - 16, vx: -1.4, vy: -13, dmg, color: this.color, missile: false });
+      bullets.push({ x: this.x + 14, y: this.y - 16, vx: 1.4, vy: -13, dmg, color: this.color, missile: false });
     }
     if (mk >= 4) {
-      bullets.push({ x: this.x - 24, y: this.y - 10, vx: -2.6, vy: -12, dmg, color: "#ffcc33", missile: false });
-      bullets.push({ x: this.x + 24, y: this.y - 10, vx: 2.6, vy: -12, dmg, color: "#ffcc33", missile: false });
+      bullets.push({ x: this.x - 24, y: this.y - 10, vx: -2.6, vy: -12.5, dmg, color: "#ffcc33", missile: false });
+      bullets.push({ x: this.x + 24, y: this.y - 10, vx: 2.6, vy: -12.5, dmg, color: "#ffcc33", missile: false });
     }
     if (mk >= 7) {
-      bullets.push({ x: this.x, y: this.y - 28, vx: 0, vy: -15, dmg: dmg + 1, color: "#ff2a85", missile: false });
+      bullets.push({ x: this.x, y: this.y - 28, vx: 0, vy: -15.5, dmg: dmg + 1, color: "#ff2a85", missile: false });
     }
 
     if (this.buffs.wingmen > 0) {
-      bullets.push({ x: this.x - 44, y: this.y - 8, vx: 0, vy: -13, dmg, color: "#c77dff", missile: false });
-      bullets.push({ x: this.x + 44, y: this.y - 8, vx: 0, vy: -13, dmg, color: "#c77dff", missile: false });
+      bullets.push({ x: this.x - 44, y: this.y - 8, vx: 0, vy: -13.5, dmg, color: "#c77dff", missile: false });
+      bullets.push({ x: this.x + 44, y: this.y - 8, vx: 0, vy: -13.5, dmg, color: "#c77dff", missile: false });
     }
 
     if (this.buffs.missiles > 0 && Math.random() < 0.45) {
       SoundFX.play("missile");
-      bullets.push({ x: this.x - 18, y: this.y, vx: -2, vy: -9, dmg: dmg * 3, color: "#ff9e00", missile: true });
-      bullets.push({ x: this.x + 18, y: this.y, vx: 2, vy: -9, dmg: dmg * 3, color: "#ff9e00", missile: true });
+      bullets.push({ x: this.x - 18, y: this.y, vx: -2, vy: -9.5, dmg: dmg * 3, color: "#ff9e00", missile: true });
+      bullets.push({ x: this.x + 18, y: this.y, vx: 2, vy: -9.5, dmg: dmg * 3, color: "#ff9e00", missile: true });
     }
   }
 
@@ -525,7 +540,7 @@ class Player {
     }
 
     if (this.buffs.cryo > 0 || this.buffs.antigrav > 0 || this.buffs.faraday > 0 || this.buffs.antigamma > 0) {
-      ctx.strokeStyle = "rgba(255, 204, 51, 0.7)";
+      ctx.strokeStyle = "rgba(255, 204, 51, 0.75)";
       ctx.setLineDash();
       ctx.beginPath();
       ctx.arc(0, 0, 40, 0, Math.PI * 2);
@@ -533,7 +548,7 @@ class Player {
       ctx.setLineDash([]);
     }
 
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 16;
     ctx.shadowColor = this.color;
     ctx.fillStyle = this.accent;
 
@@ -548,7 +563,7 @@ class Player {
       ctx.fill();
     }
 
-    const grad = ctx.createLinearGradient(0, -26, 0, 24);
+    const grad = ctx.createLinearGradient(0, -28, 0, 24);
     grad.addColorStop(0, "#ffffff");
     grad.addColorStop(0.45, this.color);
     grad.addColorStop(1, this.accent);
@@ -588,10 +603,10 @@ class Player {
   }
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 3 DE 6)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 2B)
    ============================================================================ */
 
-// 9. CLASE FENÓMENOS CÓSMICOS (SUPERNOVA, AGUJERO NEGRO, MAGNETAR, PÚLSAR GAMMA)
+// 9. CLASE FENÓMENOS CÓSMICOS
 class CosmicPhenomenon {
   constructor(kind) {
     this.kind = kind;
@@ -612,20 +627,20 @@ class CosmicPhenomenon {
 
     if (this.kind === "supernova") {
       const ratio = this.timer / this.maxTimer;
-      this.radius = 18 + ratio * 150;
+      this.radius = 18 + ratio * 155;
       if (this.timer >= this.maxTimer) {
         this.detonateSupernova();
         this.dead = true;
       }
     } else if (this.kind === "blackhole") {
-      const pullRange = 320;
+      const pullRange = 330;
       asteroids.forEach((a) => {
         const dx = this.x - a.x;
         const dy = this.y - a.y;
         const d = Math.hypot(dx, dy);
         if (d < pullRange && d > 5) {
-          a.x += (dx / d) * 3.2;
-          a.y += (dy / d) * 3.2;
+          a.x += (dx / d) * 3.4;
+          a.y += (dy / d) * 3.4;
           if (d < 28) a.dead = true;
         }
       });
@@ -635,22 +650,22 @@ class CosmicPhenomenon {
         const dy = this.y - e.y;
         const d = Math.hypot(dx, dy);
         if (d < pullRange && d > 5) {
-          e.x += (dx / d) * 2.5;
-          e.y += (dy / d) * 2.5;
+          e.x += (dx / d) * 2.6;
+          e.y += (dy / d) * 2.6;
           if (d < 30) e.dead = true;
         }
       });
 
       bullets.forEach((b) => {
         const d = Math.hypot(this.x - b.x, this.y - b.y);
-        if (d < 90) b.dead = true;
+        if (d < 95) b.dead = true;
       });
 
       const pdx = this.x - player.x;
       const pdy = this.y - player.y;
       const pd = Math.hypot(pdx, pdy);
       if (pd < pullRange && player.buffs.antigrav <= 0) {
-        player.x += (pdx / pd) * 2.6;
+        player.x += (pdx / pd) * 2.7;
         if (pd < 42) player.takeDamage("ABSORBIDO POR AGUJERO NEGRO");
       }
     } else if (this.kind === "magnetar") {
@@ -658,8 +673,8 @@ class CosmicPhenomenon {
         const dx = player.x - this.x;
         const d = Math.hypot(dx, player.y - this.y);
         if (d < 340) {
-          player.x += dx >= 0 ? 55 : -55;
-          state.shake = 10;
+          player.x += dx >= 0 ? 58 : -58;
+          state.shake = 12;
           addFloatingText(player.x, player.y - 25, "¡PULSO MAGNETAR!", "#d000ff");
         }
       }
@@ -668,7 +683,7 @@ class CosmicPhenomenon {
         const px = player.x - this.x;
         const py = player.y - this.y;
         const dist = Math.hypot(px, py);
-        if (dist < 460) {
+        if (dist < 470) {
           const angToPlayer = Math.atan2(py, px);
           const diff = Math.abs(Math.sin(angToPlayer - this.angle));
           if (diff < 0.08) {
@@ -685,9 +700,9 @@ class CosmicPhenomenon {
 
   detonateSupernova() {
     SoundFX.play("supernova");
-    state.shake = 32;
-    state.flash = 0.85;
-    if (navigator.vibrate) navigator.vibrate([300, 100, 400]);
+    state.shake = 34;
+    state.flash = 0.88;
+    if (navigator.vibrate) navigator.vibrate();
 
     asteroids.forEach((a) => {
       spawnExplosion(a.x, a.y, "#ffcc33", 10);
@@ -698,7 +713,7 @@ class CosmicPhenomenon {
       e.dead = true;
     });
     enemyBullets = [];
-    spawnExplosion(this.x, this.y, "#ffffff", 65);
+    spawnExplosion(this.x, this.y, "#ffffff", 70);
 
     if (player.buffs.cryo > 0) {
       addFloatingText(player.x, player.y - 35, "¡CRIO-ESCUDO RESISTIÓ SUPERNOVA!", "#00f0ff");
@@ -712,11 +727,11 @@ class CosmicPhenomenon {
     ctx.translate(this.x, this.y);
 
     if (this.kind === "supernova") {
-      ctx.strokeStyle = "rgba(255, 85, 0, 0.45)";
-      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = "rgba(255, 85, 0, 0.5)";
+      ctx.setLineDash();
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(0, 0, 168, 0, Math.PI * 2);
+      ctx.arc(0, 0, 173, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -731,22 +746,22 @@ class CosmicPhenomenon {
       ctx.fill();
     } else if (this.kind === "blackhole") {
       ctx.rotate(this.angle * 1.6);
-      const g = ctx.createRadialGradient(0, 0, 14, 0, 0, 68);
+      const g = ctx.createRadialGradient(0, 0, 14, 0, 0, 72);
       g.addColorStop(0, "#000000");
       g.addColorStop(0.38, "#ff7b00");
       g.addColorStop(0.7, "#7209b7");
       g.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(0, 0, 68, 0, Math.PI * 2);
+      ctx.arc(0, 0, 72, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "#000000";
       ctx.beginPath();
-      ctx.arc(0, 0, 20, 0, Math.PI * 2);
+      ctx.arc(0, 0, 21, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = "#ffaa00";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.2;
       ctx.stroke();
     } else if (this.kind === "magnetar") {
       ctx.rotate(-this.angle);
@@ -762,12 +777,12 @@ class CosmicPhenomenon {
       ctx.fill();
     } else if (this.kind === "pulsar") {
       ctx.rotate(this.angle);
-      const beamGrad = ctx.createLinearGradient(-460, 0, 460, 0);
+      const beamGrad = ctx.createLinearGradient(-470, 0, 470, 0);
       beamGrad.addColorStop(0, "rgba(0, 255, 170, 0)");
-      beamGrad.addColorStop(0.5, "rgba(0, 255, 170, 0.85)");
+      beamGrad.addColorStop(0.5, "rgba(0, 255, 170, 0.88)");
       beamGrad.addColorStop(1, "rgba(0, 255, 170, 0)");
       ctx.fillStyle = beamGrad;
-      ctx.fillRect(-460, -7, 920, 14);
+      ctx.fillRect(-470, -7, 940, 14);
 
       ctx.fillStyle = "#ffffff";
       ctx.beginPath();
@@ -779,7 +794,7 @@ class CosmicPhenomenon {
   }
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (PARTE 4 DE 6)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 3A)
    ============================================================================ */
 
 // 10. CLASE ASTEROIDES
@@ -820,7 +835,7 @@ class Asteroid {
     this.rot += this.rotSpeed;
     if (this.hitFlash > 0) this.hitFlash--;
 
-    if (this.kind === "shooting_star" && Math.random() < 0.7) {
+    if (this.kind === "shooting_star" && Math.random() < 0.75) {
       particles.push({
         x: this.x,
         y: this.y,
@@ -844,10 +859,10 @@ class Asteroid {
 
     if (this.kind === "shooting_star") {
       ctx.fillStyle = "#ffffff";
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 16;
       ctx.shadowColor = "#00f0ff";
       ctx.beginPath();
-      ctx.arc(0, 0, this.radius * 0.7, 0, Math.PI * 2);
+      ctx.arc(0, 0, this.radius * 0.72, 0, Math.PI * 2);
       ctx.fill();
     } else {
       const eraIdx = Math.floor((state.level - 1) / 10);
@@ -966,7 +981,7 @@ class BossShip {
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur = 22;
     ctx.shadowColor = "#ff0055";
     ctx.fillStyle = "#2b0918";
     ctx.strokeStyle = "#ff2a85";
@@ -1024,7 +1039,7 @@ function applyPowerup(p) {
   updateHUD();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (BLOQUE 5A)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 3B)
    ============================================================================ */
 
 // 14. EFECTOS VISUALES Y TEXTOS FLOTANTES
@@ -1054,8 +1069,8 @@ function triggerSuperBomb() {
   if (state.mode !== "PLAYING" || !player || player.bombs <= 0) return;
   player.bombs--;
   SoundFX.play("supernova");
-  state.shake = 26;
-  state.flash = 0.75;
+  state.shake = 28;
+  state.flash = 0.78;
   if (navigator.vibrate) navigator.vibrate();
 
   asteroids.forEach((a) => {
@@ -1186,7 +1201,7 @@ function showStoryChronicle(eraIndex) {
   saveCloudProgress();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (BLOQUE 5B)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 4A)
    ============================================================================ */
 
 // 17. BUCLE PRINCIPAL DE ACTUALIZACIÓN Y DIBUJO
@@ -1200,21 +1215,31 @@ function updateAndDraw() {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  const neb = ctx.createRadialGradient(W * 0.5, H * 0.35, 20, W * 0.5, H * 0.35, W * 0.75);
-  neb.addColorStop(0, era.nebula);
-  neb.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = neb;
+  // Doble nebulosa volumétrica
+  const neb1 = ctx.createRadialGradient(W * 0.3, H * 0.3, 15, W * 0.3, H * 0.3, W * 0.7);
+  neb1.addColorStop(0, era.nebula1);
+  neb1.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = neb1;
   ctx.fillRect(0, 0, W, H);
 
+  const neb2 = ctx.createRadialGradient(W * 0.75, H * 0.65, 15, W * 0.75, H * 0.65, W * 0.65);
+  neb2.addColorStop(0, era.nebula2);
+  neb2.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = neb2;
+  ctx.fillRect(0, 0, W, H);
+
+  // Estrellas con paralaje
   stars.forEach((s) => {
     if (state.mode === "PLAYING") s.y += s.speed;
     if (s.y > H) {
       s.y = 0;
       s.x = Math.random() * W;
     }
-    ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.globalAlpha = s.alpha;
+    ctx.fillStyle = s.tint;
     ctx.fillRect(s.x, s.y, s.size, s.size);
   });
+  ctx.globalAlpha = 1;
 
   if (state.mode !== "PLAYING") return;
 
@@ -1239,7 +1264,7 @@ function updateAndDraw() {
 
   bullets.forEach((b) => {
     if (b.missile) {
-      const target = boss || enemies || asteroids;
+      const target = boss || enemies[0] || asteroids[0];
       if (target) {
         const ang = Math.atan2(target.y - b.y, target.x - b.x);
         b.vx += Math.cos(ang) * 0.65;
@@ -1415,10 +1440,10 @@ function updateAndDraw() {
   renderBuffTags();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (BLOQUE 6A)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 4B-1)
    ============================================================================ */
 
-// 18. INTERFAZ HUD, PAUSA Y FIN DE PARTIDA
+// 18. HUD, PAUSA Y FIN DE PARTIDA
 function updateHUD() {
   if (!player) return;
   const era = ERAS[Math.min(9, Math.floor((state.level - 1) / 10))];
@@ -1516,53 +1541,60 @@ function endGame(victory) {
   registerScore();
 }
 
-// 19. LOGUEO GOOGLE / FACEBOOK, GUARDADO EN NUBE Y RANKING
-function getPilotName() {
-  if (currentUser && currentUser.displayName) return currentUser.displayName;
-  const inp = document.getElementById("guest-name");
-  return (inp && inp.value.trim()) || "Comandante";
+// 19. SISTEMA DE USUARIO + PIN SINCRONIZADO CON FIREBASE FIRESTORE
+let activeProfile = JSON.parse(localStorage.getItem("aether_profile") || "null");
+
+function getProfileKey(name, pin) {
+  return `${name.trim().toLowerCase()}_${pin.trim()}`;
 }
 
-async function signInWithProvider(providerName) {
-  if (!auth) {
-    alert("Configura tus credenciales de Firebase en game.js para activar Google y Facebook.");
+function refreshAuthUI() {
+  const formBox = document.getElementById("auth-form-box");
+  const loggedBox = document.getElementById("auth-logged-box");
+  if (activeProfile) {
+    formBox.classList.add("hidden");
+    loggedBox.classList.remove("hidden");
+    document.getElementById("user-display-name").textContent = activeProfile.name;
+    document.getElementById("user-cloud-status").textContent = db ? "Sincronizado en la nube" : "Perfil local activo";
+  } else {
+    formBox.classList.remove("hidden");
+    loggedBox.classList.add("hidden");
+  }
+  checkSavedRun();
+}
+
+async function loginWithPin() {
+  const nameVal = document.getElementById("input-pilot").value.trim();
+  const pinVal = document.getElementById("input-pin").value.trim();
+  if (nameVal.length < 2 || pinVal.length < 4) {
+    alert("Ingresa un nombre de comandante (mín. 2 letras) y un PIN de al menos 4 dígitos.");
     return;
   }
-  try {
-    const provider =
-      providerName === "google"
-        ? new firebase.auth.GoogleAuthProvider()
-        : new firebase.auth.FacebookAuthProvider();
-    await auth.signInWithPopup(provider);
-  } catch (err) {
-    alert("No se pudo completar el inicio de sesión: " + err.message);
-  }
-}
 
-if (auth) {
-  auth.onAuthStateChanged(async (user) => {
-    currentUser = user;
-    const outBox = document.getElementById("auth-logged-out");
-    const inBox = document.getElementById("auth-logged-in");
-    if (user) {
-      outBox.classList.add("hidden");
-      inBox.classList.remove("hidden");
-      document.getElementById("user-display-name").textContent = user.displayName || "Piloto Estelar";
-      document.getElementById("user-avatar").src =
-        user.photoURL || "https://ui-avatars.com";
-      await loadCloudProgress();
-    } else {
-      outBox.classList.remove("hidden");
-      inBox.classList.add("hidden");
-    }
-    checkSavedRun();
-  });
+  const key = getProfileKey(nameVal, pinVal);
+  activeProfile = { name: nameVal, pin: pinVal, key };
+  localStorage.setItem("aether_profile", JSON.stringify(activeProfile));
+
+  if (db) {
+    try {
+      const doc = await db.collection("pilots").doc(key).get();
+      if (doc.exists && doc.data().save) {
+        localStorage.setItem(`aether_save_${key}`, JSON.stringify(doc.data().save));
+      }
+    } catch (e) {}
+  }
+  refreshAuthUI();
 }
+/* ============================================================================
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 4B-2 - FINAL)
+   ============================================================================ */
 
 async function saveCloudProgress() {
   if (!player) return;
+  const key = activeProfile ? activeProfile.key : "guest";
+  const pilotName = activeProfile ? activeProfile.name : "Comandante";
   const payload = {
-    name: getPilotName(),
+    name: pilotName,
     level: state.level,
     score: state.score,
     ship: state.selectedShip,
@@ -1571,49 +1603,40 @@ async function saveCloudProgress() {
     updatedAt: Date.now()
   };
 
-  localStorage.setItem("aether_nova_save", JSON.stringify(payload));
-  if (db && currentUser) {
+  localStorage.setItem(`aether_save_${key}`, JSON.stringify(payload));
+  if (db && activeProfile) {
     try {
-      await db.collection("saves").doc(currentUser.uid).set(payload);
+      await db.collection("pilots").doc(key).set({ name: pilotName, save: payload }, { merge: true });
     } catch (e) {}
   }
   addFloatingText(W / 2, H * 0.45, "PROGRESO GUARDADO", "#00ff88");
   checkSavedRun();
 }
 
-async function loadCloudProgress() {
-  if (db && currentUser) {
-    try {
-      const doc = await db.collection("saves").doc(currentUser.uid).get();
-      if (doc.exists) {
-        localStorage.setItem("aether_nova_save", JSON.stringify(doc.data()));
-      }
-    } catch (e) {}
-  }
-  checkSavedRun();
-}
-
 function checkSavedRun() {
-  const raw = localStorage.getItem("aether_nova_save");
+  const key = activeProfile ? activeProfile.key : "guest";
+  const raw = localStorage.getItem(`aether_save_${key}`);
   const btn = document.getElementById("btn-continue");
   if (raw && btn) {
     const data = JSON.parse(raw);
     btn.classList.remove("hidden");
     btn.textContent = `CONTINUAR SECTOR ${data.level} (${data.score} PTS)`;
+  } else if (btn) {
+    btn.classList.add("hidden");
   }
 }
 
 async function registerScore() {
-  const entry = { name: getPilotName(), score: state.score, level: state.level };
+  const pilotName = activeProfile ? activeProfile.name : "Comandante";
+  const entry = { name: pilotName, score: state.score, level: state.level };
   const list = JSON.parse(localStorage.getItem("aether_nova_rank") || "[]");
   list.push(entry);
   list.sort((a, b) => b.score - a.score);
-  const top5 = list.slice(0, 5);
-  localStorage.setItem("aether_nova_rank", JSON.stringify(top5));
+  localStorage.setItem("aether_nova_rank", JSON.stringify(list.slice(0, 5)));
 
-  if (db && currentUser) {
+  if (db && activeProfile) {
     try {
-      await db.collection("leaderboard").doc(currentUser.uid).set(entry, { merge: true });
+      await db.collection("leaderboard").doc(activeProfile.key).set(entry, { merge: true });
     } catch (e) {}
   }
   renderRanking();
@@ -1631,11 +1654,30 @@ function renderRanking() {
     .map((r, i) => `<li><span>#${i + 1} ${r.name} (S.${r.level})</span><span class="pts">${r.score} PTS</span></li>`)
     .join("");
 }
-/* ============================================================================
-   AETHER NOVA: ECLIPSE - MOTOR COMPLETO (BLOQUE 6B - FINAL)
-   ============================================================================ */
 
-// 20. EVENTOS DE BOTONES, TECLADO, GIROSCOPIO E INSTALACIÓN PWA
+// 20. EVENTOS TÁCTILES INSTANTÁNEOS, TECLADO Y GIROSCOPIO
+function bindTap(id, handler) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("click", handler);
+}
+
+function bindHold(id, dirKey) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const on = (e) => { e.preventDefault(); keys[dirKey] = true; el.classList.add("pressed"); };
+  const off = (e) => { e.preventDefault(); keys[dirKey] = false; el.classList.remove("pressed"); };
+  el.addEventListener("touchstart", on, { passive: false });
+  el.addEventListener("touchend", off);
+  el.addEventListener("touchcancel", off);
+  el.addEventListener("mousedown", on);
+  el.addEventListener("mouseup", off);
+  el.addEventListener("mouseleave", off);
+}
+
+bindHold("btn-left", "Left");
+bindHold("btn-right", "Right");
+
 window.addEventListener("keydown", (e) => {
   if (e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = true;
   if (e.code === "ArrowRight" || e.code === "KeyD") keys.Right = true;
@@ -1648,37 +1690,24 @@ window.addEventListener("keyup", (e) => {
   if (e.code === "ArrowRight" || e.code === "KeyD") keys.Right = false;
 });
 
-function bindHold(id, dirKey) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const on = (e) => { e.preventDefault(); keys[dirKey] = true; el.classList.add("pressed"); };
-  const off = (e) => { e.preventDefault(); keys[dirKey] = false; el.classList.remove("pressed"); };
-  el.addEventListener("touchstart", on, { passive: false });
-  el.addEventListener("touchend", off);
-  el.addEventListener("mousedown", on);
-  el.addEventListener("mouseup", off);
-  el.addEventListener("mouseleave", off);
-}
-bindHold("btn-left", "Left");
-bindHold("btn-right", "Right");
+bindTap("btn-bomb", triggerSuperBomb);
+bindTap("btn-pause", togglePause);
+bindTap("btn-resume", togglePause);
+bindTap("btn-save", saveCloudProgress);
+bindTap("btn-save-pause", saveCloudProgress);
 
-document.getElementById("btn-bomb").addEventListener("click", triggerSuperBomb);
-document.getElementById("btn-pause").addEventListener("click", togglePause);
-document.getElementById("btn-resume").addEventListener("click", togglePause);
-document.getElementById("btn-save").addEventListener("click", saveCloudProgress);
-document.getElementById("btn-save-pause").addEventListener("click", saveCloudProgress);
-document.getElementById("btn-audio").addEventListener("click", (e) => {
+bindTap("btn-audio", (e) => {
   SoundFX.enabled = !SoundFX.enabled;
-  e.target.textContent = SoundFX.enabled ? "🔊" : "🔇";
+  e.currentTarget.textContent = SoundFX.enabled ? "🔊" : "🔇";
 });
 
-document.getElementById("btn-gyro").addEventListener("click", async (e) => {
+bindTap("btn-gyro", async (e) => {
   if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
     const res = await DeviceOrientationEvent.requestPermission();
     if (res !== "granted") return;
   }
   state.gyroEnabled = !state.gyroEnabled;
-  e.target.classList.toggle("active", state.gyroEnabled);
+  e.currentTarget.classList.toggle("active", state.gyroEnabled);
 });
 
 window.addEventListener("deviceorientation", (e) => {
@@ -1693,20 +1722,28 @@ document.querySelectorAll(".ship-opt").forEach((btn) => {
   });
 });
 
-document.getElementById("btn-play").addEventListener("click", () => startNewGame(null));
-document.getElementById("btn-restart").addEventListener("click", () => startNewGame(null));
-document.getElementById("btn-continue").addEventListener("click", () => {
-  const saved = JSON.parse(localStorage.getItem("aether_nova_save") || "null");
+bindTap("btn-login", loginWithPin);
+bindTap("btn-logout", () => {
+  activeProfile = null;
+  localStorage.removeItem("aether_profile");
+  refreshAuthUI();
+});
+
+bindTap("btn-play", () => startNewGame(null));
+bindTap("btn-restart", () => startNewGame(null));
+bindTap("btn-continue", () => {
+  const key = activeProfile ? activeProfile.key : "guest";
+  const saved = JSON.parse(localStorage.getItem(`aether_save_${key}`) || "null");
   if (saved) startNewGame(saved);
 });
 
-document.getElementById("btn-story-next").addEventListener("click", () => {
+bindTap("btn-story-next", () => {
   document.getElementById("screen-story").classList.add("hidden");
   if (state.level >= state.maxLevels) endGame(true);
   else state.mode = "PLAYING";
 });
 
-document.getElementById("btn-quit").addEventListener("click", () => {
+bindTap("btn-quit", () => {
   state.mode = "MENU";
   document.getElementById("screen-pause").classList.add("hidden");
   document.getElementById("hud").classList.add("hidden");
@@ -1714,37 +1751,19 @@ document.getElementById("btn-quit").addEventListener("click", () => {
   document.getElementById("screen-menu").classList.remove("hidden");
 });
 
-document.getElementById("btn-to-menu").addEventListener("click", () => {
+bindTap("btn-to-menu", () => {
   state.mode = "MENU";
   document.getElementById("screen-gameover").classList.add("hidden");
   document.getElementById("screen-menu").classList.remove("hidden");
 });
 
-document.getElementById("btn-google").addEventListener("click", () => signInWithProvider("google"));
-document.getElementById("btn-facebook").addEventListener("click", () => signInWithProvider("facebook"));
-document.getElementById("btn-logout").addEventListener("click", () => auth && auth.signOut());
-document.getElementById("btn-clear-rank").addEventListener("click", () => {
+bindTap("btn-clear-rank", () => {
   localStorage.removeItem("aether_nova_rank");
   renderRanking();
 });
 
-// Botón de instalación PWA
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  state.deferredPrompt = e;
-  document.getElementById("btn-install").classList.remove("hidden");
-});
-
-document.getElementById("btn-install").addEventListener("click", async () => {
-  if (!state.deferredPrompt) return;
-  state.deferredPrompt.prompt();
-  await state.deferredPrompt.userChoice;
-  state.deferredPrompt = null;
-  document.getElementById("btn-install").classList.add("hidden");
-});
-
-// Inicialización al cargar
+// Arranque inicial
 initStars();
+refreshAuthUI();
 renderRanking();
-checkSavedRun();
 requestAnimationFrame(updateAndDraw);
