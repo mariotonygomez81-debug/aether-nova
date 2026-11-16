@@ -2,7 +2,7 @@
       "relation": ["delegate_permission/common.handle_all_urls"],
       "target": {
         "namespace": "android_app",
-        "package_name": "com.aethernova.game2",
-        "sha256_cert_fingerprints": ["00:6E:48:5A:90:7E:DA:E2:F2:ED:04:37:27:F3:F4:AF:73:70:60:A6:07:E6:5E:A3:77:4B:E8:EA:02:BF:7B:11"]
+        "package_name": "com.aethernova.definitivo",
+        "sha256_cert_fingerprints": ["BD:B0:10:1C:AD:EF:A4:5A:7B:23:ED:19:0D:6D:4D:0B:98:7F:7F:4C:DA:F1:B1:8F:42:1D:EB:5C:95:E5:86:BB"]
       }
     }]
