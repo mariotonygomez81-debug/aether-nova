@@ -1,8 +1,7 @@
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 1A)
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 1 DE 4)
    ============================================================================ */
 
-// 1. CONFIGURACIÓN DE FIREBASE FIRESTORE
 const firebaseConfig = {
   apiKey: "AIzaSyDz0HrlwvKTfpwAjUJzTfcNvzzbXnaOA0I",
   authDomain: "://firebaseapp.com",
@@ -23,14 +22,12 @@ try {
   console.warn("Modo local activo:", err);
 }
 
-// Registro del Service Worker
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   });
 }
 
-// 2. HISTORIA GALÁCTICA Y AMBIENTACIÓN (SECTORES 1 AL 50)
 const ERAS = [
   {
     name: "ÓRBITA DE EXODUS",
@@ -93,7 +90,7 @@ const ERAS = [
     story: "Mitad del camino alcanzado. Las balizas antiguas confirman que una inteligencia hostil dirige los púlsares y agujeros negros hacia la Tierra. No hay vuelta atrás."
   },
    /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 1B)
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 2 DE 4)
    ============================================================================ */
   {
     name: "GRIETA CRIOGÉNICA",
@@ -157,14 +154,12 @@ const ERAS = [
   }
 ];
 
-// 3. ESPECIFICACIONES DE FLOTA
 const SHIP_TYPES = {
   valkyrie: { name: "VALKYRIE", speed: 6.6, fireRate: 11, lives: 3, color: "#00f0ff", accent: "#0066ff" },
   viper:    { name: "VIPER-X",  speed: 8.4, fireRate: 8,  lives: 3, color: "#00ff9d", accent: "#059669" },
   titan:    { name: "TITÁN",    speed: 5.6, fireRate: 13, lives: 4, color: "#ffcc33", accent: "#ea580c" }
 };
 
-// 4. LIENZO Y RESPONSIVIDAD
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 let W = (canvas.width = window.innerWidth);
@@ -176,7 +171,6 @@ window.addEventListener("resize", () => {
   if (player) player.y = H - 185;
 });
 
-// 5. MOTOR DE AUDIO SINTETIZADO
 const SoundFX = {
   ctx: null,
   enabled: true,
@@ -269,7 +263,6 @@ const SoundFX = {
   }
 };
 
-// 6. GENERADOR DE TEXTURAS 3D OPTIMIZADO (EVITA SATURACIÓN DE MEMORIA)
 const RockCache = {};
 function getRockSprite(eraIndex, kind, radius) {
   const stepRadius = Math.max(10, Math.round(radius / 5) * 5);
@@ -315,8 +308,8 @@ function getRockSprite(eraIndex, kind, radius) {
   grad.addColorStop(1, cDark);
 
   c.fillStyle = grad;
-   c.beginPath();
-  c.moveTo(pts[0].x, pts[0].y);
+  c.beginPath();
+  c.moveTo(pts.x, pts.y);
   for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
   c.closePath();
   c.fill();
@@ -345,10 +338,9 @@ function getRockSprite(eraIndex, kind, radius) {
   return off;
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 2A)
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 3A)
    ============================================================================ */
 
-// 7. ESTADO GLOBAL DEL JUEGO
 const state = {
   mode: "MENU",
   score: 0,
@@ -393,7 +385,6 @@ function initStars() {
   }
 }
 
-// 8. CLASE JUGADOR (EVOLUCIÓN MK-I A MK-X)
 class Player {
   constructor(typeKey) {
     const spec = SHIP_TYPES[typeKey] || SHIP_TYPES.valkyrie;
@@ -454,7 +445,7 @@ class Player {
       if (this.buffs[k] > 0) this.buffs[k]--;
     }
 
-    if (particles.length < 130 && Math.random() < 0.8) {
+    if (particles.length < 110 && Math.random() < 0.75) {
       particles.push({
         x: this.x + (Math.random() - 0.5) * 12,
         y: this.y + 22,
@@ -515,7 +506,7 @@ class Player {
     state.shake = 18;
     SoundFX.play("hit");
     if (navigator.vibrate) navigator.vibrate();
-    spawnExplosion(this.x, this.y, "#ff2a55", 24);
+    spawnExplosion(this.x, this.y, "#ff2a55", 22);
     addFloatingText(this.x, this.y - 35, reason, "#ff4d6d");
     updateHUD();
 
@@ -604,10 +595,9 @@ class Player {
   }
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 2B)
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 3B-1)
    ============================================================================ */
 
-// 9. CLASE FENÓMENOS CÓSMICOS
 class CosmicPhenomenon {
   constructor(kind) {
     this.kind = kind;
@@ -706,15 +696,15 @@ class CosmicPhenomenon {
     if (navigator.vibrate) navigator.vibrate();
 
     asteroids.forEach((a) => {
-      spawnExplosion(a.x, a.y, "#ffcc33", 8);
+      spawnExplosion(a.x, a.y, "#ffcc33", 6);
       a.dead = true;
     });
     enemies.forEach((e) => {
-      spawnExplosion(e.x, e.y, "#ff5500", 12);
+      spawnExplosion(e.x, e.y, "#ff5500", 10);
       e.dead = true;
     });
     enemyBullets = [];
-    spawnExplosion(this.x, this.y, "#ffffff", 45);
+    spawnExplosion(this.x, this.y, "#ffffff", 40);
 
     if (player.buffs.cryo > 0) {
       addFloatingText(player.x, player.y - 35, "¡CRIO-ESCUDO RESISTIÓ SUPERNOVA!", "#00f0ff");
@@ -794,11 +784,7 @@ class CosmicPhenomenon {
     ctx.restore();
   }
 }
-/* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 3A)
-   ============================================================================ */
 
-// 10. CLASE ASTEROIDES
 class Asteroid {
   constructor(x, y, radius, kind = "normal") {
     this.x = x ?? Math.random() * (W - 60) + 30;
@@ -836,7 +822,7 @@ class Asteroid {
     this.rot += this.rotSpeed;
     if (this.hitFlash > 0) this.hitFlash--;
 
-    if (this.kind === "shooting_star" && particles.length < 130 && Math.random() < 0.7) {
+    if (this.kind === "shooting_star" && particles.length < 110 && Math.random() < 0.7) {
       particles.push({
         x: this.x,
         y: this.y,
@@ -880,8 +866,10 @@ class Asteroid {
     ctx.restore();
   }
 }
+/* ============================================================================
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 3B-2)
+   ============================================================================ */
 
-// 11. CLASE NAVES ENEMIGAS
 class EnemyShip {
   constructor(variant) {
     this.variant = variant;
@@ -944,7 +932,6 @@ class EnemyShip {
   }
 }
 
-// 12. CLASE JEFE ACORAZADO
 class BossShip {
   constructor() {
     this.x = W / 2;
@@ -1006,7 +993,6 @@ class BossShip {
   }
 }
 
-// 13. POTENCIADORES
 const POWERUP_POOL = [
   { id: "triple",    label: "W", color: "#00f0ff", text: "DISPARO TRIPLE" },
   { id: "rapid",     label: "R", color: "#00ff88", text: "FUEGO RÁPIDO" },
@@ -1040,12 +1026,11 @@ function applyPowerup(p) {
   updateHUD();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 3B)
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 4A-1)
    ============================================================================ */
 
-// 14. EFECTOS VISUALES Y TEXTOS FLOTANTES
 function spawnExplosion(x, y, color, count = 14) {
-  if (particles.length > 140) return;
+  if (particles.length > 130) return;
   for (let i = 0; i < count; i++) {
     const ang = Math.random() * Math.PI * 2;
     const spd = Math.random() * 4.5 + 1;
@@ -1067,7 +1052,6 @@ function addFloatingText(x, y, text, color = "#ffffff") {
   floatingTexts.push({ x, y, text, color, life: 55 });
 }
 
-// 15. SUPER BOMBA TÁCTICA
 function triggerSuperBomb() {
   if (state.mode !== "PLAYING" || !player || player.bombs <= 0) return;
   player.bombs--;
@@ -1099,7 +1083,6 @@ function triggerSuperBomb() {
   updateHUD();
 }
 
-// 16. GENERACIÓN DE OLEADAS Y PROGRESIÓN DE 100 NIVELES
 let spawnClock = 0;
 
 function updateSpawner() {
@@ -1167,29 +1150,33 @@ function defeatBoss() {
 }
 
 function completeSector() {
-  if (state.level >= state.maxLevels) {
-    showStoryChronicle(9);
-    return;
+  try {
+    if (state.level >= state.maxLevels) {
+      showStoryChronicle(9);
+      return;
+    }
+
+    const completed = state.level;
+    state.level++;
+    state.levelProgress = 0;
+    state.levelTarget = 14 + Math.floor(state.level * 1.4);
+    if (player) player.invuln = 90;
+
+    enemyBullets = [];
+    if (particles.length > 40) particles.length = 40;
+
+    if (completed % 10 === 0) {
+      for (const k in RockCache) delete RockCache[k];
+      const eraIndex = Math.min(9, Math.floor(completed / 10) - 1);
+      showStoryChronicle(eraIndex);
+    } else {
+      addFloatingText(W / 2, H * 0.35, `SECTOR ${state.level} INICIADO`, "#00f0ff");
+    }
+    updateHUD();
+  } catch (err) {
+    console.error("Error al avanzar sector:", err);
+    state.mode = "PLAYING";
   }
-
-  const completed = state.level;
-  state.level++;
-  state.levelProgress = 0;
-  state.levelTarget = 14 + Math.floor(state.level * 1.4);
-  player.invuln = 90;
-
-  // Limpieza preventiva de memoria y entidades para evitar congelamientos
-  enemyBullets = [];
-  if (particles.length > 50) particles.length = 50;
-
-  if (completed % 10 === 0) {
-    for (const k in RockCache) delete RockCache[k];
-    const eraIndex = Math.min(9, Math.floor(completed / 10) - 1);
-    showStoryChronicle(eraIndex);
-  } else {
-    addFloatingText(W / 2, H * 0.35, `SECTOR ${state.level} INICIADO`, "#00f0ff");
-  }
-  updateHUD();
 }
 
 function showStoryChronicle(eraIndex) {
@@ -1210,10 +1197,9 @@ function showStoryChronicle(eraIndex) {
   setTimeout(() => saveCloudProgress(), 100);
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 4A)
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 4A-2)
    ============================================================================ */
 
-// 17. BUCLE PRINCIPAL DE ACTUALIZACIÓN Y DIBUJO
 function updateAndDraw() {
   requestAnimationFrame(updateAndDraw);
 
@@ -1448,10 +1434,9 @@ function updateAndDraw() {
   renderBuffTags();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 4B-1)
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 4B-1)
    ============================================================================ */
 
-// 18. HUD, PAUSA Y FIN DE PARTIDA
 function updateHUD() {
   if (!player) return;
   const era = ERAS[Math.min(9, Math.floor((state.level - 1) / 10))];
@@ -1549,7 +1534,6 @@ function endGame(victory) {
   registerScore();
 }
 
-// 19. SISTEMA DE USUARIO + PIN SINCRONIZADO CON FIREBASE FIRESTORE
 let activeProfile = JSON.parse(localStorage.getItem("aether_profile") || "null");
 
 function getProfileKey(name, pin) {
@@ -1594,7 +1578,7 @@ async function loginWithPin() {
   refreshAuthUI();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 4B-2 - FINAL)
+   AETHER NOVA: ECLIPSE - VERSIÓN ESTABLE (BLOQUE 4B-2 - FINAL)
    ============================================================================ */
 
 async function saveCloudProgress() {
@@ -1663,7 +1647,6 @@ function renderRanking() {
     .join("");
 }
 
-// 20. EVENTOS TÁCTILES INSTANTÁNEOS, TECLADO Y GIROSCOPIO
 function bindTap(id, handler) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -1770,9 +1753,9 @@ bindTap("btn-clear-rank", () => {
   renderRanking();
 });
 
-// Arranque inicial
 initStars();
 refreshAuthUI();
 renderRanking();
 requestAnimationFrame(updateAndDraw);
 
+   
