@@ -141,6 +141,10 @@ const SHIP_TYPES = {
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+// Debe declararse antes de resizeCanvas(): esa función consulta player.
+// Si se declara más abajo, la llamada inicial provoca un ReferenceError (TDZ)
+// y detiene toda la inicialización del juego y de los botones.
+let player = null;
 let W = window.innerWidth;
 let H = window.innerHeight;
 let DPR = 1;
@@ -388,7 +392,6 @@ const state = {
 };
 
 const keys = { Left: false, Right: false };
-let player = null;
 let bullets = [];
 let enemyBullets = [];
 let asteroids = [];
@@ -1785,11 +1788,15 @@ async function loginWithPin() {
   }
 
   const key = getProfileKey(nameVal, pinVal);
-  activeProfile = { name: nameVal, key };
-  localStorage.setItem("aether_profile", JSON.stringify(activeProfile));
-
-
-  refreshAuthUI();
+  const profile = { name: nameVal, key };
+  try {
+    localStorage.setItem("aether_profile", JSON.stringify(profile));
+    activeProfile = profile;
+    refreshAuthUI();
+  } catch (error) {
+    console.error("No se pudo guardar el perfil local:", error);
+    alert("El navegador bloqueó el almacenamiento local. Abrí el juego desde GitHub Pages o desde un servidor local y volvé a intentarlo.");
+  }
 }
 /* ============================================================================
    AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 5C - FINAL)
