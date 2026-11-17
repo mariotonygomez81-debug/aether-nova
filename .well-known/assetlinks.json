@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "io.github.mariotonygomez81_debug.twa",
-        "sha256_cert_fingerprints": ["98:AE:3E:98:81:10:CD:DC:90:7F:5B:A8:02:29:60:A2:D1:F4:B0:B4:F1:93:5D:E4:BA:75:CB:A5:41:7D:7B:CD"]
+        "sha256_cert_fingerprints": ["E6:B5:FA:5A:4F:8D:E8:09:AE:CE:51:0A:E7:0C:A9:19:09:B5:13:82:09:98:06:9D:0B:B1:FB:F7:55:B4:DB:DD"]
       }
     }]
