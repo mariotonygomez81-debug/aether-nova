@@ -1,8 +1,8 @@
 {
-  "id": "com.aethernova.eclipse.v3",
+  "id": "com.aethernova.eclipse.final",
   "name": "AETHER NOVA: ECLIPSE",
   "short_name": "Aether Nova",
-  "description": "Shooter espacial progresivo de 100 sectores con fenómenos cósmicos, evolución de naves y guardado en la nube.",
+  "description": "Shooter espacial progresivo de 100 sectores con fenómenos cósmicos y guardado en la nube.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",
@@ -18,6 +18,23 @@
       "purpose": "any"
     },
     {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Aether Nova Eclipse"
+    }
+  ]
+}
+
       "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
