@@ -693,3 +693,8 @@ button:focus-visible,input:focus-visible { outline:2px solid #fff; outline-offse
   #hud .pill { backdrop-filter:none; }
   .sector-transition-banner { backdrop-filter:none; box-shadow:0 0 18px rgba(0,220,255,.22); }
 }
+
+/* Controles táctiles siempre por encima de banners y avisos internos. */
+#touch-controls { z-index: 9999; isolation: isolate; }
+#touch-controls .ctrl-btn { position:relative; z-index:10000; touch-action:none; }
+.sector-transition-banner { pointer-events:none; }

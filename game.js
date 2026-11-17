@@ -838,31 +838,52 @@ class CosmicPhenomenon {
       const pdx = this.x - player.x;
       const pdy = this.y - player.y;
       const pd = Math.hypot(pdx, pdy);
+      // La singularidad atrae en ambos ejes; el campo antigravedad anula el efecto.
       if (pd < pullRange && pd > 0.001 && player.buffs.antigrav <= 0) {
-        player.x += (pdx / pd) * 2.7;
-        if (pd < 42) player.takeDamage("ABSORBIDO POR AGUJERO NEGRO");
+        const force = Math.max(1.4, 5.8 * (1 - pd / pullRange));
+        player.x += (pdx / pd) * force;
+        player.y += (pdy / pd) * force * 0.72;
+        if (pd < 58) { player.takeDamage("ABSORBIDO POR AGUJERO NEGRO"); state.shake = Math.max(state.shake, 15); }
       }
     } else if (this.kind === "magnetar") {
-      if (this.timer % 90 === 0 && player.buffs.faraday <= 0) {
-        const dx = player.x - this.x;
-        const d = Math.hypot(dx, player.y - this.y);
-        if (d < 340) {
-          player.x += dx >= 0 ? 58 : -58;
-          state.shake = 12;
-          addFloatingText(player.x, player.y - 25, "¡PULSO MAGNETAR!", "#d000ff");
+      // Pulsos gravitomagnéticos expansivos: empujan nave, enemigos y rocas.
+      const phase = this.timer % 105;
+      const pulseRadius = phase * 5.2;
+      if (phase > 3 && phase < 68) {
+        const repel = (obj, strength) => {
+          const dx = obj.x - this.x, dy = obj.y - this.y, d = Math.hypot(dx, dy);
+          if (d < pulseRadius + 24 && d > 8 && d > pulseRadius - 28) {
+            const f = strength * (1 - Math.min(1, d / 620));
+            obj.x += dx / d * f; obj.y += dy / d * f;
+          }
+        };
+        asteroids.forEach(a => repel(a, 7.5));
+        enemies.forEach(e => repel(e, 9));
+        if (player.buffs.faraday <= 0) {
+          const beforeX = player.x, beforeY = player.y;
+          repel(player, 12);
+          if (beforeX !== player.x || beforeY !== player.y) {
+            state.shake = Math.max(state.shake, 5);
+            if (phase === 12) addFloatingText(player.x, player.y - 25, "¡ONDA MAGNETAR!", "#e879f9");
+          }
         }
+        enemyBullets.forEach(b => repel(b, 8));
       }
     } else if (this.kind === "pulsar") {
-      if (player.buffs.antigamma <= 0 && this.timer > 50) {
-        const px = player.x - this.x;
-        const py = player.y - this.y;
-        const dist = Math.hypot(px, py);
-        if (dist < 470) {
-          const angToPlayer = Math.atan2(py, px);
-          const diff = Math.abs(Math.sin(angToPlayer - this.angle));
-          if (diff < 0.08) {
-            player.takeDamage("RADIACIÓN GAMMA DE PÚLSAR");
-          }
+      // Haz gamma giratorio de gran alcance; castiga también a objetivos y rocas.
+      const beamAngle = this.angle * 1.25;
+      const hitBeam = (obj, width) => {
+        const dx = obj.x - this.x, dy = obj.y - this.y;
+        const along = dx * Math.cos(beamAngle) + dy * Math.sin(beamAngle);
+        const across = Math.abs(-dx * Math.sin(beamAngle) + dy * Math.cos(beamAngle));
+        return Math.abs(along) < 520 && across < width;
+      };
+      if (this.timer > 35 && this.timer % 9 === 0) {
+        enemies.forEach(e => { if (hitBeam(e, 34)) { e.hp -= 3; if (e.hp <= 0) e.dead = true; } });
+        asteroids.forEach(a => { if (hitBeam(a, 30)) { a.hp -= 2; if (a.hp <= 0) a.dead = true; } });
+        if (player.buffs.antigamma <= 0 && hitBeam(player, 42)) {
+          player.takeDamage("RAYO GAMMA DEL PÚLSAR");
+          state.shake = Math.max(state.shake, 10);
         }
       }
     }
@@ -1117,17 +1138,19 @@ class EnemyShip {
 
 class BossShip {
   constructor() {
-    this.x = W / 2;
-    this.y = 115;
-    this.vx = 2.1;
-    this.radius = 52;
-    this.maxHp = 85 + state.level * 18;
-    this.hp = this.maxHp;
-    this.timer = 0;
+    this.x = W / 2; this.y = 112; this.vx = 2.1;
+    this.variant = (state.level - 1) % 5;
+    const names = ["DEVORADOR DE ÓRBITAS", "LANZALANZAS MAGNÉTICO", "SENTINELA PULSAR", "COLOSUS DE OBSIDIANA", "NÉMESIS DEL ECLIPSE"];
+    this.name = names[this.variant];
+    this.radius = [48,54,46,62,58][this.variant];
+    this.maxHp = Math.round((150 + state.level * 27) * (DIFFICULTY[state.difficulty]?.spawn || 1));
+    this.hp = this.maxHp; this.timer = 0;
     const bossWrap = document.getElementById("boss-bar-wrap");
     const bossName = document.getElementById("boss-name");
     if (bossWrap) bossWrap.classList.remove("hidden");
-    if (bossName) bossName.textContent = `ACORAZADO ECLIPSE • SECTOR ${state.level}`;
+    if (bossName) bossName.textContent = `${this.name} • SECTOR ${state.level}`;
+    addFloatingText(W/2, H*.28, `JEFE ${this.name}`, "#ff4bd8");
+    state.shake = Math.max(state.shake, 8);
   }
 
   update() {
@@ -1135,27 +1158,33 @@ class BossShip {
     this.x += this.vx;
     if (this.x < 65 || this.x > W - 65) this.vx *= -1;
 
-    if (this.timer % 55 === 0 && player) {
+    if (player && this.timer % Math.max(30, 66 - Math.floor(state.level/3)) === 0) {
       const ang = Math.atan2(player.y - this.y, player.x - this.x);
-      [-0.35, -0.17, 0, 0.17, 0.35].forEach((a) => {
-        enemyBullets.push({
-          x: this.x,
-          y: this.y + 38,
-          vx: Math.cos(ang + a) * 4.6,
-          vy: Math.sin(ang + a) * 4.6,
-          color: "#ff2a85"
-        });
-      });
+      const speed = 4.2 + Math.min(2.4, state.level * .035);
+      if (this.variant === 0) {
+        for(let i=0;i<12;i++){ const a=i*Math.PI/6+this.timer*.035; enemyBullets.push({x:this.x,y:this.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,color:"#a855f7"}); }
+      } else if (this.variant === 1) {
+        [-.42,-.28,-.14,0,.14,.28,.42].forEach(a=>enemyBullets.push({x:this.x,y:this.y+30,vx:Math.cos(ang+a)*speed,vy:Math.sin(ang+a)*speed,color:"#e879f9"}));
+      } else if (this.variant === 2) {
+        for(let i=-2;i<=2;i++) enemyBullets.push({x:this.x,y:this.y+25,vx:Math.cos(ang+i*.22)*speed*1.2,vy:Math.sin(ang+i*.22)*speed*1.2,color:"#22f0d0"});
+      } else if (this.variant === 3) {
+        for(let i=0;i<9;i++){ const a=i*Math.PI*2/9; enemyBullets.push({x:this.x,y:this.y,vx:Math.cos(a)*speed*.8,vy:Math.sin(a)*speed*.8,color:"#ff9f1c"}); }
+      } else {
+        for(let i=-3;i<=3;i++) enemyBullets.push({x:this.x,y:this.y+30,vx:Math.cos(ang+i*.12)*speed*1.35,vy:Math.sin(ang+i*.12)*speed*1.35,color:"#ff3864"});
+      }
     }
+    // Movimiento con barridos y cambios de altura para que no sea un blanco fijo.
+    this.y = 112 + Math.sin(this.timer * .025) * 34;
+    if (this.timer % 180 === 0) { this.vx *= -1.35; this.vx = Math.max(-4.2, Math.min(4.2, this.vx)); }
   }
 
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.shadowBlur = IS_LOW_POWER ? 0 : 22;
-    ctx.shadowColor = "#ff0055";
+    ctx.shadowColor = ["#a855f7","#e879f9","#22f0d0","#ff9f1c","#ff3864"][this.variant];
     ctx.fillStyle = "#2b0918";
-    ctx.strokeStyle = "#ff2a85";
+    ctx.strokeStyle = ["#a855f7","#e879f9","#22f0d0","#ff9f1c","#ff3864"][this.variant];
     ctx.lineWidth = 3;
 
     ctx.beginPath();
@@ -1273,13 +1302,13 @@ function updateSpawner() {
   spawnClock++;
   const diff = (1 + (state.level - 1) * 0.03) * (DIFFICULTY[state.difficulty]?.spawn || 1);
 
-  if (state.level % 5 === 0 && !boss && state.levelProgress >= state.levelTarget - 1) {
+  if (!boss && state.levelProgress >= state.levelTarget - 1) {
     boss = new BossShip();
     return;
   }
 
-  const rockInterval = Math.max(18, Math.round(52 / diff));
-  if (spawnClock % rockInterval === 0 && !boss && asteroids.length < 18) {
+  const rockInterval = Math.max(10, Math.round(43 / diff));
+  if (spawnClock % rockInterval === 0 && !boss && asteroids.length < Math.min(34, 16 + Math.floor(state.level / 2))) {
     const r = Math.random();
     let kind = "normal";
     if (state.level >= 2 && r < 0.16) kind = "explosive";
@@ -1291,14 +1320,14 @@ function updateSpawner() {
     asteroids.push(new Asteroid(null, null, radius, kind));
   }
 
-  const enemyInterval = Math.max(75, Math.round(210 / diff));
-  if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss && enemies.length < 6) {
+  const enemyInterval = Math.max(32, Math.round(170 / (diff * (1 + state.level * .012))));
+  if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss && enemies.length < Math.min(12, 4 + Math.floor(state.level / 3))) {
     const roll = Math.random();
-    const variant = state.level >= 12 && roll < 0.28 ? "bomber" : state.level >= 6 && roll < 0.62 ? "interceptor" : "scout";
+    const variant = state.level >= 18 && roll < 0.38 ? "bomber" : state.level >= 8 && roll < 0.72 ? "interceptor" : "scout";
     enemies.push(new EnemyShip(variant));
   }
 
-  if (spawnClock % 480 === 0 && phenomena.length === 0 && state.level >= 2) {
+  if (spawnClock % Math.max(190, 390 - state.level * 2) === 0 && phenomena.length === 0 && state.level >= 2) {
     const pool = ["blackhole", "supernova"];
     if (state.level >= 4) pool.push("magnetar");
     if (state.level >= 6) pool.push("pulsar");
@@ -1365,7 +1394,7 @@ function completeSector() {
     state.levelProgress = 0;
     evaluateAchievements();
     void saveProgress({ quiet: true });
-    state.levelTarget = 14 + Math.floor(state.level * 1.4);
+    state.levelTarget = 18 + Math.floor(state.level * 1.9);
     if (player) player.invuln = 90;
 
     enemyBullets = [];
@@ -1750,7 +1779,7 @@ function startNewGame(savedData = null) {
   }
 
   state.levelProgress = savedData ? Math.max(0, Math.min(Number(savedData.progress) || 0, 14 + Math.floor(state.level * 1.4) - 1)) : 0;
-  state.levelTarget = 14 + Math.floor(state.level * 1.4);
+  state.levelTarget = 18 + Math.floor(state.level * 1.9);
   state.mode = "PLAYING";
 
   document.getElementById("screen-menu").classList.add("hidden");
@@ -1939,7 +1968,7 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = true;
   if (e.code === "ArrowRight" || e.code === "KeyD") keys.Right = true;
   if ((e.code === "KeyB" || e.code === "Space") && !e.repeat) triggerSuperBomb();
-  if ((e.code === "KeyP" || e.code === "Escape") && !e.repeat) togglePause();
+  if ((e.code === "KeyP" || (e.code === "Escape" && !document.fullscreenElement)) && !e.repeat) togglePause();
 });
 
 window.addEventListener("keyup", (e) => {
