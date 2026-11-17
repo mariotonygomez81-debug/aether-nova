@@ -1,5 +1,5 @@
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 1A)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 1A)
    ============================================================================ */
 
 // 1. CONFIGURACIÓN DE FIREBASE FIRESTORE
@@ -92,8 +92,8 @@ const ERAS = [
     title: "EL ECUADOR DEL ECLIPSE",
     story: "Mitad del camino alcanzado. Las balizas antiguas confirman que una inteligencia hostil dirige los púlsares y agujeros negros hacia la Tierra. No hay vuelta atrás."
   },
-/* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 1B)
+   /* ============================================================================
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 1B)
    ============================================================================ */
   {
     name: "GRIETA CRIOGÉNICA",
@@ -269,13 +269,14 @@ const SoundFX = {
   }
 };
 
-// 6. GENERADOR DE TEXTURAS 3D REALISTAS PARA ASTEROIDES
+// 6. GENERADOR DE TEXTURAS 3D OPTIMIZADO (EVITA SATURACIÓN DE MEMORIA)
 const RockCache = {};
 function getRockSprite(eraIndex, kind, radius) {
-  const key = `${eraIndex}_${kind}_${Math.round(radius)}`;
+  const stepRadius = Math.max(10, Math.round(radius / 5) * 5);
+  const key = `${eraIndex}_${kind}_${stepRadius}`;
   if (RockCache[key]) return RockCache[key];
 
-  const size = Math.ceil(radius * 2.6);
+  const size = Math.ceil(stepRadius * 2.6);
   const off = document.createElement("canvas");
   off.width = size;
   off.height = size;
@@ -296,7 +297,7 @@ function getRockSprite(eraIndex, kind, radius) {
   c.save();
   c.translate(cx, cy);
   if (glow) {
-    c.shadowBlur = 16;
+    c.shadowBlur = 14;
     c.shadowColor = glow;
   }
 
@@ -304,11 +305,11 @@ function getRockSprite(eraIndex, kind, radius) {
   const count = 12;
   for (let i = 0; i < count; i++) {
     const ang = (i / count) * Math.PI * 2;
-    const r = radius * (0.8 + ((i * 41) % 10) * 0.024);
+    const r = stepRadius * (0.8 + ((i * 41) % 10) * 0.024);
     pts.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
   }
 
-  const grad = c.createRadialGradient(-radius * 0.35, -radius * 0.35, radius * 0.08, 0, 0, radius * 1.15);
+  const grad = c.createRadialGradient(-stepRadius * 0.35, -stepRadius * 0.35, stepRadius * 0.08, 0, 0, stepRadius * 1.15);
   grad.addColorStop(0, cLight);
   grad.addColorStop(0.28, cMid);
   grad.addColorStop(1, cDark);
@@ -326,8 +327,8 @@ function getRockSprite(eraIndex, kind, radius) {
 
   for (let i = 0; i < 5; i++) {
     const a = i * 1.35 + 0.3;
-    const dist = radius * (0.26 + (i % 2) * 0.24);
-    const cr = radius * (0.13 + (i % 3) * 0.045);
+    const dist = stepRadius * (0.26 + (i % 2) * 0.24);
+    const cr = stepRadius * (0.13 + (i % 3) * 0.045);
     const kx = Math.cos(a) * dist;
     const ky = Math.sin(a) * dist;
     c.fillStyle = "rgba(0,0,0,0.34)";
@@ -344,7 +345,7 @@ function getRockSprite(eraIndex, kind, radius) {
   return off;
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 2A)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 2A)
    ============================================================================ */
 
 // 7. ESTADO GLOBAL DEL JUEGO
@@ -379,13 +380,13 @@ let stars = [];
 
 function initStars() {
   stars = [];
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 110; i++) {
     const layer = i % 3;
     stars.push({
       x: Math.random() * W,
       y: Math.random() * H,
-      size: layer === 0 ? 1.1 : layer === 1 ? 1.8 : 2.6,
-      speed: layer === 0 ? 0.5 : layer === 1 ? 1.3 : 2.4,
+      size: layer === 0 ? 1.1 : layer === 1 ? 1.8 : 2.5,
+      speed: layer === 0 ? 0.5 : layer === 1 ? 1.3 : 2.3,
       alpha: layer === 0 ? 0.35 : layer === 1 ? 0.65 : 0.95,
       tint: layer === 2 && Math.random() < 0.3 ? "#a5f3fc" : "#ffffff"
     });
@@ -453,7 +454,7 @@ class Player {
       if (this.buffs[k] > 0) this.buffs[k]--;
     }
 
-    if (Math.random() < 0.9) {
+    if (particles.length < 130 && Math.random() < 0.8) {
       particles.push({
         x: this.x + (Math.random() - 0.5) * 12,
         y: this.y + 22,
@@ -514,7 +515,7 @@ class Player {
     state.shake = 18;
     SoundFX.play("hit");
     if (navigator.vibrate) navigator.vibrate();
-    spawnExplosion(this.x, this.y, "#ff2a55", 28);
+    spawnExplosion(this.x, this.y, "#ff2a55", 24);
     addFloatingText(this.x, this.y - 35, reason, "#ff4d6d");
     updateHUD();
 
@@ -548,7 +549,7 @@ class Player {
       ctx.setLineDash([]);
     }
 
-    ctx.shadowBlur = 16;
+    ctx.shadowBlur = 14;
     ctx.shadowColor = this.color;
     ctx.fillStyle = this.accent;
 
@@ -603,7 +604,7 @@ class Player {
   }
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 2B)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 2B)
    ============================================================================ */
 
 // 9. CLASE FENÓMENOS CÓSMICOS
@@ -705,15 +706,15 @@ class CosmicPhenomenon {
     if (navigator.vibrate) navigator.vibrate();
 
     asteroids.forEach((a) => {
-      spawnExplosion(a.x, a.y, "#ffcc33", 10);
+      spawnExplosion(a.x, a.y, "#ffcc33", 8);
       a.dead = true;
     });
     enemies.forEach((e) => {
-      spawnExplosion(e.x, e.y, "#ff5500", 14);
+      spawnExplosion(e.x, e.y, "#ff5500", 12);
       e.dead = true;
     });
     enemyBullets = [];
-    spawnExplosion(this.x, this.y, "#ffffff", 70);
+    spawnExplosion(this.x, this.y, "#ffffff", 45);
 
     if (player.buffs.cryo > 0) {
       addFloatingText(player.x, player.y - 35, "¡CRIO-ESCUDO RESISTIÓ SUPERNOVA!", "#00f0ff");
@@ -794,7 +795,7 @@ class CosmicPhenomenon {
   }
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 3A)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 3A)
    ============================================================================ */
 
 // 10. CLASE ASTEROIDES
@@ -835,7 +836,7 @@ class Asteroid {
     this.rot += this.rotSpeed;
     if (this.hitFlash > 0) this.hitFlash--;
 
-    if (this.kind === "shooting_star" && Math.random() < 0.75) {
+    if (this.kind === "shooting_star" && particles.length < 130 && Math.random() < 0.7) {
       particles.push({
         x: this.x,
         y: this.y,
@@ -1039,11 +1040,12 @@ function applyPowerup(p) {
   updateHUD();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 3B)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 3B)
    ============================================================================ */
 
 // 14. EFECTOS VISUALES Y TEXTOS FLOTANTES
-function spawnExplosion(x, y, color, count = 16) {
+function spawnExplosion(x, y, color, count = 14) {
+  if (particles.length > 140) return;
   for (let i = 0; i < count; i++) {
     const ang = Math.random() * Math.PI * 2;
     const spd = Math.random() * 4.5 + 1;
@@ -1052,8 +1054,8 @@ function spawnExplosion(x, y, color, count = 16) {
       y,
       vx: Math.cos(ang) * spd,
       vy: Math.sin(ang) * spd,
-      life: 24 + Math.random() * 14,
-      maxLife: 38,
+      life: 22 + Math.random() * 12,
+      maxLife: 34,
       color,
       size: Math.random() * 3 + 1.5
     });
@@ -1061,6 +1063,7 @@ function spawnExplosion(x, y, color, count = 16) {
 }
 
 function addFloatingText(x, y, text, color = "#ffffff") {
+  if (floatingTexts.length > 12) floatingTexts.shift();
   floatingTexts.push({ x, y, text, color, life: 55 });
 }
 
@@ -1074,13 +1077,13 @@ function triggerSuperBomb() {
   if (navigator.vibrate) navigator.vibrate();
 
   asteroids.forEach((a) => {
-    spawnExplosion(a.x, a.y, "#ffcc33", 10);
+    spawnExplosion(a.x, a.y, "#ffcc33", 8);
     state.score += 25;
   });
   asteroids = [];
 
   enemies.forEach((e) => {
-    spawnExplosion(e.x, e.y, "#ff2a85", 16);
+    spawnExplosion(e.x, e.y, "#ff2a85", 12);
     state.score += 100;
   });
   enemies = [];
@@ -1109,7 +1112,7 @@ function updateSpawner() {
   }
 
   const rockInterval = Math.max(18, Math.round(52 / diff));
-  if (spawnClock % rockInterval === 0 && !boss) {
+  if (spawnClock % rockInterval === 0 && !boss && asteroids.length < 18) {
     const r = Math.random();
     let kind = "normal";
     if (state.level >= 2 && r < 0.16) kind = "explosive";
@@ -1122,7 +1125,7 @@ function updateSpawner() {
   }
 
   const enemyInterval = Math.max(75, Math.round(210 / diff));
-  if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss) {
+  if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss && enemies.length < 6) {
     const roll = Math.random();
     const variant = state.level >= 12 && roll < 0.28 ? "bomber" : state.level >= 6 && roll < 0.62 ? "interceptor" : "scout";
     enemies.push(new EnemyShip(variant));
@@ -1145,7 +1148,7 @@ function updateSpawner() {
 }
 
 function advanceProgress(amount = 1) {
-  if (boss) return;
+  if (boss || state.mode !== "PLAYING") return;
   state.levelProgress += amount;
   if (state.levelProgress >= state.levelTarget) {
     completeSector();
@@ -1155,7 +1158,7 @@ function advanceProgress(amount = 1) {
 
 function defeatBoss() {
   SoundFX.play("supernova");
-  spawnExplosion(boss.x, boss.y, "#ff2a85", 55);
+  spawnExplosion(boss.x, boss.y, "#ff2a85", 45);
   state.score += 1000 * state.level;
   player.bombs = Math.min(5, player.bombs + 1);
   boss = null;
@@ -1175,7 +1178,12 @@ function completeSector() {
   state.levelTarget = 14 + Math.floor(state.level * 1.4);
   player.invuln = 90;
 
+  // Limpieza preventiva de memoria y entidades para evitar congelamientos
+  enemyBullets = [];
+  if (particles.length > 50) particles.length = 50;
+
   if (completed % 10 === 0) {
+    for (const k in RockCache) delete RockCache[k];
     const eraIndex = Math.min(9, Math.floor(completed / 10) - 1);
     showStoryChronicle(eraIndex);
   } else {
@@ -1186,7 +1194,8 @@ function completeSector() {
 
 function showStoryChronicle(eraIndex) {
   state.mode = "STORY";
-  const era = ERAS[eraIndex] || ERAS;
+  const safeIdx = Math.max(0, Math.min(ERAS.length - 1, eraIndex));
+  const era = ERAS[safeIdx];
   const mk = player.getEvolutionTier();
 
   document.getElementById("story-chapter").textContent = era.chapter;
@@ -1198,10 +1207,10 @@ function showStoryChronicle(eraIndex) {
       : `¡NAVE EVOLUCIONADA A FASE MK-${mk}! ARMAMENTO MEJORADO`;
 
   document.getElementById("screen-story").classList.remove("hidden");
-  saveCloudProgress();
+  setTimeout(() => saveCloudProgress(), 100);
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 4A)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 4A)
    ============================================================================ */
 
 // 17. BUCLE PRINCIPAL DE ACTUALIZACIÓN Y DIBUJO
@@ -1215,7 +1224,6 @@ function updateAndDraw() {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Doble nebulosa volumétrica
   const neb1 = ctx.createRadialGradient(W * 0.3, H * 0.3, 15, W * 0.3, H * 0.3, W * 0.7);
   neb1.addColorStop(0, era.nebula1);
   neb1.addColorStop(1, "rgba(0,0,0,0)");
@@ -1228,7 +1236,6 @@ function updateAndDraw() {
   ctx.fillStyle = neb2;
   ctx.fillRect(0, 0, W, H);
 
-  // Estrellas con paralaje
   stars.forEach((s) => {
     if (state.mode === "PLAYING") s.y += s.speed;
     if (s.y > H) {
@@ -1241,7 +1248,7 @@ function updateAndDraw() {
   });
   ctx.globalAlpha = 1;
 
-  if (state.mode !== "PLAYING") return;
+  if (state.mode !== "PLAYING" || !player) return;
 
   ctx.save();
   if (state.shake > 0) {
@@ -1265,7 +1272,7 @@ function updateAndDraw() {
   bullets.forEach((b) => {
     if (b.missile) {
       const target = boss || enemies[0] || asteroids[0];
-      if (target) {
+      if (target && typeof target.x === "number") {
         const ang = Math.atan2(target.y - b.y, target.x - b.x);
         b.vx += Math.cos(ang) * 0.65;
         b.vy += Math.sin(ang) * 0.65;
@@ -1299,7 +1306,7 @@ function updateAndDraw() {
         if (a.hp <= 0) {
           a.dead = true;
           SoundFX.play("boom");
-          spawnExplosion(a.x, a.y, "#ffcc33", 14);
+          spawnExplosion(a.x, a.y, "#ffcc33", 12);
           spawnPowerup(a.x, a.y);
 
           if (a.kind === "explosive") {
@@ -1309,7 +1316,7 @@ function updateAndDraw() {
                 if (other.hp <= 0) other.dead = true;
               }
             });
-          } else if (a.radius > 28) {
+          } else if (a.radius > 28 && asteroids.length < 22) {
             asteroids.push(new Asteroid(a.x - 10, a.y, a.radius * 0.55, a.kind));
             asteroids.push(new Asteroid(a.x + 10, a.y, a.radius * 0.55, a.kind));
           }
@@ -1339,7 +1346,7 @@ function updateAndDraw() {
         if (e.hp <= 0) {
           e.dead = true;
           SoundFX.play("boom");
-          spawnExplosion(e.x, e.y, "#ff2a85", 20);
+          spawnExplosion(e.x, e.y, "#ff2a85", 16);
           spawnPowerup(e.x, e.y);
           state.score += 120 * state.combo;
           advanceProgress(2);
@@ -1351,7 +1358,8 @@ function updateAndDraw() {
   if (boss) {
     boss.update();
     boss.draw();
-    document.getElementById("boss-hp").style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+    const hpBar = document.getElementById("boss-hp");
+    if (hpBar) hpBar.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
 
     bullets.forEach((b) => {
       if (!b.dead && boss && Math.hypot(b.x - boss.x, b.y - boss.y) < boss.radius) {
@@ -1440,7 +1448,7 @@ function updateAndDraw() {
   renderBuffTags();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 4B-1)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 4B-1)
    ============================================================================ */
 
 // 18. HUD, PAUSA Y FIN DE PARTIDA
@@ -1586,7 +1594,7 @@ async function loginWithPin() {
   refreshAuthUI();
 }
 /* ============================================================================
-   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA (BLOQUE 4B-2 - FINAL)
+   AETHER NOVA: ECLIPSE - EDICIÓN DEFINITIVA CORREGIDA (BLOQUE 4B-2 - FINAL)
    ============================================================================ */
 
 async function saveCloudProgress() {
@@ -1767,3 +1775,4 @@ initStars();
 refreshAuthUI();
 renderRanking();
 requestAnimationFrame(updateAndDraw);
+
