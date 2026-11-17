@@ -382,7 +382,9 @@ const state = {
   shake: 0,
   flash: 0,
   gyroEnabled: false,
-  gyroTilt: 0
+  gyroTilt: 0,
+  difficulty: "normal",
+  runRewardPaid: false
 };
 
 const keys = { Left: false, Right: false };
@@ -413,6 +415,149 @@ function initStars() {
   }
 }
 
+const COMMERCIAL_KEY = "aether_commercial_v1";
+const DIFFICULTY = {
+  easy: { label: "RECLUTA", spawn: 0.78, reward: 0.8 },
+  normal: { label: "ÉLITE", spawn: 1, reward: 1 },
+  hard: { label: "PESADILLA", spawn: 1.28, reward: 1.5 }
+};
+const UPGRADE_DEFS = [
+  { id: "reactor", name: "REACTOR NOVA", desc: "+5% de velocidad por nivel. Maniobra con mayor precisión.", base: 120, max: 5 },
+  { id: "cannon", name: "CAÑÓN DE PLASMA", desc: "+12% de daño por nivel. Destruye amenazas más rápido.", base: 160, max: 5 },
+  { id: "hull", name: "BLINDAJE TITÁN", desc: "+1 punto de casco inicial por nivel.", base: 220, max: 3 },
+  { id: "bombBay", name: "BODEGA TÁCTICA", desc: "+1 super bomba al iniciar por nivel.", base: 180, max: 3 }
+];
+function loadCommercialData() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COMMERCIAL_KEY) || "{}");
+    return {
+      credits: Math.max(0, Number(raw.credits) || 0),
+      upgrades: Object.fromEntries(UPGRADE_DEFS.map(u => [u.id, Math.max(0, Math.min(u.max, Number(raw.upgrades?.[u.id]) || 0))])),
+      achievements: Array.isArray(raw.achievements) ? raw.achievements.filter(x => typeof x === "string") : [],
+      totalRuns: Math.max(0, Number(raw.totalRuns) || 0),
+      totalScore: Math.max(0, Number(raw.totalScore) || 0),
+      bestSector: Math.max(1, Number(raw.bestSector) || 1),
+      bestScore: Math.max(0, Number(raw.bestScore) || 0),
+      sound: raw.sound !== false,
+      difficulty: ["easy", "normal", "hard"].includes(raw.difficulty) ? raw.difficulty : "normal",
+      dailyClaimed: typeof raw.dailyClaimed === "string" ? raw.dailyClaimed : ""
+    };
+  } catch (error) {
+    console.warn("Se reiniciaron los datos comerciales locales.", error);
+    return { credits: 0, upgrades: {}, achievements: [], totalRuns: 0, totalScore: 0, bestSector: 1, bestScore: 0, sound: true };
+  }
+}
+let commercialData = loadCommercialData();
+state.difficulty = commercialData.difficulty;
+function saveCommercialData() {
+  try { localStorage.setItem(COMMERCIAL_KEY, JSON.stringify(commercialData)); }
+  catch (error) { console.warn("No se pudo guardar la progresión local.", error); }
+  updateCommercialUI();
+}
+function updateCommercialUI() {
+  const credits = Math.floor(commercialData.credits).toLocaleString("es-AR");
+  ["menu-credits", "hangar-credits", "ui-credits"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = credits;
+  });
+  const status = document.getElementById("network-status");
+  if (status) { status.textContent = navigator.onLine ? "● DATOS LOCALES" : "● SIN CONEXIÓN"; status.classList.toggle("offline", !navigator.onLine); }
+}
+function unlockAchievement(id, title) {
+  if (commercialData.achievements.includes(id)) return;
+  commercialData.achievements.push(id);
+  saveCommercialData();
+  if (typeof addFloatingText === "function" && player) addFloatingText(W / 2, H * .34, `LOGRO: ${title}`, "#ffdf87");
+}
+function evaluateAchievements() {
+  const milestones = [[5,"PRIMERA BRECHA"],[10,"NUEVO HORIZONTE"],[25,"CAZADOR DEL VACÍO"],[50,"MITAD DE LA LEYENDA"],[75,"DOMINADOR ESTELAR"],[100,"SALVADOR DE LA GALAXIA"]];
+  milestones.forEach(([sector, title]) => { if (state.level >= sector) unlockAchievement(`sector_${sector}`, title); });
+  if (state.score >= 10000) unlockAchievement("score_10k", "DIEZ MIL Y MÁS");
+}
+function renderHangar() {
+  const stats = document.getElementById("career-stats");
+  if (stats) {
+    stats.replaceChildren();
+    [["PARTIDAS", commercialData.totalRuns], ["MEJOR SECTOR", commercialData.bestSector], ["RÉCORD", commercialData.bestScore.toLocaleString("es-AR")], ["CRÉDITOS", commercialData.credits.toLocaleString("es-AR")]].forEach(([label, value]) => {
+      const item = document.createElement("div"); item.className = "career-stat";
+      const strong = document.createElement("strong"); strong.textContent = value;
+      const small = document.createElement("span"); small.textContent = label;
+      item.append(strong, small); stats.append(item);
+    });
+  }
+  const achievementBox = document.getElementById("achievement-list");
+  if (achievementBox) {
+    achievementBox.replaceChildren();
+    const achievementNames = [["sector_5","Primera brecha"],["sector_10","Nuevo horizonte"],["sector_25","Cazador del vacío"],["sector_50","Mitad de la leyenda"],["sector_75","Dominador estelar"],["sector_100","Salvador de la galaxia"],["score_10k","Diez mil y más"]];
+    achievementNames.forEach(([id, name]) => {
+      const tag = document.createElement("span");
+      tag.className = `achievement-chip${commercialData.achievements.includes(id) ? " unlocked" : ""}`;
+      tag.textContent = `${commercialData.achievements.includes(id) ? "✦" : "◇"} ${name}`;
+      achievementBox.append(tag);
+    });
+  }
+  const grid = document.getElementById("upgrade-grid");
+  if (!grid) return;
+  grid.replaceChildren();
+  UPGRADE_DEFS.forEach(def => {
+    const level = commercialData.upgrades[def.id] || 0;
+    const cost = Math.round(def.base * Math.pow(1.72, level));
+    const card = document.createElement("article"); card.className = "upgrade-card";
+    const title = document.createElement("h3"); title.textContent = def.name;
+    const desc = document.createElement("p"); desc.textContent = def.desc;
+    const rank = document.createElement("div"); rank.className = "upgrade-level"; rank.textContent = `NIVEL ${level}/${def.max}`;
+    const buy = document.createElement("button"); buy.className = "upgrade-buy";
+    buy.type = "button"; buy.textContent = level >= def.max ? "MEJORA COMPLETA" : `MEJORAR • ✦ ${cost.toLocaleString("es-AR")}`;
+    buy.disabled = level >= def.max || commercialData.credits < cost;
+    buy.addEventListener("click", () => {
+      if (level >= def.max || commercialData.credits < cost) return;
+      commercialData.credits -= cost; commercialData.upgrades[def.id] = level + 1;
+      SoundFX.play("powerup"); saveCommercialData(); renderHangar();
+    });
+    card.append(title, desc, rank, buy); grid.append(card);
+  });
+  updateCommercialUI();
+}
+function awardRunCredits(victory) {
+  if (state.runRewardPaid) return 0;
+  state.runRewardPaid = true;
+  const multiplier = DIFFICULTY[state.difficulty]?.reward || 1;
+  const earned = Math.max(25, Math.floor((state.score / 120 + state.level * 4 + (victory ? 1500 : 0)) * multiplier));
+  commercialData.credits += earned;
+  commercialData.totalRuns++;
+  commercialData.totalScore += state.score;
+  commercialData.bestSector = Math.max(commercialData.bestSector, state.level);
+  commercialData.bestScore = Math.max(commercialData.bestScore, state.score);
+  evaluateAchievements();
+  saveCommercialData();
+  const reward = document.getElementById("run-reward");
+  if (reward) reward.textContent = `✦ RECOMPENSA DE MISIÓN: +${earned.toLocaleString("es-AR")} CRÉDITOS`;
+  return earned;
+}
+function localDateKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function claimDailyReward() {
+  const today = localDateKey();
+  if (commercialData.dailyClaimed === today) { alert("El bono diario ya fue reclamado. Vuelve mañana, comandante."); return; }
+  commercialData.dailyClaimed = today;
+  commercialData.credits += 150;
+  saveCommercialData();
+  const button = document.getElementById("btn-daily");
+  if (button) button.textContent = "✓ BONO RECLAMADO";
+  SoundFX.play("powerup");
+  alert("¡Bono diario recibido! +150 créditos.");
+}
+function refreshDailyButton() {
+  const today = localDateKey();
+  const button = document.getElementById("btn-daily");
+  if (button) button.textContent = commercialData.dailyClaimed === today ? "✓ BONO RECLAMADO" : "✦ BONO DIARIO";
+}
+function showOverlay(id) {
+  ["screen-hangar", "screen-manual"].forEach(name => document.getElementById(name)?.classList.add("hidden"));
+  document.getElementById(id)?.classList.remove("hidden");
+}
+
 class Player {
   constructor(typeKey) {
     const spec = SHIP_TYPES[typeKey] || SHIP_TYPES.valkyrie;
@@ -420,12 +565,13 @@ class Player {
     this.x = W / 2;
     this.y = H - 185;
     this.radius = 20;
-    this.speed = spec.speed;
-    this.baseFireRate = spec.fireRate;
+    const upgrades = commercialData.upgrades || {};
+    this.speed = spec.speed * (1 + (upgrades.reactor || 0) * 0.05);
+    this.baseFireRate = spec.fireRate * (1 - (upgrades.cannon || 0) * 0.045);
     this.color = spec.color;
     this.accent = spec.accent;
-    this.lives = spec.lives;
-    this.bombs = 1;
+    this.lives = Math.min(6, spec.lives + (upgrades.hull || 0));
+    this.bombs = Math.min(5, 1 + (upgrades.bombBay || 0));
     this.tilt = 0;
     this.fireTimer = 0;
     this.invuln = 120;
@@ -489,7 +635,7 @@ class Player {
 
   shoot() {
     const mk = this.getEvolutionTier();
-    const dmg = 1 + Math.floor((mk - 1) * 0.5);
+    const dmg = Math.max(1, Math.round((1 + Math.floor((mk - 1) * 0.5)) * (1 + (commercialData.upgrades?.cannon || 0) * 0.12)));
     SoundFX.play("laser");
 
     bullets.push({ x: this.x, y: this.y - 24, vx: 0, vy: -13.5, dmg, color: this.color, missile: false });
@@ -1116,7 +1262,7 @@ let spawnClock = 0;
 
 function updateSpawner() {
   spawnClock++;
-  const diff = 1 + (state.level - 1) * 0.03;
+  const diff = (1 + (state.level - 1) * 0.03) * (DIFFICULTY[state.difficulty]?.spawn || 1);
 
   if (state.level % 5 === 0 && !boss && state.levelProgress >= state.levelTarget - 1) {
     boss = new BossShip();
@@ -1188,6 +1334,8 @@ function completeSector() {
     const completed = state.level;
     state.level++;
     state.levelProgress = 0;
+    evaluateAchievements();
+    void saveProgress({ quiet: true });
     state.levelTarget = 14 + Math.floor(state.level * 1.4);
     if (player) player.invuln = 90;
 
@@ -1484,7 +1632,8 @@ function updateAndDraw() {
 function updateHUD() {
   if (!player) return;
   const era = ERAS[Math.min(9, Math.floor((state.level - 1) / 10))];
-  document.getElementById("ui-score").textContent = state.score;
+  document.getElementById("ui-score").textContent = state.score.toLocaleString("es-AR");
+  updateCommercialUI();
   document.getElementById("ui-level").textContent = `${state.level}/100`;
   document.getElementById("ui-lives").textContent = player.lives;
   document.getElementById("ui-bombs").textContent = player.bombs;
@@ -1535,6 +1684,7 @@ function startNewGame(savedData = null) {
   enemyBullets = [];
   spawnClock = 0;
   state.combo = 1;
+  state.runRewardPaid = false;
   state.comboTimer = 0;
   state.shake = 0;
   state.flash = 0;
@@ -1550,6 +1700,7 @@ function startNewGame(savedData = null) {
     state.level = Math.max(1, Math.min(100, Number(savedData.level) || 1));
     state.score = Math.max(0, Number(savedData.score) || 0);
     state.selectedShip = SHIP_TYPES[savedData.ship] ? savedData.ship : (state.selectedShip || "valkyrie");
+    state.difficulty = DIFFICULTY[savedData.difficulty] ? savedData.difficulty : state.difficulty;
     player = new Player(state.selectedShip);
     player.lives = Math.max(1, Math.min(6, Number(savedData.lives) || player.lives));
     player.bombs = Math.max(0, Math.min(5, Number(savedData.bombs ?? 1)));
@@ -1569,6 +1720,7 @@ function startNewGame(savedData = null) {
   document.getElementById("hud").classList.remove("hidden");
   document.getElementById("touch-controls").classList.remove("hidden");
   updateHUD();
+  updateCommercialUI();
 }
 
 function togglePause() {
@@ -1591,6 +1743,7 @@ function endGame(victory) {
   document.getElementById("end-title").textContent = victory ? "¡GALAXIA SALVADA!" : "NAVE DESTRUIDA";
   document.getElementById("end-summary").textContent = `Alcanzaste el Sector ${state.level}/100 con ${state.score} puntos.`;
   document.getElementById("screen-gameover").classList.remove("hidden");
+  awardRunCredits(victory);
   registerScore();
 }
 
@@ -1642,7 +1795,7 @@ async function loginWithPin() {
    AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 5C - FINAL)
    ============================================================================ */
 
-async function saveProgress() {
+async function saveProgress(options = {}) {
   if (!player) return;
   const key = activeProfile ? activeProfile.key : "guest";
   const pilotName = activeProfile ? activeProfile.name : "Comandante";
@@ -1651,14 +1804,16 @@ async function saveProgress() {
     level: state.level,
     score: state.score,
     ship: state.selectedShip,
+    difficulty: state.difficulty,
     lives: player.lives,
     bombs: player.bombs,
     progress: state.levelProgress,
     updatedAt: Date.now()
   };
 
-  localStorage.setItem(`aether_save_${key}`, JSON.stringify(payload));
-  addFloatingText(W / 2, H * 0.45, "PROGRESO GUARDADO", "#00ff88");
+  try { localStorage.setItem(`aether_save_${key}`, JSON.stringify(payload)); }
+  catch (error) { console.warn("No se pudo guardar la partida en este dispositivo.", error); alert("No hay espacio disponible para guardar el progreso."); return; }
+  if (!options.quiet) addFloatingText(W / 2, H * 0.45, "PROGRESO GUARDADO", "#00ff88");
   checkSavedRun();
 }
 
@@ -1677,10 +1832,12 @@ function checkSavedRun() {
 async function registerScore() {
   const pilotName = activeProfile ? activeProfile.name : "Comandante";
   const entry = { name: pilotName, score: state.score, level: state.level };
-  const list = readStoredJSON("aether_nova_rank", []);
+  const stored = readStoredJSON("aether_nova_rank", []);
+  const list = Array.isArray(stored) ? stored.filter(r => r && typeof r === "object") : [];
   list.push(entry);
-  list.sort((a, b) => b.score - a.score);
-  localStorage.setItem("aether_nova_rank", JSON.stringify(list.slice(0, 5)));
+  list.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+  try { localStorage.setItem("aether_nova_rank", JSON.stringify(list.slice(0, 5))); }
+  catch (error) { console.warn("No se pudo actualizar el ranking local.", error); }
 
 
   renderRanking();
@@ -1763,6 +1920,8 @@ bindTap("btn-save-pause", saveProgress);
 
 bindTap("btn-audio", (e) => {
   SoundFX.enabled = !SoundFX.enabled;
+  commercialData.sound = SoundFX.enabled;
+  saveCommercialData();
   e.currentTarget.textContent = SoundFX.enabled ? "🔊" : "🔇";
 });
 
@@ -1827,7 +1986,45 @@ bindTap("btn-clear-rank", () => {
   renderRanking();
 });
 
+// Comercial: Hangar, entrenamiento, instalación y preferencias persistentes.
+bindTap("btn-hangar", () => { renderHangar(); showOverlay("screen-hangar"); });
+bindTap("btn-hangar-close", () => document.getElementById("screen-hangar").classList.add("hidden"));
+bindTap("btn-manual", () => showOverlay("screen-manual"));
+bindTap("btn-manual-close", () => document.getElementById("screen-manual").classList.add("hidden"));
+document.querySelectorAll(".difficulty-opt").forEach(btn => btn.addEventListener("click", () => {
+  if (state.mode !== "MENU") return;
+  state.difficulty = DIFFICULTY[btn.dataset.difficulty] ? btn.dataset.difficulty : "normal";
+  commercialData.difficulty = state.difficulty;
+  saveCommercialData();
+  document.querySelectorAll(".difficulty-opt").forEach(b => b.classList.toggle("active", b === btn));
+}));
+window.addEventListener("online", updateCommercialUI);
+window.addEventListener("offline", updateCommercialUI);
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", event => {
+  event.preventDefault(); deferredInstallPrompt = event;
+  document.getElementById("btn-install")?.classList.remove("hidden");
+});
+bindTap("btn-install", async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  try { await deferredInstallPrompt.userChoice; } catch (error) {}
+  deferredInstallPrompt = null;
+  document.getElementById("btn-install")?.classList.add("hidden");
+});
+bindTap("btn-daily", claimDailyReward);
+bindTap("btn-share", async () => {
+  const shareData = { title: "AETHER NOVA: ECLIPSE", text: "Defiende la galaxia en AETHER NOVA: ECLIPSE.", url: location.href };
+  try { if (navigator.share) await navigator.share(shareData); else if (navigator.clipboard) { await navigator.clipboard.writeText(location.href); alert("Enlace copiado."); } }
+  catch (error) { if (error?.name !== "AbortError") console.warn("No se pudo compartir:", error); }
+});
+SoundFX.enabled = commercialData.sound;
+
 initStars();
 refreshAuthUI();
 renderRanking();
+updateCommercialUI();
+refreshDailyButton();
+document.querySelectorAll(".difficulty-opt").forEach(btn => btn.classList.toggle("active", btn.dataset.difficulty === state.difficulty));
+if (!SoundFX.enabled) { const audioButton = document.getElementById("btn-audio"); if (audioButton) audioButton.textContent = "🔇"; }
 requestAnimationFrame(updateAndDraw);

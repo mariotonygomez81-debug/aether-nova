@@ -1,9 +1,9 @@
 {
-  "id": "com.aethernova.eclipse",
-  "name": "AETHER NOVA: ECLIPSE",
-  "short_name": "Aether Nova",
-  "description": "Shooter arcade espacial de 100 sectores, naves evolutivas y jefes galácticos.",
-  "start_url": "./index.html",
+  "id": "./",
+  "name": "AETHER NOVA: ECLIPSE — Commercial Edition",
+  "short_name": "AETHER NOVA",
+  "description": "Edición comercial de AETHER NOVA: ECLIPSE. Shooter arcade espacial con 100 sectores, jefes, progresión permanente y modo offline.",
+  "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
   "display_override": [
@@ -16,14 +16,27 @@
   "categories": [
     "games",
     "action",
-    "arcade"
+    "arcade",
+    "entertainment"
   ],
   "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

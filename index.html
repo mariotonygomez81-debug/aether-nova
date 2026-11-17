@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#04060e" />
-  <meta name="description" content="AETHER NOVA: ECLIPSE — shooter arcade espacial de 100 sectores." />
+  <meta name="description" content="AETHER NOVA: ECLIPSE — shooter arcade espacial premium. Supera 100 sectores, derrota jefes y evoluciona tu nave." />
+  <meta name="keywords" content="Aether Nova, Eclipse, videojuego, arcade, shooter espacial, PWA" />
+  <meta name="author" content="AETHER NOVA Studio" />
+  <meta name="color-scheme" content="dark" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="AETHER NOVA: ECLIPSE" />
+  <meta property="og:description" content="La última defensa de la humanidad comienza en el borde del Eclipse." />
+  <meta property="og:image" content="./icon-512.png" />
   <meta name="application-name" content="Aether Nova Eclipse" />
   <meta name="apple-mobile-web-app-title" content="Aether Nova" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -22,6 +29,7 @@
       <div class="pill"><span class="lbl">PUNTOS</span><strong id="ui-score">0</strong></div>
       <div class="pill"><span class="lbl">SECTOR</span><strong id="ui-level">1/100</strong></div>
       <div class="pill"><span class="lbl">CASCO</span><strong id="ui-lives">3</strong></div>
+      <div class="pill credit-pill"><span class="lbl">CRÉDITOS</span><strong id="ui-credits">0</strong></div>
     </div>
     <div class="hud-center">
       <div id="ui-sector-name">ÓRBITA DE EXODUS</div>
@@ -77,6 +85,20 @@
         </div>
       </div>
 
+      <div class="pilot-economy" aria-live="polite">
+        <span>✦ <strong id="menu-credits">0</strong> CRÉDITOS</span>
+        <span id="network-status" class="connection-state">● MODO LOCAL</span>
+      </div>
+
+      <div class="difficulty-picker" aria-label="Dificultad de la expedición">
+        <span class="section-kicker">PROTOCOLO DE COMBATE</span>
+        <div class="difficulty-options">
+          <button type="button" class="difficulty-opt" data-difficulty="easy">RECLUTA</button>
+          <button type="button" class="difficulty-opt active" data-difficulty="normal">ÉLITE</button>
+          <button type="button" class="difficulty-opt" data-difficulty="hard">PESADILLA</button>
+        </div>
+      </div>
+
       <div class="ship-selector">
         <button type="button" class="ship-opt active" data-ship="valkyrie">
           <strong>VALKYRIE</strong>
@@ -93,17 +115,58 @@
       </div>
 
       <div class="menu-actions">
-        <button type="button" id="btn-play" class="primary-btn">INICIAR EXPEDICIÓN</button>
+        <button type="button" id="btn-play" class="primary-btn">INICIAR EXPEDICIÓN <span aria-hidden="true">↗</span></button>
         <button type="button" id="btn-continue" class="secondary-btn hidden">CONTINUAR SECTOR GUARDADO</button>
+      </div>
+
+      <div class="menu-tools">
+        <button type="button" id="btn-hangar" class="tool-btn">⚙ HANGAR</button>
+        <button type="button" id="btn-manual" class="tool-btn">⌖ MANUAL</button>
+        <button type="button" id="btn-install" class="tool-btn hidden">↓ INSTALAR</button>
+        <button type="button" id="btn-share" class="tool-btn">↗ COMPARTIR</button>
+        <button type="button" id="btn-daily" class="tool-btn">✦ BONO DIARIO</button>
       </div>
 
       <div class="ranking-box">
         <div class="rank-header">
-          <span>🏆 SALÓN DE LA FAMA ESTELAR</span>
+          <span>🏆 RÉCORDS LOCALES</span>
           <button type="button" id="btn-clear-rank" class="mini-btn">Reiniciar</button>
         </div>
         <ol id="ranking-list"></ol>
+        <small class="local-note">Los récords se guardan en este dispositivo.</small>
+        <a class="privacy-link" href="./privacy.html">Privacidad</a>
       </div>
+    </div>
+  </section>
+
+  <section id="screen-hangar" class="overlay hidden">
+    <div class="card feature-card">
+      <div class="badge">ARSENAL • PROGRESIÓN PERMANENTE</div>
+      <h2>HANGAR NOVA</h2>
+      <p class="panel-intro">Invierte créditos obtenidos en combate para reforzar tu nave. Las mejoras se conservan en este dispositivo.</p>
+      <div class="hangar-balance">✦ <strong id="hangar-credits">0</strong> <span>CRÉDITOS DISPONIBLES</span></div>
+      <div id="upgrade-grid" class="upgrade-grid"></div>
+      <section class="career-panel">
+        <h3>REGISTRO DE SERVICIO</h3>
+        <div id="career-stats" class="career-stats"></div>
+        <div id="achievement-list" class="achievement-list"></div>
+      </section>
+      <div class="menu-actions"><button type="button" id="btn-hangar-close" class="secondary-btn">VOLVER AL HANGAR PRINCIPAL</button></div>
+    </div>
+  </section>
+
+  <section id="screen-manual" class="overlay hidden">
+    <div class="card feature-card manual-card">
+      <div class="badge">CENTRO DE ENTRENAMIENTO</div>
+      <h2>MANUAL DEL PILOTO</h2>
+      <div class="manual-grid">
+        <article><b>⌨ PC</b><p>← → o A / D para mover. ESPACIO o B para activar la super bomba. P o ESC para pausar.</p></article>
+        <article><b>▣ MÓVIL</b><p>Usa los controles táctiles inferiores. El giroscopio puede activarse desde el HUD si tu dispositivo lo admite.</p></article>
+        <article><b>✦ COMBATE</b><p>Destruye asteroides y cazas, recoge módulos, encadena combos y derrota al acorazado cada cinco sectores.</p></article>
+        <article><b>⬡ EVOLUCIÓN</b><p>Tu nave evoluciona cada diez sectores. Compra mejoras permanentes en el Hangar con créditos ganados al finalizar una partida.</p></article>
+      </div>
+      <p class="local-note">Consejo: guarda tu progreso desde el HUD o el menú de pausa. El progreso y los récords son locales.</p>
+      <button type="button" id="btn-manual-close" class="primary-btn">ENTENDIDO, COMANDANTE</button>
     </div>
   </section>
 
@@ -134,6 +197,7 @@
       <div class="badge" id="end-badge">TRANSMISIÓN FINALIZADA</div>
       <h2 id="end-title">NAVE DESTRUIDA</h2>
       <p id="end-summary">Alcanzaste el Sector 1 con 0 puntos.</p>
+      <div class="run-reward" id="run-reward">✦ Recompensa: 0 créditos</div>
       <div class="menu-actions">
         <button type="button" id="btn-restart" class="primary-btn">REINTENTAR DESDE SECTOR 1</button>
         <button type="button" id="btn-to-menu" class="secondary-btn">VOLVER AL HANGAR</button>
