@@ -2,25 +2,7 @@
    AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 1 DE 5)
    ============================================================================ */
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDz0HrlwvKTfpwAjUJzTfcNvzzbXnaOA0I",
-  authDomain: "://firebaseapp.com",
-  projectId: "aether-nova-54f86",
-  storageBucket: "aether-nova-54f86.firebasestorage.app",
-  messagingSenderId: "249474043468",
-  appId: "1:249474043468:web:9545dd3a084fd0a2f1aee9",
-  measurementId: "G-5QE1NGEKDG"
-};
-
-let db = null;
-try {
-  if (window.firebase) {
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-  }
-} catch (err) {
-  console.warn("Firebase en modo local:", err);
-}
+// Esta distribución utiliza guardado local; no requiere claves ni SDK de terceros.
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -159,14 +141,22 @@ const SHIP_TYPES = {
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-let W = (canvas.width = window.innerWidth);
-let H = (canvas.height = window.innerHeight);
-
-window.addEventListener("resize", () => {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  if (player) player.y = H - 185;
-});
+let W = window.innerWidth;
+let H = window.innerHeight;
+let DPR = 1;
+function resizeCanvas() {
+  W = Math.max(320, window.innerWidth);
+  H = Math.max(320, window.innerHeight);
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width = `${W}px`;
+  canvas.style.height = `${H}px`;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (player) { player.y = H - Math.max(125, Math.min(185, H * .19)); player.x = Math.max(28, Math.min(W - 28, player.x)); }
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas, { passive: true });
 
 const SoundFX = {
   ctx: null,
@@ -174,14 +164,19 @@ const SoundFX = {
   bgmTimer: null,
   step: 0,
   init() {
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (this.ctx.state === "suspended") this.ctx.resume();
+    try {
+      if (!this.ctx) {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) return;
+        this.ctx = new AudioCtor();
+      }
+      if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+    } catch (error) { console.warn("Audio no disponible:", error); }
   },
   play(type) {
     if (!this.enabled) return;
     this.init();
+    if (!this.ctx || this.ctx.state !== "running") return;
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -237,6 +232,31 @@ const SoundFX = {
       osc.start(now);
       osc.stop(now + 0.24);
     }
+
+    // Capa de ruido filtrado para impactos y explosiones: aporta cuerpo sin archivos externos.
+    if (["boom", "hit", "supernova"].includes(type)) {
+      const duration = type === "supernova" ? 0.72 : type === "boom" ? 0.22 : 0.14;
+      const buffer = this.ctx.createBuffer(1, Math.ceil(this.ctx.sampleRate * duration), this.ctx.sampleRate);
+      const channel = buffer.getChannelData(0);
+      for (let i = 0; i < channel.length; i++) {
+        const fade = 1 - i / channel.length;
+        channel[i] = (Math.random() * 2 - 1) * fade * fade;
+      }
+      const noise = this.ctx.createBufferSource();
+      const filter = this.ctx.createBiquadFilter();
+      const noiseGain = this.ctx.createGain();
+      noise.buffer = buffer;
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(type === "supernova" ? 520 : 1150, now);
+      filter.frequency.exponentialRampToValueAtTime(90, now + duration);
+      noiseGain.gain.setValueAtTime(type === "supernova" ? 0.2 : 0.075, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(this.ctx.destination);
+      noise.start(now);
+      noise.stop(now + duration);
+    }
   },
   startMusic() {
     if (this.bgmTimer) return;
@@ -244,6 +264,7 @@ const SoundFX = {
     this.bgmTimer = setInterval(() => {
       if (!this.enabled || state.mode !== "PLAYING") return;
       this.init();
+      if (!this.ctx || this.ctx.state !== "running") return;
       const now = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -255,6 +276,16 @@ const SoundFX = {
       gain.connect(this.ctx.destination);
       osc.start(now);
       osc.stop(now + 0.22);
+      const harmony = this.ctx.createOscillator();
+      const harmonyGain = this.ctx.createGain();
+      harmony.type = "sine";
+      harmony.frequency.setValueAtTime(notes[this.step % notes.length] * 2, now);
+      harmonyGain.gain.setValueAtTime(0.009, now);
+      harmonyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      harmony.connect(harmonyGain);
+      harmonyGain.connect(this.ctx.destination);
+      harmony.start(now);
+      harmony.stop(now + 0.18);
       this.step++;
     }, 260);
   }
@@ -431,7 +462,7 @@ class Player {
     if (this.x > W - 28) this.x = W - 28;
 
     if (this.fireTimer > 0) this.fireTimer--;
-    if (Math.abs(moveDir) > 0.05 && this.fireTimer <= 0) {
+    if (this.fireTimer <= 0) {
       this.shoot();
       const rate = this.buffs.rapid > 0 ? Math.max(4, this.baseFireRate * 0.55) : this.baseFireRate;
       this.fireTimer = Math.round(rate);
@@ -652,7 +683,7 @@ class CosmicPhenomenon {
       const pdx = this.x - player.x;
       const pdy = this.y - player.y;
       const pd = Math.hypot(pdx, pdy);
-      if (pd < pullRange && player.buffs.antigrav <= 0) {
+      if (pd < pullRange && pd > 0.001 && player.buffs.antigrav <= 0) {
         player.x += (pdx / pd) * 2.7;
         if (pd < 42) player.takeDamage("ABSORBIDO POR AGUJERO NEGRO");
       }
@@ -1192,7 +1223,7 @@ function showStoryChronicle(eraIndex) {
       : `¡NAVE EVOLUCIONADA A FASE MK-${mk}! ARMAMENTO MEJORADO`;
 
   document.getElementById("screen-story").classList.remove("hidden");
-  setTimeout(() => saveCloudProgress(), 100);
+  setTimeout(() => saveProgress(), 100);
 }
 /* ============================================================================
    AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 5A)
@@ -1255,11 +1286,21 @@ function updateAndDraw() {
 
   bullets.forEach((b) => {
     if (b.missile) {
-      const target = boss || enemies || asteroids;
-      if (target && typeof target.x === "number") {
+      const candidates = boss ? [boss] : [...enemies, ...asteroids];
+      let target = null;
+      let nearest = Infinity;
+      for (const candidate of candidates) {
+        if (!candidate || candidate.dead) continue;
+        const distance = Math.hypot(candidate.x - b.x, candidate.y - b.y);
+        if (distance < nearest) { nearest = distance; target = candidate; }
+      }
+      if (target) {
         const ang = Math.atan2(target.y - b.y, target.x - b.x);
-        b.vx += Math.cos(ang) * 0.65;
-        b.vy += Math.sin(ang) * 0.65;
+        b.vx += Math.cos(ang) * 0.42;
+        b.vy += Math.sin(ang) * 0.42;
+        const speed = Math.hypot(b.vx, b.vy);
+        const maxSpeed = 12;
+        if (speed > maxSpeed) { b.vx = b.vx / speed * maxSpeed; b.vy = b.vy / speed * maxSpeed; }
       }
     }
     b.x += b.vx;
@@ -1396,7 +1437,12 @@ function updateAndDraw() {
     pt.life--;
     ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
     ctx.fillStyle = pt.color;
-    ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+    ctx.shadowBlur = Math.min(12, pt.size * 2.4);
+    ctx.shadowColor = pt.color;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, Math.max(1, pt.size * 0.62), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
   });
   ctx.globalAlpha = 1;
 
@@ -1471,11 +1517,27 @@ function renderBuffTags() {
   box.innerHTML = html;
 }
 
+
+async function enterImmersiveMode() {
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+    }
+  } catch (error) { /* La instalación PWA sigue ofreciendo modo inmersivo. */ }
+  try { if (screen.orientation?.lock) await screen.orientation.lock("portrait"); } catch (error) {}
+}
+
 function startNewGame(savedData = null) {
+  enterImmersiveMode();
   SoundFX.init();
   SoundFX.startMusic();
   bullets = [];
   enemyBullets = [];
+  spawnClock = 0;
+  state.combo = 1;
+  state.comboTimer = 0;
+  state.shake = 0;
+  state.flash = 0;
   asteroids = [];
   enemies = [];
   phenomena = [];
@@ -1485,19 +1547,19 @@ function startNewGame(savedData = null) {
   document.getElementById("boss-bar-wrap").classList.add("hidden");
 
   if (savedData) {
-    state.level = savedData.level || 1;
-    state.score = savedData.score || 0;
-    state.selectedShip = savedData.ship || "valkyrie";
+    state.level = Math.max(1, Math.min(100, Number(savedData.level) || 1));
+    state.score = Math.max(0, Number(savedData.score) || 0);
+    state.selectedShip = SHIP_TYPES[savedData.ship] ? savedData.ship : (state.selectedShip || "valkyrie");
     player = new Player(state.selectedShip);
-    player.lives = savedData.lives || 3;
-    player.bombs = savedData.bombs ?? 1;
+    player.lives = Math.max(1, Math.min(6, Number(savedData.lives) || player.lives));
+    player.bombs = Math.max(0, Math.min(5, Number(savedData.bombs ?? 1)));
   } else {
     state.level = 1;
     state.score = 0;
     player = new Player(state.selectedShip);
   }
 
-  state.levelProgress = 0;
+  state.levelProgress = savedData ? Math.max(0, Math.min(Number(savedData.progress) || 0, 14 + Math.floor(state.level * 1.4) - 1)) : 0;
   state.levelTarget = 14 + Math.floor(state.level * 1.4);
   state.mode = "PLAYING";
 
@@ -1532,10 +1594,18 @@ function endGame(victory) {
   registerScore();
 }
 
-let activeProfile = JSON.parse(localStorage.getItem("aether_profile") || "null");
+function readStoredJSON(key, fallback) {
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch (error) { console.warn(`Datos locales inválidos (${key}); se restablecen.`, error); return fallback; }
+}
+let activeProfile = readStoredJSON("aether_profile", null);
 
 function getProfileKey(name, pin) {
-  return `${name.trim().toLowerCase()}_${pin.trim()}`;
+  // El PIN no se guarda ni se usa como identificador persistente.
+  const source = `${name.trim().toLocaleLowerCase("es")}:${pin.trim()}`;
+  let hash = 2166136261;
+  for (let i = 0; i < source.length; i++) { hash ^= source.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+  return `pilot_${(hash >>> 0).toString(16)}`;
 }
 
 function refreshAuthUI() {
@@ -1545,7 +1615,7 @@ function refreshAuthUI() {
     formBox.classList.add("hidden");
     loggedBox.classList.remove("hidden");
     document.getElementById("user-display-name").textContent = activeProfile.name;
-    document.getElementById("user-cloud-status").textContent = db ? "Sincronizado en la nube" : "Perfil local activo";
+    document.getElementById("user-cloud-status").textContent = "Perfil local activo";
   } else {
     formBox.classList.remove("hidden");
     loggedBox.classList.add("hidden");
@@ -1556,30 +1626,23 @@ function refreshAuthUI() {
 async function loginWithPin() {
   const nameVal = document.getElementById("input-pilot").value.trim();
   const pinVal = document.getElementById("input-pin").value.trim();
-  if (nameVal.length < 2 || pinVal.length < 4) {
-    alert("Ingresa un nombre de comandante (mín. 2 letras) y un PIN de al menos 4 dígitos.");
+  if (nameVal.length < 2 || !/^\d{4,6}$/.test(pinVal)) {
+    alert("Ingresa un nombre de comandante (mín. 2 caracteres) y un PIN numérico de 4 a 6 dígitos.");
     return;
   }
 
   const key = getProfileKey(nameVal, pinVal);
-  activeProfile = { name: nameVal, pin: pinVal, key };
+  activeProfile = { name: nameVal, key };
   localStorage.setItem("aether_profile", JSON.stringify(activeProfile));
 
-  if (db) {
-    try {
-      const doc = await db.collection("pilots").doc(key).get();
-      if (doc.exists && doc.data().save) {
-        localStorage.setItem(`aether_save_${key}`, JSON.stringify(doc.data().save));
-      }
-    } catch (e) {}
-  }
+
   refreshAuthUI();
 }
 /* ============================================================================
    AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 5C - FINAL)
    ============================================================================ */
 
-async function saveCloudProgress() {
+async function saveProgress() {
   if (!player) return;
   const key = activeProfile ? activeProfile.key : "guest";
   const pilotName = activeProfile ? activeProfile.name : "Comandante";
@@ -1590,27 +1653,22 @@ async function saveCloudProgress() {
     ship: state.selectedShip,
     lives: player.lives,
     bombs: player.bombs,
+    progress: state.levelProgress,
     updatedAt: Date.now()
   };
 
   localStorage.setItem(`aether_save_${key}`, JSON.stringify(payload));
-  if (db && activeProfile) {
-    try {
-      await db.collection("pilots").doc(key).set({ name: pilotName, save: payload }, { merge: true });
-    } catch (e) {}
-  }
   addFloatingText(W / 2, H * 0.45, "PROGRESO GUARDADO", "#00ff88");
   checkSavedRun();
 }
 
 function checkSavedRun() {
   const key = activeProfile ? activeProfile.key : "guest";
-  const raw = localStorage.getItem(`aether_save_${key}`);
+  const data = readStoredJSON(`aether_save_${key}`, null);
   const btn = document.getElementById("btn-continue");
-  if (raw && btn) {
-    const data = JSON.parse(raw);
+  if (data && btn) {
     btn.classList.remove("hidden");
-    btn.textContent = `CONTINUAR SECTOR ${data.level} (${data.score} PTS)`;
+    btn.textContent = `CONTINUAR SECTOR ${Number(data.level) || 1} (${(Number(data.score) || 0).toLocaleString("es-AR")} PTS)`;
   } else if (btn) {
     btn.classList.add("hidden");
   }
@@ -1619,30 +1677,34 @@ function checkSavedRun() {
 async function registerScore() {
   const pilotName = activeProfile ? activeProfile.name : "Comandante";
   const entry = { name: pilotName, score: state.score, level: state.level };
-  const list = JSON.parse(localStorage.getItem("aether_nova_rank") || "[]");
+  const list = readStoredJSON("aether_nova_rank", []);
   list.push(entry);
   list.sort((a, b) => b.score - a.score);
   localStorage.setItem("aether_nova_rank", JSON.stringify(list.slice(0, 5)));
 
-  if (db && activeProfile) {
-    try {
-      await db.collection("leaderboard").doc(activeProfile.key).set(entry, { merge: true });
-    } catch (e) {}
-  }
+
   renderRanking();
 }
 
 function renderRanking() {
   const ol = document.getElementById("ranking-list");
   if (!ol) return;
-  const list = JSON.parse(localStorage.getItem("aether_nova_rank") || "[]");
+  const list = readStoredJSON("aether_nova_rank", []);
   if (list.length === 0) {
     ol.innerHTML = "<li><span>Sin registros aún</span><span class='pts'>0 PTS</span></li>";
     return;
   }
-  ol.innerHTML = list
-    .map((r, i) => `<li><span>#${i + 1} ${r.name} (S.${r.level})</span><span class="pts">${r.score} PTS</span></li>`)
-    .join("");
+  ol.replaceChildren();
+  list.slice(0, 5).forEach((r, i) => {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    const points = document.createElement("span");
+    name.textContent = `#${i + 1} ${String(r.name || "Piloto").slice(0, 20)} (S.${Number(r.level) || 1})`;
+    points.className = "pts";
+    points.textContent = `${Math.max(0, Number(r.score) || 0).toLocaleString("es-AR")} PTS`;
+    li.append(name, points);
+    ol.append(li);
+  });
 }
 
 function bindTap(id, handler) {
@@ -1654,36 +1716,50 @@ function bindTap(id, handler) {
 function bindHold(id, dirKey) {
   const el = document.getElementById(id);
   if (!el) return;
-  const on = (e) => { e.preventDefault(); keys[dirKey] = true; el.classList.add("pressed"); };
-  const off = (e) => { e.preventDefault(); keys[dirKey] = false; el.classList.remove("pressed"); };
-  el.addEventListener("touchstart", on, { passive: false });
-  el.addEventListener("touchend", off);
-  el.addEventListener("touchcancel", off);
-  el.addEventListener("mousedown", on);
-  el.addEventListener("mouseup", off);
-  el.addEventListener("mouseleave", off);
+  const on = (event) => {
+    event.preventDefault();
+    keys[dirKey] = true;
+    el.classList.add("pressed");
+    try { el.setPointerCapture(event.pointerId); } catch (error) {}
+  };
+  const off = (event) => {
+    if (event) event.preventDefault();
+    keys[dirKey] = false;
+    el.classList.remove("pressed");
+  };
+  el.addEventListener("pointerdown", on);
+  ["pointerup", "pointercancel", "lostpointercapture", "pointerleave"].forEach(type => el.addEventListener(type, off));
 }
 
 bindHold("btn-left", "Left");
 bindHold("btn-right", "Right");
 
 window.addEventListener("keydown", (e) => {
+  if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
   if (e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = true;
   if (e.code === "ArrowRight" || e.code === "KeyD") keys.Right = true;
-  if (e.code === "KeyB" || e.code === "Space") triggerSuperBomb();
-  if (e.code === "KeyP" || e.code === "Escape") togglePause();
+  if ((e.code === "KeyB" || e.code === "Space") && !e.repeat) triggerSuperBomb();
+  if ((e.code === "KeyP" || e.code === "Escape") && !e.repeat) togglePause();
 });
 
 window.addEventListener("keyup", (e) => {
   if (e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = false;
   if (e.code === "ArrowRight" || e.code === "KeyD") keys.Right = false;
 });
+window.addEventListener("blur", () => { keys.Left = false; keys.Right = false; });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && state.mode === "PLAYING") togglePause();
+});
 
 bindTap("btn-bomb", triggerSuperBomb);
 bindTap("btn-pause", togglePause);
+bindTap("btn-fullscreen", async () => {
+  if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch (error) {} }
+  else await enterImmersiveMode();
+});
 bindTap("btn-resume", togglePause);
-bindTap("btn-save", saveCloudProgress);
-bindTap("btn-save-pause", saveCloudProgress);
+bindTap("btn-save", saveProgress);
+bindTap("btn-save-pause", saveProgress);
 
 bindTap("btn-audio", (e) => {
   SoundFX.enabled = !SoundFX.enabled;
@@ -1722,7 +1798,7 @@ bindTap("btn-play", () => startNewGame(null));
 bindTap("btn-restart", () => startNewGame(null));
 bindTap("btn-continue", () => {
   const key = activeProfile ? activeProfile.key : "guest";
-  const saved = JSON.parse(localStorage.getItem(`aether_save_${key}`) || "null");
+  const saved = readStoredJSON(`aether_save_${key}`, null);
   if (saved) startNewGame(saved);
 });
 
