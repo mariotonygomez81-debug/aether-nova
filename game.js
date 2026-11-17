@@ -140,7 +140,11 @@ const SHIP_TYPES = {
 };
 
 const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const IS_LOW_POWER = window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+let eraBackgroundCache = null;
+let lastEraBackgroundKey = "";
+let sectorBannerTimer = 0;
 // Debe declararse antes de resizeCanvas(): esa función consulta player.
 // Si se declara más abajo, la llamada inicial provoca un ReferenceError (TDZ)
 // y detiene toda la inicialización del juego y de los botones.
@@ -151,7 +155,9 @@ let DPR = 1;
 function resizeCanvas() {
   W = Math.max(320, window.innerWidth);
   H = Math.max(320, window.innerHeight);
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  DPR = Math.min(window.devicePixelRatio || 1, IS_LOW_POWER ? 1.25 : 1.65);
+  eraBackgroundCache = null;
+  lastEraBackgroundKey = "";
   canvas.width = Math.round(W * DPR);
   canvas.height = Math.round(H * DPR);
   canvas.style.width = `${W}px`;
@@ -405,7 +411,7 @@ let stars = [];
 
 function initStars() {
   stars = [];
-  for (let i = 0; i < 110; i++) {
+  for (let i = 0; i < (IS_LOW_POWER ? 64 : 110); i++) {
     const layer = i % 3;
     stars.push({
       x: Math.random() * W,
@@ -622,7 +628,7 @@ class Player {
       if (this.buffs[k] > 0) this.buffs[k]--;
     }
 
-    if (particles.length < 110 && Math.random() < 0.75) {
+    if (particles.length < (IS_LOW_POWER ? 55 : 110) && Math.random() < (IS_LOW_POWER ? 0.28 : 0.75)) {
       particles.push({
         x: this.x + (Math.random() - 0.5) * 12,
         y: this.y + 22,
@@ -717,7 +723,7 @@ class Player {
       ctx.setLineDash([]);
     }
 
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 14;
     ctx.shadowColor = this.color;
     ctx.fillStyle = this.accent;
 
@@ -913,49 +919,48 @@ class CosmicPhenomenon {
       ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
       ctx.fill();
     } else if (this.kind === "blackhole") {
-      ctx.rotate(this.angle * 1.6);
-      const g = ctx.createRadialGradient(0, 0, 14, 0, 0, 72);
-      g.addColorStop(0, "#000000");
-      g.addColorStop(0.38, "#ff7b00");
-      g.addColorStop(0.7, "#7209b7");
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(0, 0, 72, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#000000";
-      ctx.beginPath();
-      ctx.arc(0, 0, 21, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#ffaa00";
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
+      const pulse = 1 + Math.sin(this.timer * .09) * .07;
+      ctx.rotate(this.angle * 1.7);
+      // Disco de acreción en dos anillos: el núcleo permanece negro.
+      for (let i = 0; i < 3; i++) {
+        ctx.save(); ctx.rotate(i * 2.1);
+        ctx.strokeStyle = ["rgba(255,190,70,.95)","rgba(255,90,25,.82)","rgba(174,70,255,.72)"][i];
+        ctx.lineWidth = 7 - i;
+        ctx.beginPath(); ctx.ellipse(0,0,58*pulse,18+i*5,0,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+      }
+      const g = ctx.createRadialGradient(0,0,8,0,0,78);
+      g.addColorStop(0,"#000000"); g.addColorStop(.55,"#05030d"); g.addColorStop(.72,"rgba(70,25,110,.6)"); g.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,78,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="rgba(255,210,130,.95)"; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.ellipse(0,0,65,20,0,Math.PI,Math.PI*2); ctx.stroke();
+      ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="rgba(160,110,255,.8)"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,0,29,0,Math.PI*2); ctx.stroke();
     } else if (this.kind === "magnetar") {
-      ctx.rotate(-this.angle);
-      ctx.strokeStyle = "#d000ff";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, 24 + (this.timer % 45) * 1.5, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.fillStyle = "#9d4edd";
-      ctx.beginPath();
-      ctx.arc(0, 0, 18, 0, Math.PI * 2);
-      ctx.fill();
+      const wave = 28 + (this.timer % 70) * 1.15;
+      ctx.rotate(-this.angle * 1.4);
+      // Líneas curvas del campo magnético y pulsos concéntricos.
+      ctx.strokeStyle="rgba(198,80,255,.35)"; ctx.lineWidth=2;
+      for(let i=0;i<4;i++){ ctx.beginPath(); ctx.ellipse(0,0,26+i*13,48+i*12,0,0,Math.PI*2); ctx.stroke(); }
+      ctx.strokeStyle="rgba(255,90,245,.9)"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.ellipse(0,0,wave,wave*.62,0,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle="rgba(180,70,255,.18)"; ctx.beginPath(); ctx.arc(0,0,42,0,Math.PI*2); ctx.fill();
+      const mg=ctx.createRadialGradient(-5,-7,2,0,0,24); mg.addColorStop(0,"#fff"); mg.addColorStop(.35,"#f0abfc"); mg.addColorStop(1,"#7e22ce");
+      ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(0,0,19,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#fff"; ctx.fillRect(-2,-52,4,104);
     } else if (this.kind === "pulsar") {
-      ctx.rotate(this.angle);
-      const beamGrad = ctx.createLinearGradient(-470, 0, 470, 0);
-      beamGrad.addColorStop(0, "rgba(0, 255, 170, 0)");
-      beamGrad.addColorStop(0.5, "rgba(0, 255, 170, 0.88)");
-      beamGrad.addColorStop(1, "rgba(0, 255, 170, 0)");
-      ctx.fillStyle = beamGrad;
-      ctx.fillRect(-470, -7, 940, 14);
-
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(0, 0, 16, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.rotate(this.angle * 1.25);
+      const beamAlpha = .58 + Math.sin(this.timer * .16) * .28;
+      const beamGrad = ctx.createLinearGradient(-490,0,490,0);
+      beamGrad.addColorStop(0,"rgba(0,255,190,0)"); beamGrad.addColorStop(.5,`rgba(0,255,190,${beamAlpha})`); beamGrad.addColorStop(1,"rgba(0,255,190,0)");
+      ctx.fillStyle=beamGrad; ctx.fillRect(-490,-13,980,26);
+      ctx.fillStyle="rgba(95,255,225,.2)"; ctx.fillRect(-490,-25,980,50);
+      ctx.rotate(-this.angle * 2.5);
+      ctx.strokeStyle="rgba(120,255,235,.65)"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.ellipse(0,0,27,11,0,0,Math.PI*2); ctx.stroke();
+      const pg=ctx.createRadialGradient(-4,-5,1,0,0,20); pg.addColorStop(0,"#fff"); pg.addColorStop(.45,"#a7fff0"); pg.addColorStop(1,"#00a6a6");
+      ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(0,0,17,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#fff"; ctx.fillRect(-2,-46,4,92);
     }
 
     ctx.restore();
@@ -1023,7 +1028,7 @@ class Asteroid {
 
     if (this.kind === "shooting_star") {
       ctx.fillStyle = "#ffffff";
-      ctx.shadowBlur = 16;
+      ctx.shadowBlur = IS_LOW_POWER ? 0 : 16;
       ctx.shadowColor = "#00f0ff";
       ctx.beginPath();
       ctx.arc(0, 0, this.radius * 0.72, 0, Math.PI * 2);
@@ -1147,7 +1152,7 @@ class BossShip {
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.shadowBlur = 22;
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 22;
     ctx.shadowColor = "#ff0055";
     ctx.fillStyle = "#2b0918";
     ctx.strokeStyle = "#ff2a85";
@@ -1208,7 +1213,8 @@ function applyPowerup(p) {
    ============================================================================ */
 
 function spawnExplosion(x, y, color, count = 14) {
-  if (particles.length > 130) return;
+  if (IS_LOW_POWER) count = Math.ceil(count * 0.58);
+  if (particles.length > (IS_LOW_POWER ? 65 : 130)) return;
   for (let i = 0; i < count; i++) {
     const ang = Math.random() * Math.PI * 2;
     const spd = Math.random() * 4.5 + 1;
@@ -1308,6 +1314,26 @@ function updateSpawner() {
   }
 }
 
+
+function showSectorBanner(level) {
+  let el = document.getElementById("sector-transition-banner");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "sector-transition-banner";
+    el.className = "sector-transition-banner";
+    el.setAttribute("aria-live", "polite");
+    document.body.appendChild(el);
+  }
+  const era = ERAS[Math.min(9, Math.floor((level - 1) / 10))];
+  const bossText = level % 5 === 0 ? " • GUARDIÁN DETECTADO" : "";
+  el.innerHTML = `<span>SECTOR ${String(level).padStart(2,"0")} / 100</span><strong>${era.name}</strong><small>${level % 10 === 1 ? "NUEVA ZONA ESTELAR" : "AMENAZA EN AUMENTO"}${bossText}</small>`;
+  el.classList.remove("show");
+  void el.offsetWidth;
+  el.classList.add("show");
+  clearTimeout(sectorBannerTimer);
+  sectorBannerTimer = setTimeout(() => el.classList.remove("show"), 2100);
+}
+
 function advanceProgress(amount = 1) {
   if (boss || state.mode !== "PLAYING") return;
   state.levelProgress += amount;
@@ -1343,7 +1369,7 @@ function completeSector() {
     if (player) player.invuln = 90;
 
     enemyBullets = [];
-    if (particles.length > 40) particles.length = 40;
+    if (particles.length > (IS_LOW_POWER ? 24 : 40)) particles.length = IS_LOW_POWER ? 24 : 40;
 
     if (completed % 10 === 0) {
       for (const k in RockCache) delete RockCache[k];
@@ -1351,6 +1377,7 @@ function completeSector() {
       showStoryChronicle(eraIndex);
     } else {
       addFloatingText(W / 2, H * 0.35, `SECTOR ${state.level} INICIADO`, "#00f0ff");
+      showSectorBanner(state.level);
     }
     updateHUD();
   } catch (err) {
@@ -1380,27 +1407,36 @@ function showStoryChronicle(eraIndex) {
    AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 5A)
    ============================================================================ */
 
+function paintEraBackground(era) {
+  const key = `${state.level}:${W}x${H}`;
+  if (eraBackgroundCache && lastEraBackgroundKey === key) return;
+  const off = document.createElement("canvas");
+  off.width = Math.max(1, Math.round(W * (IS_LOW_POWER ? 0.62 : 0.82)));
+  off.height = Math.max(1, Math.round(H * (IS_LOW_POWER ? 0.62 : 0.82)));
+  const c = off.getContext("2d");
+  const w = off.width, h = off.height;
+  const bg = c.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, era.bgTop); bg.addColorStop(1, era.bgBot);
+  c.fillStyle = bg; c.fillRect(0, 0, w, h);
+  const n1 = c.createRadialGradient(w*.3,h*.3,8,w*.3,h*.3,w*.7);
+  n1.addColorStop(0, era.nebula1); n1.addColorStop(1, "rgba(0,0,0,0)");
+  c.fillStyle=n1; c.fillRect(0,0,w,h);
+  const n2 = c.createRadialGradient(w*.75,h*.65,8,w*.75,h*.65,w*.65);
+  n2.addColorStop(0, era.nebula2); n2.addColorStop(1, "rgba(0,0,0,0)");
+  c.fillStyle=n2; c.fillRect(0,0,w,h);
+  const sectorTints = ["rgba(0,220,255,.075)","rgba(255,90,170,.065)","rgba(130,90,255,.08)","rgba(255,180,55,.07)","rgba(40,255,170,.065)"];
+  const tint = c.createRadialGradient(w*(.18 + (state.level%4)*.2),h*(.22 + (state.level%3)*.22),4,w*.5,h*.5,w*.78);
+  tint.addColorStop(0,sectorTints[(state.level-1)%sectorTints.length]); tint.addColorStop(1,"rgba(0,0,0,0)");
+  c.fillStyle=tint; c.fillRect(0,0,w,h);
+  eraBackgroundCache = off; lastEraBackgroundKey = key;
+}
+
 function updateAndDraw() {
   requestAnimationFrame(updateAndDraw);
 
   const era = ERAS[Math.min(9, Math.floor((state.level - 1) / 10))];
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-  bgGrad.addColorStop(0, era.bgTop);
-  bgGrad.addColorStop(1, era.bgBot);
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  const neb1 = ctx.createRadialGradient(W * 0.3, H * 0.3, 15, W * 0.3, H * 0.3, W * 0.7);
-  neb1.addColorStop(0, era.nebula1);
-  neb1.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = neb1;
-  ctx.fillRect(0, 0, W, H);
-
-  const neb2 = ctx.createRadialGradient(W * 0.75, H * 0.65, 15, W * 0.75, H * 0.65, W * 0.65);
-  neb2.addColorStop(0, era.nebula2);
-  neb2.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = neb2;
-  ctx.fillRect(0, 0, W, H);
+  paintEraBackground(era);
+  ctx.drawImage(eraBackgroundCache, 0, 0, W, H);
 
   stars.forEach((s) => {
     if (state.mode === "PLAYING") s.y += s.speed;
@@ -1459,7 +1495,7 @@ function updateAndDraw() {
     if (b.y < -30 || b.x < -30 || b.x > W + 30) b.dead = true;
 
     ctx.fillStyle = b.color;
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 10;
     ctx.shadowColor = b.color;
     ctx.fillRect(b.x - (b.missile ? 3 : 2), b.y - 8, b.missile ? 6 : 4, b.missile ? 16 : 14);
     ctx.shadowBlur = 0;
@@ -1588,7 +1624,7 @@ function updateAndDraw() {
     pt.life--;
     ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
     ctx.fillStyle = pt.color;
-    ctx.shadowBlur = Math.min(12, pt.size * 2.4);
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : Math.min(12, pt.size * 2.4);
     ctx.shadowColor = pt.color;
     ctx.beginPath();
     ctx.arc(pt.x, pt.y, Math.max(1, pt.size * 0.62), 0, Math.PI * 2);

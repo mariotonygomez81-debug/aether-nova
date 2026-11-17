@@ -1,6 +1,6 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = 'aether-nova-commercial-v21';
+const CACHE_NAME = 'aether-nova-commercial-v22';
 const APP_SHELL = ['./', './index.html', './style.css', './game.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {

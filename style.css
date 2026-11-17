@@ -668,3 +668,28 @@ button:focus-visible,input:focus-visible { outline:2px solid #fff; outline-offse
 .achievement-chip { padding:5px 7px; border-radius:20px; border:1px solid rgba(130,150,184,.2); background:rgba(130,150,184,.06); color:#7486a4; font-size:9px; }
 .achievement-chip.unlocked { border-color:rgba(255,204,51,.32); background:rgba(255,204,51,.1); color:#ffe08a; }
 @media (max-width:520px) { .career-stats { grid-template-columns:repeat(2,1fr); } }
+
+
+/* Transición cinemática entre sectores */
+.sector-transition-banner {
+  position: fixed; z-index: 40; left: 50%; top: 38%; width: min(88vw, 440px);
+  padding: 18px 22px; text-align: center; pointer-events: none; opacity: 0;
+  transform: translate(-50%, -42%) scale(.82);
+  border: 1px solid rgba(117,239,255,.65); border-radius: 16px;
+  background: linear-gradient(120deg,rgba(3,12,32,.94),rgba(28,12,58,.9));
+  box-shadow: 0 0 26px rgba(0,220,255,.2), inset 0 0 28px rgba(126,58,242,.12);
+  backdrop-filter: blur(7px); color: #fff;
+}
+.sector-transition-banner.show { animation: sector-arrival 2.1s cubic-bezier(.2,.8,.2,1) both; }
+.sector-transition-banner span { display:block; color:#7defff; font-size:11px; font-weight:1000; letter-spacing:4px; }
+.sector-transition-banner strong { display:block; margin:8px 0 5px; font-size:clamp(17px,4vw,25px); letter-spacing:1.5px; text-shadow:0 0 18px rgba(0,240,255,.6); }
+.sector-transition-banner small { display:block; color:#ffd77b; font-size:9px; font-weight:900; letter-spacing:2px; }
+@keyframes sector-arrival {
+  0% { opacity:0; transform:translate(-50%,-42%) scale(.78); filter:blur(8px); }
+  14%,76% { opacity:1; transform:translate(-50%,-50%) scale(1); filter:blur(0); }
+  100% { opacity:0; transform:translate(-50%,-58%) scale(1.08); filter:blur(4px); }
+}
+@media (max-width:700px), (pointer:coarse) {
+  #hud .pill { backdrop-filter:none; }
+  .sector-transition-banner { backdrop-filter:none; box-shadow:0 0 18px rgba(0,220,255,.22); }
+}
