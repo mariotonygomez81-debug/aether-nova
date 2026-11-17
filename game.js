@@ -315,8 +315,8 @@ function getRockSprite(eraIndex, kind, radius) {
   grad.addColorStop(1, cDark);
 
   c.fillStyle = grad;
-  c.beginPath();
-  c.moveTo(pts.x, pts.y);
+   c.beginPath();
+  c.moveTo(pts[0].x, pts[0].y);
   for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
   c.closePath();
   c.fill();
