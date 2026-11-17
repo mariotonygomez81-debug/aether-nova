@@ -2,7 +2,7 @@
       "relation": ["delegate_permission/common.handle_all_urls"],
       "target": {
         "namespace": "android_app",
-        "package_name": "com.aethernova.definitivo",
-        "sha256_cert_fingerprints": ["BD:B0:10:1C:AD:EF:A4:5A:7B:23:ED:19:0D:6D:4D:0B:98:7F:7F:4C:DA:F1:B1:8F:42:1D:EB:5C:95:E5:86:BB"]
+        "package_name": "io.github.mariotonygomez81_debug.twa",
+        "sha256_cert_fingerprints": ["A2:6D:5F:FA:71:B9:90:D6:84:8B:1C:8E:81:F8:43:05:1B:40:27:AF:95:BE:19:4B:52:95:7D:23:5D:84:38:D2"]
       }
     }]
