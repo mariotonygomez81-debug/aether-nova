@@ -37,7 +37,6 @@ canvas {
   display: none !important;
 }
 
-/* HUD Superior */
 #hud {
   position: fixed;
   top: 0;
@@ -177,7 +176,6 @@ canvas {
   font-weight: 900;
 }
 
-/* Buffs Activos */
 #active-buffs {
   position: fixed;
   top: 66px;
@@ -199,7 +197,6 @@ canvas {
   color: #fff;
 }
 
-/* Controles Táctiles Inferiores */
 #touch-controls {
   position: fixed;
   bottom: max(18px, env(safe-area-inset-bottom));
@@ -246,7 +243,6 @@ canvas {
   gap: 4px;
 }
 
-/* Overlays y Tarjetas */
 .overlay {
   position: fixed;
   inset: 0;
@@ -313,7 +309,6 @@ canvas {
   margin-bottom: 12px;
 }
 
-/* Acceso Usuario + PIN */
 .auth-panel {
   background: rgba(5, 9, 20, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -393,7 +388,6 @@ canvas {
   color: #00ff88;
 }
 
-/* Selector de Naves */
 .ship-selector {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -433,7 +427,6 @@ canvas {
   color: var(--cyan);
 }
 
-/* Botones Principales */
 .menu-actions {
   display: flex;
   flex-direction: column;
@@ -480,7 +473,6 @@ canvas {
   cursor: pointer;
 }
 
-/* Ranking */
 .ranking-box {
   background: rgba(4, 8, 18, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.1);
