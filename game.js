@@ -2421,11 +2421,9 @@ function cloudHeaders(token = cloudSession?.access_token) {
     apikey: CLOUD_CFG.anonKey,
     "Content-Type": "application/json"
   };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
+  // La publishable key se envía en apikey; nunca como Bearer.
+  // Authorization debe contener únicamente el access_token del usuario.
+  if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 async function cloudAuthRequest(path, body) {
@@ -2581,17 +2579,41 @@ async function refreshOnlineRanking() {
 async function loadGalacticEvents() {
   const box = document.getElementById("galactic-events");
   if (!box) return;
-  if (!cloudConfigured() || !cloudSession?.access_token) return;
+  if (!cloudConfigured()) {
+    box.textContent = "Eventos online pendientes de configuración.";
+    return;
+  }
+  if (!cloudSession?.access_token) {
+    box.textContent = "Inicia sesión online para consultar las transmisiones galácticas.";
+    return;
+  }
   try {
     const now = new Date().toISOString();
+    // La columna correcta del esquema Alpha 6.1 es `published`.
+    // Se muestran eventos publicados que todavía no finalizaron, incluidos los próximos.
     const events = await cloudFetch(`galactic_events?select=title,description,starts_at,ends_at&published=eq.true&ends_at=gt.${encodeURIComponent(now)}&order=starts_at.asc&limit=4`);
     box.replaceChildren();
-    if (!events?.length) { const small = document.createElement("small"); small.textContent = "No hay eventos galácticos activos. Vuelve pronto, comandante."; box.append(small); return; }
-    events.forEach(event => { const article = document.createElement("article"); const title = document.createElement("strong"); const desc = document.createElement("p"); const dates = document.createElement("small");
-      title.textContent = event.title; desc.textContent = event.description || "Transmisión del alto mando.";
+    if (!Array.isArray(events) || events.length === 0) {
+      const small = document.createElement("small");
+      small.textContent = "No hay eventos publicados vigentes o próximos. Vuelve pronto, comandante.";
+      box.append(small);
+      return;
+    }
+    events.forEach(event => {
+      const article = document.createElement("article");
+      const title = document.createElement("strong");
+      const desc = document.createElement("p");
+      const dates = document.createElement("small");
+      title.textContent = event.title || "Transmisión galáctica";
+      desc.textContent = event.description || "Transmisión del alto mando.";
       dates.textContent = `${new Date(event.starts_at).toLocaleDateString("es-AR")} – ${new Date(event.ends_at).toLocaleDateString("es-AR")}`;
-      article.append(title, desc, dates); box.append(article); });
-  } catch (error) { box.textContent = "No se pudieron cargar las transmisiones galácticas."; }
+      article.append(title, desc, dates);
+      box.append(article);
+    });
+  } catch (error) {
+    console.error("AETHER NOVA: error al cargar eventos galácticos:", error);
+    box.textContent = `No se pudieron cargar los eventos: ${error.message || "error desconocido"}`;
+  }
 }
 async function cloudLogout() {
   const token = cloudSession?.access_token;
