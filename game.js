@@ -1936,7 +1936,7 @@ function updateSpawner() {
   const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
   const diff = (1 + (state.level - 1) * 0.038 + Math.floor((state.level - 1) / 10) * 0.08) * (DIFFICULTY[state.difficulty]?.spawn || 1) * eventDifficulty;
 
-  const isBossSector = state.runMode === "campaign" && state.level % 10 === 0;
+  const isBossSector = state.level % 10 === 0;
   if (isBossSector && !boss && state.levelProgress >= state.levelTarget - 1) {
     boss = new BossShip();
     return;
