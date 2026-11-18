@@ -2456,7 +2456,7 @@ async function startPhonepadPairing(){
       channel.subscribe(s=>{if(s==="SUBSCRIBED"){clearTimeout(timeout);resolve(s);}else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){clearTimeout(timeout);reject(new Error("Realtime rechazó el canal. Revisá si los canales públicos están habilitados."));}});
     });
     phonepadState.client=client;phonepadState.channel=channel;phonepadState.code=code;phonepadState.lastAt=Date.now();
-    const link=new URL("./phone-controller.html",location.href);link.searchParams.set("code",code);
+    const link=new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/");link.searchParams.set("code",code);
     const codeEl=document.getElementById("phonepad-code");if(codeEl)codeEl.textContent=code;
     const linkEl=document.getElementById("phonepad-link");if(linkEl){linkEl.href=link.href;linkEl.textContent=link.href;}
     const qr=document.getElementById("phonepad-qr");if(qr){qr.innerHTML="";if(window.QRCode)new QRCode(qr,{text:link.href,width:150,height:150,colorDark:"#07111f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});else qr.textContent="Abrí el enlace del mando y escribí el código.";}
@@ -3790,7 +3790,7 @@ function bindHold(id, dirKey) {
 bindHold("btn-left", "Left");
 bindHold("btn-right", "Right");
 bindTap("btn-phonepad-pair", startPhonepadPairing);
-bindTap("btn-phonepad-copy",()=>{if(phonepadState.code)navigator.clipboard?.writeText(new URL("./phone-controller.html?code="+phonepadState.code,location.href).href).catch(()=>{});});
+bindTap("btn-phonepad-copy",()=>{if(phonepadState.code)navigator.clipboard?.writeText(new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/?code="+phonepadState.code).href).catch(()=>{});});
 
 window.addEventListener("keydown", (e) => {
   if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
