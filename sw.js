@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha32-hangar-fullscreen";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha32-hangar-fullscreen', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha33-auto-start-music";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha33-auto-start-music', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
