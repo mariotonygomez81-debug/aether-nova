@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha54-1-offensive-arsenal";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=alpha54-1-offensive-arsenal', './aether3d.js?v=alpha54-1-offensive-arsenal', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha55-coop-lobby";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=alpha55-coop-lobby', './aether3d.js?v=alpha55-coop-lobby', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
