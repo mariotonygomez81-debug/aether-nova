@@ -886,6 +886,7 @@ class Player {
     this.accent = spec.accent;
     this.lives = Math.min(6, spec.lives + (upgrades.hull || 0));
     this.bombs = Math.min(5, 1 + (upgrades.bombBay || 0));
+    this.empBombs = 0;
     this.permanentShieldCharges = Math.min(3, upgrades.aegis || 0);
     this.missileLevel = Math.max(0, upgrades.seeker || 0);
     this.droneLevel = Math.max(0, upgrades.droneBay || 0);
@@ -900,6 +901,9 @@ class Player {
       shield: 0,
       wingmen: 0,
       missiles: 0,
+      laser: 0,
+      plasma: 0,
+      spread: 0,
       cryo: 0,
       antigrav: 0,
       faraday: 0,
@@ -971,6 +975,21 @@ class Player {
     }
     if (mk >= 7) {
       bullets.push({ x: this.x, y: this.y - 28, vx: 0, vy: -15.5, dmg: dmg + 1, color: "#ff2a85", missile: false });
+    }
+
+    // Armamento temporal: láser perforante, plasma pesado y abanico de dispersión.
+    if (this.buffs.laser > 0 && this.shotCounter % 2 === 0) {
+      const laserDamage = Math.max(2, Math.round(dmg * 2.1));
+      bullets.push({ x: this.x - 7, y: this.y - 28, vx: -0.18, vy: -19, dmg: laserDamage, color: "#7df9ff", missile: false, type: "laser", pierce: 2 });
+      bullets.push({ x: this.x + 7, y: this.y - 28, vx: 0.18, vy: -19, dmg: laserDamage, color: "#7df9ff", missile: false, type: "laser", pierce: 2 });
+    }
+    if (this.buffs.plasma > 0) {
+      bullets.push({ x: this.x, y: this.y - 28, vx: 0, vy: -11.5, dmg: Math.max(2, Math.round(dmg * 2.4)), color: "#ff72dc", missile: false, type: "plasma", pierce: 1 });
+    }
+    if (this.buffs.spread > 0) {
+      for (const angle of [-0.72, -0.36, 0.36, 0.72]) {
+        bullets.push({ x: this.x, y: this.y - 15, vx: angle * 3.2, vy: -13, dmg: Math.max(1, Math.round(dmg * .72)), color: "#ffd166", missile: false, type: "spread" });
+      }
     }
 
     if (this.buffs.wingmen > 0) {
@@ -1940,11 +1959,15 @@ class BossShip {
 const POWERUP_POOL = [
   { id: "triple",    label: "W", color: "#00f0ff", text: "DISPARO TRIPLE" },
   { id: "rapid",     label: "R", color: "#00ff88", text: "FUEGO RÁPIDO" },
-  { id: "shield",    label: "S", color: "#38b6ff", text: "ESCUDO ENERGÍA" },
+  { id: "laser",     label: "L", color: "#7df9ff", text: "CAÑÓN LÁSER PERFORANTE" },
+  { id: "plasma",    label: "P", color: "#ff72dc", text: "NÚCLEO DE PLASMA" },
+  { id: "spread",    label: "V", color: "#ffd166", text: "DISPERSIÓN DE 5 VÍAS" },
   { id: "wingmen",   label: "D", color: "#c77dff", text: "NAVES ESCOLTA" },
   { id: "missiles",  label: "M", color: "#ff9e00", text: "MISILES BUSCADORES" },
-  { id: "bomb",      label: "B", color: "#ff2a85", text: "+1 SUPER BOMBA" },
+  { id: "bomb",      label: "B", color: "#ff2a85", text: "+1 BOMBA SUPERNOVA" },
+  { id: "empbomb",   label: "E", color: "#5eead4", text: "+1 BOMBA DE PULSO EMP" },
   { id: "life",      label: "+", color: "#52b788", text: "+1 VIDA CASCO" },
+  { id: "shield",    label: "S", color: "#38b6ff", text: "ESCUDO DE ENERGÍA" },
   { id: "cryo",      label: "C", color: "#90e0ef", text: "CRIO-ESCUDO (SUPERNOVA)" },
   { id: "antigrav",  label: "G", color: "#ffd166", text: "ANTIGRAVEDAD (AGUJERO)" },
   { id: "faraday",   label: "F", color: "#b5179e", text: "JAULA FARADAY (MAGNETAR)" },
@@ -1955,12 +1978,18 @@ function spawnPowerup() {
   // Los potenciadores llegan como cápsulas-meteorito, independientes de las bajas.
   if (powerups.filter(item => !item.dead).length >= 3) return;
   campaignPickupKills++;
-  const earlySequence = ["shield", "triple", "bomb", "rapid", "life", "missiles", "shield", "wingmen"];
+  const earlySequence = ["triple", "bomb", "rapid", "laser", "spread", "life", "plasma", "missiles"];
+  const available = POWERUP_POOL.filter(power => {
+    if (["cryo", "antigrav"].includes(power.id)) return state.level >= 5;
+    if (power.id === "faraday") return state.level >= 12;
+    if (power.id === "antigamma") return state.level >= 24;
+    return true;
+  });
   let item;
   if (state.runMode === "campaign" && state.level <= 8 && campaignPickupIndex < earlySequence.length) {
     item = POWERUP_POOL.find(power => power.id === earlySequence[campaignPickupIndex++]);
   } else {
-    item = POWERUP_POOL[Math.floor(Math.random() * POWERUP_POOL.length)];
+    item = available[Math.floor(Math.random() * available.length)];
   }
   if (!item) return;
   const x = 34 + Math.random() * Math.max(1, W - 68);
@@ -2001,6 +2030,8 @@ function applyPowerup(p) {
   addFloatingText(p.x, p.y - 15, p.text, p.color);
   if (p.id === "bomb") {
     player.bombs = Math.min(5, player.bombs + 1);
+  } else if (p.id === "empbomb") {
+    player.empBombs = Math.min(3, (player.empBombs || 0) + 1);
   } else if (p.id === "life") {
     player.lives = Math.min(6, player.lives + 1);
   } else {
@@ -2048,7 +2079,34 @@ function addFloatingText(x, y, text, color = "#ffffff") {
 }
 
 function triggerSuperBomb() {
-  if (state.mode !== "PLAYING" || !player || player.bombs <= 0) return;
+  if (state.mode !== "PLAYING" || !player || (player.bombs <= 0 && (player.empBombs || 0) <= 0)) return;
+  if (player.empBombs > 0) {
+    player.empBombs--;
+    enemyBullets.forEach(b => { b.dead = true; });
+    enemies.forEach(e => {
+      if (e.dead) return;
+      e.hp -= Math.max(24, Math.ceil(e.maxHp * .62));
+      spawnImpactBurst(e.x, e.y, "#5eead4", IS_LOW_POWER ? 4 : 9);
+      if (e.hp <= 0) {
+        e.dead = true;
+        dropEnemyCredits(e);
+        spawnExplosion(e.x, e.y, "#5eead4", IS_LOW_POWER ? 8 : 16);
+        state.score += 90 * state.combo;
+        advanceProgress(2);
+      }
+    });
+    if (boss) {
+      boss.hp -= Math.ceil(boss.maxHp * .12);
+      addFloatingText(boss.x, boss.y, "PULSO EMP • SISTEMAS DE LA NAVE DAÑADOS", "#5eead4");
+      if (boss.hp <= 0) defeatBoss();
+    }
+    state.flash = Math.max(state.flash, .3);
+    state.shake = Math.max(state.shake, 12);
+    SoundFX.play("shieldHit");
+    addFloatingText(player.x, player.y - 42, "¡BOMBA DE PULSO EMP!", "#5eead4");
+    updateHUD();
+    return;
+  }
   player.bombs--;
   SoundFX.play("supernova");
   state.shake = 28;
@@ -2409,7 +2467,7 @@ function updateAndDraw() {
       })),
       shots: bullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "shot-" + Math.random().toString(36).slice(2)),
-        x: b.x, y: b.y, color: b.color || "#39eaff", missile: !!b.missile
+        x: b.x, y: b.y, color: b.color || "#39eaff", missile: !!b.missile, type: b.type || "bolt"
       })),
       asteroids: asteroids.filter(a => !a.dead).map(a => ({
         id: a.aether3dId, x: a.x, y: a.y, radius: a.radius, kind: a.kind,
@@ -2488,8 +2546,8 @@ function updateAndDraw() {
     }
 
     bullets.forEach((b) => {
-      if (!b.dead && !a.dead && Math.hypot(b.x - a.x, b.y - a.y) < a.radius + 6) {
-        b.dead = true;
+      if (!b.dead && !a.dead && Math.hypot(b.x - a.x, b.y - a.y) < a.radius + (b.type === "laser" ? 12 : b.type === "plasma" ? 10 : 6)) {
+        if (b.pierce > 0) b.pierce--; else b.dead = true;
         a.hp -= b.dmg;
         a.hitFlash = 12;
         spawnImpactBurst(b.x, b.y, a.kind === "magnetic" ? "#70e7ff" : "#ffd27a", IS_LOW_POWER ? 3 : 6);
@@ -2536,8 +2594,8 @@ function updateAndDraw() {
       const denom = rx * rx + ry * ry;
       const t = denom > 0 ? Math.max(0, Math.min(1, -(sx * rx + sy * ry) / denom)) : 0;
       const distance = Math.hypot(sx + rx * t, sy + ry * t);
-      if (distance < e.radius + (b.missile ? 13 : 11)) {
-        b.dead = true;
+      if (distance < e.radius + (b.missile ? 13 : b.type === "laser" ? 18 : b.type === "plasma" ? 14 : 11)) {
+        if (b.pierce > 0) b.pierce--; else b.dead = true;
         e.hp -= b.dmg;
         spawnImpactBurst(b.x, b.y, "#ff8bc8", IS_LOW_POWER ? 3 : 6);
         SoundFX.play("targetHit");
@@ -2582,7 +2640,7 @@ function updateAndDraw() {
         const weakHit = Math.hypot(b.x - weak.x, b.y - weak.y) < 15;
         const bodyHit = Math.hypot(b.x - boss.x, b.y - boss.y) < boss.radius;
         if (weakHit || bodyHit) {
-          b.dead = true;
+          if (b.pierce > 0) b.pierce--; else b.dead = true;
           const damage = Math.round(b.dmg * (weakHit ? 2.35 : 1));
           boss.hp -= damage;
           if (weakHit) {
@@ -2775,7 +2833,7 @@ function updateHUD() {
   updateCommercialUI();
   document.getElementById("ui-level").textContent = state.runMode === "survival" ? `${state.level}/∞` : `${state.level}/100`;
   document.getElementById("ui-lives").textContent = player.lives;
-  document.getElementById("ui-bombs").textContent = player.bombs;
+  document.getElementById("ui-bombs").textContent = player.empBombs > 0 ? `${player.bombs} + ${player.empBombs} EMP` : player.bombs;
   document.getElementById("ui-sector-name").textContent = `${era.name} (MK-${player.getEvolutionTier()})`;
   const pct = Math.min(100, (state.levelProgress / state.levelTarget) * 100);
   document.getElementById("ui-progress").style.width = `${pct}%`;
