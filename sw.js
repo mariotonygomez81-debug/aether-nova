@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha25-enemies-cosmic-fx";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha25-enemies-cosmic-fx', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha26-cinematic-menu";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha26-cinematic-menu', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
