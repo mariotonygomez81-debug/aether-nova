@@ -1205,9 +1205,20 @@ class CosmicPhenomenon {
       });
 
       bullets.forEach((b) => {
-        const d = Math.hypot(this.x - b.x, this.y - b.y);
+        const dx = this.x - b.x, dy = this.y - b.y, d = Math.hypot(dx, dy);
+        if (d < pullRange && d > 5) { b.x += dx / d * 3.2; b.y += dy / d * 3.2; }
         if (d < 95) b.dead = true;
       });
+      enemyBullets.forEach((b) => {
+        const dx = this.x - b.x, dy = this.y - b.y, d = Math.hypot(dx, dy);
+        if (d < pullRange && d > 5) { b.x += dx / d * 3.5; b.y += dy / d * 3.5; }
+        if (d < 95) b.dead = true;
+      });
+      if (boss && !boss.dead) {
+        const dx = this.x - boss.x, dy = this.y - boss.y, d = Math.hypot(dx, dy);
+        if (d < pullRange && d > 5) { boss.x += dx / d * 2.4; boss.y += dy / d * 2.4; }
+        if (d < 42) { boss.hp = 0; defeatBoss(); }
+      }
 
       const pdx = this.x - player.x;
       const pdy = this.y - player.y;
@@ -1217,7 +1228,11 @@ class CosmicPhenomenon {
         player.x += (pdx / pd) * force;
         player.y += (pdy / pd) * force * 0.72;
         if (pd < 58) {
-          player.absorbCosmicThreat("ABSORBIDO POR AGUJERO NEGRO", "antigrav");
+          const protectedByShield = player.absorbCosmicThreat("ABSORBIDO POR AGUJERO NEGRO", "antigrav");
+          if (protectedByShield && state.mode === "PLAYING") {
+            player.x = this.x - (pdx / pd) * 92;
+            player.y = this.y - (pdy / pd) * 92;
+          }
           state.shake = Math.max(state.shake, 20);
         }
       }
@@ -1236,6 +1251,8 @@ class CosmicPhenomenon {
         };
         asteroids.forEach(a => repel(a, 7.5));
         enemies.forEach(e => repel(e, 9));
+        if (boss && !boss.dead) repel(boss, 11);
+        bullets.forEach(b => repel(b, 8));
         if (player.buffs.faraday <= 0) {
           const distance = Math.hypot(player.x - this.x, player.y - this.y);
           if (Math.abs(distance - pulseRadius) < 28 && this.lastPlayerPulse !== waveNumber) {
