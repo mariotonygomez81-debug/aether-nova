@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha49-no-magnet-kill-credits";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=alpha49-no-magnet-kill-credits', './aether3d.js?v=alpha49-no-magnet-kill-credits', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha50-collectible-enemy-credit-coins";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=alpha50-collectible-enemy-credit-coins', './aether3d.js?v=alpha50-collectible-enemy-credit-coins', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
