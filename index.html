@@ -198,6 +198,21 @@
         <button type="button" id="btn-continue" class="secondary-btn hidden">CONTINUAR SECTOR GUARDADO</button>
       </div>
 
+      <section id="coop-panel" class="coop-panel">
+        <div class="coop-heading"><div><span class="section-kicker">PROTOCOLO MULTIJUGADOR</span><h3>ESCUDRÓN NOVA</h3><p>Forma un equipo de 2 a 4 pilotos para combatir juntos</p></div><span class="coop-live"><i></i> ONLINE</span></div>
+        <div id="coop-auth-note" class="coop-note">Inicia sesión con tu cuenta online para crear o unirte a una sala.</div>
+        <div id="coop-actions" class="coop-actions">
+          <button type="button" id="btn-coop-create" class="primary-btn">CREAR ESCUADRÓN</button>
+          <div class="coop-join"><input id="coop-code-input" type="text" maxlength="6" placeholder="CÓDIGO DE SALA" autocomplete="off" /><button type="button" id="btn-coop-join" class="secondary-btn">UNIRSE</button></div>
+        </div>
+        <div id="coop-room" class="coop-room hidden">
+          <div class="coop-room-top"><div><small>CÓDIGO DE INVITACIÓN</small><strong id="coop-room-code">------</strong></div><button type="button" id="btn-coop-copy" class="mini-btn">COPIAR</button></div>
+          <div id="coop-roster" class="coop-roster"></div>
+          <div id="coop-room-status" class="coop-note">Esperando pilotos...</div>
+          <div class="coop-room-actions"><button type="button" id="btn-coop-ready" class="secondary-btn">ESTOY LISTO</button><button type="button" id="btn-coop-start" class="primary-btn hidden">INICIAR MISIÓN</button><button type="button" id="btn-coop-leave" class="mini-btn">ABANDONAR SALA</button></div>
+        </div>
+      </section>
+
       <div class="menu-tools">
         <button type="button" id="btn-hangar" class="tool-btn">⚙ HANGAR</button>
         <button type="button" id="btn-manual" class="tool-btn">⌖ MANUAL</button>
@@ -321,8 +336,8 @@
   </section>
 
   <script src="./cloud-config.js" defer></script>
-  <script src="./game.js?v=alpha54-1-offensive-arsenal" defer></script>
-  <script type="module" src="./aether3d.js?v=alpha54-1-offensive-arsenal"></script>
+  <script src="./game.js?v=alpha55-coop-lobby" defer></script>
+  <script type="module" src="./aether3d.js?v=alpha55-coop-lobby"></script>
 </body>
 </html>
 
