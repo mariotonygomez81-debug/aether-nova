@@ -180,6 +180,59 @@ function syncAsteroids(items, width, height, dt) {
   }
 }
 
+// PROYECTILES 3D: colección y sincronización con los disparos reales del motor 2D.
+const shotMeshes = new Map();
+const shotMaterials = new Map();
+function getShotMaterial(color) {
+  const key = String(color || '#39eaff');
+  if (!shotMaterials.has(key)) {
+    let tint = 0x39eaff;
+    if (/^#[0-9a-f]{6}$/i.test(key)) tint = Number.parseInt(key.slice(1), 16);
+    shotMaterials.set(key, {
+      core: new THREE.MeshBasicMaterial({ color: tint }),
+      glow: new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: .34, blending: THREE.AdditiveBlending, depthWrite: false })
+    });
+  }
+  return shotMaterials.get(key);
+}
+function createShotMesh(item) {
+  const group = new THREE.Group();
+  const mats = getShotMaterial(item.color);
+  const core = new THREE.Mesh(new THREE.SphereGeometry(item.missile ? .105 : .075, 12, 8), mats.core);
+  core.scale.set(.85, 1.0, item.missile ? 2.6 : 1.9);
+  group.add(core);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(item.missile ? .19 : .14, 12, 8), mats.glow);
+  halo.scale.set(1, 1, item.missile ? 2.8 : 2.2);
+  group.add(halo);
+  if (item.missile) {
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(.13, .72, 10), mats.glow);
+    tail.rotation.x = -Math.PI / 2;
+    tail.position.z = .48;
+    group.add(tail);
+  }
+  scene.add(group);
+  shotMeshes.set(item.id, group);
+  return group;
+}
+function syncShots(items, width, height) {
+  const alive = new Set();
+  for (const item of items || []) {
+    if (item.id == null) continue;
+    alive.add(item.id);
+    const mesh = shotMeshes.get(item.id) || createShotMesh(item);
+    mesh.position.copy(worldPos(item.x, item.y, width, height, -7.5));
+    mesh.rotation.set(0, 0, 0);
+    mesh.visible = true;
+  }
+  for (const [id, mesh] of shotMeshes) {
+    if (!alive.has(id)) {
+      scene.remove(mesh);
+      mesh.traverse(part => { if (part.geometry) part.geometry.dispose(); });
+      shotMeshes.delete(id);
+    }
+  }
+}
+
 // ENEMIGOS Y JEFES 3D sincronizados con las entidades reales del juego.
 const fxBursts=[];
 let lastImpactSerial=0;
