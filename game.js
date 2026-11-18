@@ -316,29 +316,29 @@ const SoundFX = {
   },
   startMusic() {
     this.musicEnabled = true;
-    if (this.bgmTimer) return;
+    if (!this.ctx || !this.master) this.init();
+    if (!this.ctx || !this.master) return;
     const progression = [
       [55, 82.41, 110], [49, 73.42, 98],
       [65.41, 98, 130.81], [43.65, 65.41, 87.31],
       [55, 82.41, 110], [58.27, 87.31, 116.54],
       [49, 73.42, 98], [65.41, 98, 130.81]
     ];
-    this.bgmTimer = setInterval(() => {
-      if (!this.enabled || !this.musicEnabled || !["MENU", "PLAYING"].includes(state.mode)) return;
-      this.init();
-      if (!this.ctx || this.ctx.state !== "running" || !this.master) return;
+    const playBar = () => {
+      if (!this.musicEnabled || !this.ctx || this.ctx.state !== "running" || !this.master) return;
       const chord = progression[this.step % progression.length];
-      // Cama ambiental de ciencia ficción: bajos suaves y armónicos lentos.
-      this.tone({ frequency: chord[0], endFrequency: chord[0] * 1.006, duration: .72, type: "sine", volume: .022, attack: .08 });
-      this.tone({ frequency: chord[1], endFrequency: chord[1] * .998, duration: .62, type: "triangle", volume: .012, attack: .10, detune: -4 });
-      if (this.step % 2 === 0) {
-        this.tone({ frequency: chord[2] * 2, endFrequency: chord[2] * 2.01, duration: .34, type: "sine", volume: .008, attack: .12 });
-      }
+      // Capa ambiental cinematográfica: graves cálidos, pads y motivo melódico audible.
+      this.tone({ frequency: chord[0], endFrequency: chord[0] * 1.004, duration: 1.05, type: "sine", volume: .075, attack: .22 });
+      this.tone({ frequency: chord[1], endFrequency: chord[1] * .999, duration: .92, type: "triangle", volume: .042, attack: .24, detune: -5 });
+      this.tone({ frequency: chord[2], endFrequency: chord[2] * 1.002, duration: .82, type: "sine", volume: .032, attack: .2, detune: 4 });
       const motif = [220, 261.63, 329.63, 392, 329.63, 293.66, 261.63, 196];
-      if (this.step % 2 === 0) this.tone({ frequency: motif[(this.step / 2) % motif.length], endFrequency: motif[(this.step / 2) % motif.length] * 1.004, duration: .48, type: "sine", volume: .009, attack: .16, detune: this.step % 4 ? 4 : -4 });
-      if (this.step % 4 === 0) this.tone({ frequency: chord[0] / 2, endFrequency: chord[0] / 2 * .99, duration: .9, type: "triangle", volume: .012, attack: .22, filter: { type: "lowpass", frequency: 180, endFrequency: 95 } });
+      this.tone({ frequency: motif[this.step % motif.length], endFrequency: motif[this.step % motif.length] * 1.003, duration: .72, type: "sine", volume: .038, attack: .18, detune: this.step % 2 ? 5 : -5 });
+      if (this.step % 2 === 0) this.tone({ frequency: chord[0] / 2, endFrequency: chord[0] / 2 * .995, duration: 1.25, type: "triangle", volume: .05, attack: .28, filter: { type: "lowpass", frequency: 220, endFrequency: 110 } });
       this.step++;
-    }, 620);
+    };
+    if (this.bgmTimer) clearInterval(this.bgmTimer);
+    playBar();
+    this.bgmTimer = setInterval(playBar, 1050);
   }
 };
 /* ============================================================================
@@ -3323,11 +3323,21 @@ bindTap("btn-save", saveProgress);
 bindTap("btn-save-pause", saveProgress);
 
 
-bindTap("btn-menu-music", (e) => {
+bindTap("btn-menu-music", async (e) => {
   SoundFX.init();
-  if (!SoundFX.ctx) return;
+  if (!SoundFX.ctx || !SoundFX.master) {
+    e.currentTarget.textContent = "AUDIO NO DISPONIBLE";
+    return;
+  }
   SoundFX.musicEnabled = !SoundFX.musicEnabled;
-  if (SoundFX.musicEnabled) SoundFX.startMusic();
+  if (SoundFX.musicEnabled) {
+    try { await SoundFX.ctx.resume(); } catch (error) { console.warn("No se pudo activar el audio:", error); }
+    // La música tiene su propio control y no depende del interruptor de efectos.
+    SoundFX.startMusic();
+  } else if (SoundFX.bgmTimer) {
+    clearInterval(SoundFX.bgmTimer);
+    SoundFX.bgmTimer = null;
+  }
   e.currentTarget.classList.toggle("is-playing", SoundFX.musicEnabled);
   e.currentTarget.textContent = SoundFX.musicEnabled ? "♫ BANDA SONORA ACTIVADA" : "♫ ACTIVAR BANDA SONORA";
   e.currentTarget.setAttribute("aria-pressed", String(SoundFX.musicEnabled));
