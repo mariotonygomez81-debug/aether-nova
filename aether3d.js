@@ -404,7 +404,14 @@ function syncEnemies(items,width,height){
   if(!mesh){mesh=buildEnemy(item.variant);scene.add(mesh);enemyMeshes.set(item.id,mesh);}
   mesh.position.copy(worldPos(item.x,item.y,width,height,-11));
   mesh.rotation.z=Math.sin((item.age||0)*.04)*.035;
-  mesh.scale.setScalar(item.variant==='carrier'?1.12:1);
+  // El modelo 3D respeta el tamaño del hitbox 2D; antes era mucho más ancho
+  // que su radio lógico y daba la impresión de que los disparos lo atravesaban.
+  const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
+  const depth = camera.position.z - (-11);
+  const worldPerPixel = (2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*depth)/height;
+  const targetWidth = item.radius * 2 * 1.18;
+  const visualScale = THREE.MathUtils.clamp((targetWidth*worldPerPixel)/modelWidth,.22,.72);
+  mesh.scale.setScalar(visualScale);
  }
  for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,1.15);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
 }
