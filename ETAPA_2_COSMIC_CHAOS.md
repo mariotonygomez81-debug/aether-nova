@@ -27,3 +27,19 @@
 - `manifest.json`: JSON válido.
 - Prueba de carga en navegador automatizado: no completada; el entorno de ejecución bloqueó la navegación local del navegador.
 - No se afirma validación en teléfonos físicos ni mediciones de FPS reales.
+
+
+## Alpha 6 — proyectiles de plasma ovalados
+Los disparos principales se representan como orbes ovalados con núcleo blanco, halo coloreado y cola de plasma alargada. Se conserva la simulación y las colisiones del motor original.
+
+
+## Alpha 7 — estela de plasma ampliada
+Se amplían los orbes ovalados y se reemplaza la cola estrecha por una estela de plasma en varias capas, más ancha en el origen y afinada hacia atrás. Se mantiene la simulación y colisiones del juego.
+
+
+## Alpha 8 — estela continua
+Se sustituyen las colas cónicas superpuestas por una estela tubular 3D continua, con perfil ovalado, degradado de transparencia y núcleo interno más fino. Esto busca evitar el aspecto de agujas o púas de la versión anterior.
+
+
+## Alpha 9 — estela de plasma redondeada
+Se reemplazan las mallas cónicas por volúmenes elipsoidales solapados con extremos redondeados. El disparo conserva el orbe ovalado y una cola luminosa suave, evitando el acabado de aguja o gota puntiaguda.

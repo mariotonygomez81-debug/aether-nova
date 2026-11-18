@@ -176,134 +176,164 @@ window.addEventListener("resize", resizeCanvas, { passive: true });
 
 const SoundFX = {
   ctx: null,
+  master: null,
+  compressor: null,
   enabled: true,
   bgmTimer: null,
   step: 0,
+  lastPlay: Object.create(null),
+  noiseBuffer: null,
   init() {
     try {
       if (!this.ctx) {
         const AudioCtor = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtor) return;
-        this.ctx = new AudioCtor();
+        this.ctx = new AudioCtor({ latencyHint: "interactive" });
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.72;
+        this.compressor = this.ctx.createDynamicsCompressor();
+        this.compressor.threshold.value = -18;
+        this.compressor.knee.value = 18;
+        this.compressor.ratio.value = 4;
+        this.compressor.attack.value = 0.004;
+        this.compressor.release.value = 0.22;
+        this.master.connect(this.compressor);
+        this.compressor.connect(this.ctx.destination);
+        const length = Math.floor(this.ctx.sampleRate * 1.8);
+        this.noiseBuffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
+        const data = this.noiseBuffer.getChannelData(0);
+        let last = 0;
+        for (let i = 0; i < length; i++) {
+          // Ruido rosa aproximado: menos áspero que el ruido blanco.
+          const white = Math.random() * 2 - 1;
+          last = last * 0.985 + white * 0.015;
+          data[i] = last * 3.2;
+        }
       }
       if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
     } catch (error) { console.warn("Audio no disponible:", error); }
   },
-  play(type) {
-    if (!this.enabled) return;
-    this.init();
-    if (!this.ctx || this.ctx.state !== "running") return;
+  tone({ frequency = 440, endFrequency = frequency, duration = .15, type = "sine",
+         volume = .08, detune = 0, filter = null, destination = null, attack = .008 } = {}) {
+    if (!this.ctx) return;
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    if (type === "laser") {
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(820, now);
-      osc.frequency.exponentialRampToValueAtTime(170, now + 0.08);
-      gain.gain.setValueAtTime(0.07, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      osc.start(now);
-      osc.stop(now + 0.08);
-    } else if (type === "missile") {
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(340, now);
-      osc.frequency.exponentialRampToValueAtTime(980, now + 0.16);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-      osc.start(now);
-      osc.stop(now + 0.16);
-    } else if (type === "boom") {
-      osc.type = "square";
-      osc.frequency.setValueAtTime(130, now);
-      osc.frequency.exponentialRampToValueAtTime(22, now + 0.3);
-      gain.gain.setValueAtTime(0.16, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-      osc.start(now);
-      osc.stop(now + 0.3);
-    } else if (type === "supernova") {
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(90, now);
-      osc.frequency.exponentialRampToValueAtTime(16, now + 0.95);
-      gain.gain.setValueAtTime(0.32, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
-      osc.start(now);
-      osc.stop(now + 0.95);
-    } else if (type === "powerup") {
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(460, now);
-      osc.frequency.exponentialRampToValueAtTime(1220, now + 0.2);
-      gain.gain.setValueAtTime(0.13, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      osc.start(now);
-      osc.stop(now + 0.2);
-    } else if (type === "hit") {
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(195, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.24);
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
-      osc.start(now);
-      osc.stop(now + 0.24);
+    const amp = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(Math.max(1, frequency), now);
+    if (endFrequency !== frequency) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), now + duration);
     }
-
-    // Capa de ruido filtrado para impactos y explosiones: aporta cuerpo sin archivos externos.
-    if (["boom", "hit", "supernova"].includes(type)) {
-      const duration = type === "supernova" ? 0.72 : type === "boom" ? 0.22 : 0.14;
-      const buffer = this.ctx.createBuffer(1, Math.ceil(this.ctx.sampleRate * duration), this.ctx.sampleRate);
-      const channel = buffer.getChannelData(0);
-      for (let i = 0; i < channel.length; i++) {
-        const fade = 1 - i / channel.length;
-        channel[i] = (Math.random() * 2 - 1) * fade * fade;
-      }
-      const noise = this.ctx.createBufferSource();
-      const filter = this.ctx.createBiquadFilter();
-      const noiseGain = this.ctx.createGain();
-      noise.buffer = buffer;
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(type === "supernova" ? 520 : 1150, now);
-      filter.frequency.exponentialRampToValueAtTime(90, now + duration);
-      noiseGain.gain.setValueAtTime(type === "supernova" ? 0.2 : 0.075, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-      noise.connect(filter);
-      filter.connect(noiseGain);
-      noiseGain.connect(this.ctx.destination);
-      noise.start(now);
-      noise.stop(now + duration);
+    osc.detune.value = detune;
+    amp.gain.setValueAtTime(.0001, now);
+    amp.gain.exponentialRampToValueAtTime(Math.max(.0002, volume), now + attack);
+    amp.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    let tail = amp;
+    if (filter) {
+      const f = this.ctx.createBiquadFilter();
+      f.type = filter.type || "lowpass";
+      f.frequency.setValueAtTime(filter.frequency || 1800, now);
+      if (filter.endFrequency) f.frequency.exponentialRampToValueAtTime(filter.endFrequency, now + duration);
+      tail.connect(f); tail = f;
+    }
+    tail.connect(destination || this.master);
+    osc.connect(amp);
+    osc.start(now);
+    osc.stop(now + duration + .025);
+  },
+  noise({ duration = .2, volume = .08, frequency = 1200, endFrequency = 120,
+          type = "lowpass", q = .7, destination = null } = {}) {
+    if (!this.ctx || !this.noiseBuffer) return;
+    const now = this.ctx.currentTime;
+    const source = this.ctx.createBufferSource();
+    const filter = this.ctx.createBiquadFilter();
+    const amp = this.ctx.createGain();
+    source.buffer = this.noiseBuffer;
+    source.loop = true;
+    filter.type = type;
+    filter.Q.value = q;
+    filter.frequency.setValueAtTime(frequency, now);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(30, endFrequency), now + duration);
+    amp.gain.setValueAtTime(Math.max(.0001, volume), now);
+    amp.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    source.connect(filter); filter.connect(amp); amp.connect(destination || this.master);
+    source.start(now); source.stop(now + duration + .03);
+  },
+  play(type) {
+    if (!this.enabled) return;
+    const nowMs = performance.now();
+    const cooldown = { laser: 62, missile: 130, hit: 95, boom: 120, targetHit: 38, shieldHit: 85, powerup: 90, supernova: 500 };
+    if (nowMs - (this.lastPlay[type] || 0) < (cooldown[type] || 70)) return;
+    this.lastPlay[type] = nowMs;
+    this.init();
+    if (!this.ctx || this.ctx.state !== "running" || !this.master) return;
+    switch (type) {
+      case "laser":
+        // Disparo energético: ataque agudo, barrido descendente y pequeño chasquido.
+        this.tone({ frequency: 1120, endFrequency: 310, duration: .105, type: "sawtooth", volume: .045, filter: { type: "lowpass", frequency: 3600, endFrequency: 950 } });
+        this.tone({ frequency: 1780, endFrequency: 760, duration: .065, type: "sine", volume: .035, detune: -9 });
+        break;
+      case "missile":
+        // Encendido del propulsor y lanzamiento con cuerpo grave.
+        this.tone({ frequency: 125, endFrequency: 54, duration: .32, type: "sawtooth", volume: .11, filter: { type: "lowpass", frequency: 650, endFrequency: 170 } });
+        this.noise({ duration: .24, volume: .045, frequency: 1900, endFrequency: 260 });
+        this.tone({ frequency: 270, endFrequency: 720, duration: .16, type: "triangle", volume: .045 });
+        break;
+      case "hit":
+        this.tone({ frequency: 185, endFrequency: 48, duration: .22, type: "triangle", volume: .14 });
+        this.noise({ duration: .17, volume: .075, frequency: 1250, endFrequency: 160 });
+        break;
+      case "targetHit":
+        // Impacto metálico breve al dañar un objetivo enemigo o un asteroide.
+        this.tone({ frequency: 420, endFrequency: 115, duration: .105, type: "triangle", volume: .075 });
+        this.noise({ duration: .075, volume: .035, frequency: 2600, endFrequency: 520, type: "bandpass", q: 1.2 });
+        break;
+      case "shieldHit":
+        // Descarga cristalina y grave cuando el escudo absorbe un impacto.
+        this.tone({ frequency: 760, endFrequency: 190, duration: .24, type: "sine", volume: .13 });
+        this.tone({ frequency: 145, endFrequency: 62, duration: .2, type: "triangle", volume: .09 });
+        this.noise({ duration: .16, volume: .055, frequency: 1800, endFrequency: 240 });
+        break;
+      case "boom":
+        this.tone({ frequency: 105, endFrequency: 28, duration: .48, type: "sine", volume: .22 });
+        this.tone({ frequency: 62, endFrequency: 25, duration: .55, type: "triangle", volume: .12 });
+        this.noise({ duration: .42, volume: .12, frequency: 1900, endFrequency: 75 });
+        break;
+      case "supernova":
+        this.tone({ frequency: 72, endFrequency: 18, duration: 1.15, type: "sine", volume: .30 });
+        this.tone({ frequency: 46, endFrequency: 16, duration: 1.3, type: "triangle", volume: .19 });
+        this.noise({ duration: 1.05, volume: .18, frequency: 950, endFrequency: 45 });
+        this.tone({ frequency: 520, endFrequency: 72, duration: .72, type: "sawtooth", volume: .055, filter: { type: "lowpass", frequency: 1500, endFrequency: 120 } });
+        break;
+      case "powerup":
+        // Confirmación ascendente en tres notas.
+        this.tone({ frequency: 520, endFrequency: 720, duration: .12, type: "sine", volume: .075 });
+        this.tone({ frequency: 780, endFrequency: 1040, duration: .16, type: "triangle", volume: .065 });
+        this.tone({ frequency: 1040, endFrequency: 1480, duration: .22, type: "sine", volume: .055 });
+        break;
     }
   },
   startMusic() {
     if (this.bgmTimer) return;
-    const notes = [110, 110, 130.8, 146.8, 110, 110, 164.8, 146.8];
+    const progression = [
+      [55, 82.41, 110], [49, 73.42, 98],
+      [65.41, 98, 130.81], [43.65, 65.41, 87.31],
+      [55, 82.41, 110], [58.27, 87.31, 116.54],
+      [49, 73.42, 98], [65.41, 98, 130.81]
+    ];
     this.bgmTimer = setInterval(() => {
       if (!this.enabled || state.mode !== "PLAYING") return;
       this.init();
-      if (!this.ctx || this.ctx.state !== "running") return;
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(notes[this.step % notes.length], now);
-      gain.gain.setValueAtTime(0.035, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.22);
-      const harmony = this.ctx.createOscillator();
-      const harmonyGain = this.ctx.createGain();
-      harmony.type = "sine";
-      harmony.frequency.setValueAtTime(notes[this.step % notes.length] * 2, now);
-      harmonyGain.gain.setValueAtTime(0.009, now);
-      harmonyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      harmony.connect(harmonyGain);
-      harmonyGain.connect(this.ctx.destination);
-      harmony.start(now);
-      harmony.stop(now + 0.18);
+      if (!this.ctx || this.ctx.state !== "running" || !this.master) return;
+      const chord = progression[this.step % progression.length];
+      // Cama ambiental de ciencia ficción: bajos suaves y armónicos lentos.
+      this.tone({ frequency: chord[0], endFrequency: chord[0] * 1.006, duration: .72, type: "sine", volume: .022, attack: .08 });
+      this.tone({ frequency: chord[1], endFrequency: chord[1] * .998, duration: .62, type: "triangle", volume: .012, attack: .10, detune: -4 });
+      if (this.step % 2 === 0) {
+        this.tone({ frequency: chord[2] * 2, endFrequency: chord[2] * 2.01, duration: .34, type: "sine", volume: .008, attack: .12 });
+      }
       this.step++;
-    }, 260);
+    }, 620);
   }
 };
 /* ============================================================================
@@ -943,17 +973,26 @@ class Player {
 
   takeDamage(reason = "IMPACTO") {
     if (this.invuln > 0) return;
+    // Señal audiovisual inmediata: el jugador siempre percibe el contacto.
+    state.shake = Math.max(state.shake, 10);
+    state.flash = Math.max(state.flash, .22);
+    const priorImpact = window.__AETHER3D_IMPACT || { serial: 0 };
+    window.__AETHER3D_IMPACT = { serial: priorImpact.serial + 1, x: this.x, y: this.y,
+      color: this.buffs.shield > 0 || this.permanentShieldCharges > 0 ? "#55eaff" : "#ff684d" };
+    spawnImpactBurst(this.x, this.y, this.buffs.shield > 0 || this.permanentShieldCharges > 0 ? "#55eaff" : "#ff684d", IS_LOW_POWER ? 8 : 15);
     if (this.permanentShieldCharges > 0) {
       this.permanentShieldCharges--;
       this.invuln = 90;
-      SoundFX.play("hit");
+      SoundFX.play("shieldHit");
+      spawnExplosion(this.x, this.y, "#55eaff", IS_LOW_POWER ? 7 : 13);
       addFloatingText(this.x, this.y - 30, `AEGIS BLOQUEÓ EL IMPACTO • ${this.permanentShieldCharges} RESTANTES`, "#72f7ff");
       return;
     }
     if (this.buffs.shield > 0) {
       this.buffs.shield = 0;
       this.invuln = 60;
-      SoundFX.play("hit");
+      SoundFX.play("shieldHit");
+      spawnExplosion(this.x, this.y, "#55eaff", IS_LOW_POWER ? 7 : 13);
       addFloatingText(this.x, this.y - 30, "¡ESCUDO ABSORBIÓ DAÑO!", "#00f0ff");
       return;
     }
@@ -1351,6 +1390,7 @@ function detonateAsteroidChain(x, y, source, depth = 0) {
 
 class Asteroid {
   constructor(x, y, radius, kind = "normal") {
+    this.aether3dId = (Asteroid._next3DId = (Asteroid._next3DId || 0) + 1);
     this.x = x ?? Math.random() * (W - 60) + 30;
     this.y = y ?? -45;
     this.radius = radius;
@@ -1785,6 +1825,17 @@ function spawnExplosion(x, y, color, count = 14) {
   }
 }
 
+function spawnImpactBurst(x, y, color = "#ff5a45", count = 13) {
+  const cap = IS_LOW_POWER ? 70 : 150;
+  for (let i = 0; i < count && particles.length < cap; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2.8 + Math.random() * 6.2;
+    particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life: 10 + Math.random() * 9, maxLife: 19, color,
+      size: 2.2 + Math.random() * 2.8 });
+  }
+}
+
 function addFloatingText(x, y, text, color = "#ffffff") {
   if (floatingTexts.length > 12) floatingTexts.shift();
   floatingTexts.push({ x, y, text, color, life: 55 });
@@ -1849,7 +1900,7 @@ function updateSpawner() {
 
   const enemyInterval = Math.max(27, Math.round(178 / (diff * (1 + state.level * .016))));
   const enemyCap = Math.min(IS_LOW_POWER ? 10 : 16, 4 + Math.floor(state.level / 2));
-  if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss && enemies.length < enemyCap) {
+  if (state.level >= 1 && spawnClock % enemyInterval === 0 && !boss && enemies.length < enemyCap) {
     const roll = Math.random();
     let variant = activeGalacticEvent?.enemy_variant || "scout";
     if (!activeGalacticEvent) {
@@ -2098,7 +2149,12 @@ function updateAndDraw() {
   });
   ctx.globalAlpha = 1;
 
-  if (state.mode !== "PLAYING" || !player) return;
+  if (state.mode !== "PLAYING" || !player) {
+    if (window.__AETHER3D_ACTIVE) {
+      window.__AETHER3D_STATE = { playing: false, width: W, height: H };
+    }
+    return;
+  }
 
   ctx.save();
   if (state.shake > 0) {
@@ -2113,9 +2169,44 @@ function updateAndDraw() {
   updateSpawner();
   player.update();
 
+  // Puente de estado de solo lectura para el renderizador 3D. La simulación,
+  // colisiones, armas, progresión y guardado siguen perteneciendo al motor original.
+  if (window.__AETHER3D_ACTIVE) {
+    window.__AETHER3D_STATE = {
+      x: player.x, y: player.y, width: W, height: H, level: state.level, tilt: player.tilt,
+      type: player.type, color: player.color, accent: player.accent,
+      invulnerable: player.invuln > 0 && Math.floor(player.invuln / 5) % 2 === 0,
+      shield: player.buffs.shield > 0, playing: state.mode === "PLAYING",
+      shots: bullets.filter(b => !b.dead).map(b => ({
+        id: b.aether3dId || (b.aether3dId = "shot-" + Math.random().toString(36).slice(2)),
+        x: b.x, y: b.y, color: b.color || "#39eaff", missile: !!b.missile
+      })),
+      asteroids: asteroids.filter(a => !a.dead).map(a => ({
+        id: a.aether3dId, x: a.x, y: a.y, radius: a.radius, kind: a.kind,
+        rot: a.rot, hitFlash: a.hitFlash, depth: Math.min(18, Math.max(0, a.radius * 0.12)),
+        sx: a.kind === "magnetic" ? 1.15 : 1, sy: a.kind === "shooting_star" ? .72 : 1,
+        sz: a.kind === "shooting_star" ? .72 : 1
+      })),
+      enemies: enemies.filter(e => !e.dead).map(e => ({
+        id: e.aether3dId || (e.aether3dId = "enemy-" + (e._aether3dId || (e._aether3dId = Math.random().toString(36).slice(2)))),
+        x: e.x, y: e.y, radius: e.radius, variant: e.variant, age: e.age || 0
+      })),
+      boss: boss && !boss.dead ? {
+        x: boss.x, y: boss.y, radius: boss.radius, variant: boss.variant,
+        phase: boss.phase, hp: boss.hp, maxHp: boss.maxHp, weakAngle: boss.weakAngle
+      } : null,
+      phenomena: phenomena.filter(ph => !ph.dead).map(ph => ({
+        id: ph.aether3dId || (ph.aether3dId = "phenomenon-" + Math.random().toString(36).slice(2)),
+        kind: ph.kind, x: ph.x, y: ph.y, radius: ph.radius,
+        timer: ph.timer, maxTimer: ph.maxTimer, angle: ph.angle,
+        strikeX: ph.strikeX, strikeFlash: ph.strikeFlash
+      }))
+    };
+  }
+
   phenomena.forEach((ph) => {
     ph.update();
-    ph.draw();
+    if (!window.__AETHER3D_ACTIVE) ph.draw();
   });
   phenomena = phenomena.filter((ph) => !ph.dead);
 
@@ -2142,19 +2233,23 @@ function updateAndDraw() {
     b.y += b.vy;
     if (b.y < -30 || b.x < -30 || b.x > W + 30) b.dead = true;
 
-    ctx.fillStyle = b.color;
-    ctx.shadowBlur = IS_LOW_POWER ? 0 : 10;
-    ctx.shadowColor = b.color;
-    ctx.fillRect(b.x - (b.missile ? 3 : 2), b.y - 8, b.missile ? 6 : 4, b.missile ? 16 : 14);
-    ctx.shadowBlur = 0;
+    if (!window.__AETHER3D_ACTIVE) {
+      ctx.fillStyle = b.color;
+      ctx.shadowBlur = IS_LOW_POWER ? 0 : 10;
+      ctx.shadowColor = b.color;
+      ctx.fillRect(b.x - (b.missile ? 3 : 2), b.y - 8, b.missile ? 6 : 4, b.missile ? 16 : 14);
+      ctx.shadowBlur = 0;
+    }
   });
 
   asteroids.forEach((a) => {
     a.update();
-    a.draw();
+    if (!window.__AETHER3D_ACTIVE) a.draw();
 
     if (Math.hypot(a.x - player.x, a.y - player.y) < a.radius + player.radius - 4) {
       a.dead = true;
+      spawnImpactBurst((a.x + player.x) * .5, (a.y + player.y) * .5, "#ffb45e", IS_LOW_POWER ? 7 : 13);
+      spawnExplosion(a.x, a.y, "#ffb45e", IS_LOW_POWER ? 6 : 11);
       player.takeDamage("COLISIÓN CON ASTEROIDE");
     }
 
@@ -2162,11 +2257,15 @@ function updateAndDraw() {
       if (!b.dead && !a.dead && Math.hypot(b.x - a.x, b.y - a.y) < a.radius + 6) {
         b.dead = true;
         a.hp -= b.dmg;
-        a.hitFlash = 4;
+        a.hitFlash = 12;
+        spawnImpactBurst(b.x, b.y, a.kind === "magnetic" ? "#70e7ff" : "#ffd27a", IS_LOW_POWER ? 3 : 6);
+        SoundFX.play("targetHit");
         if (a.hp <= 0) {
           a.dead = true;
           SoundFX.play("boom");
-          spawnExplosion(a.x, a.y, "#ffcc33", 12);
+          state.shake = Math.max(state.shake, a.radius > 28 ? 8 : 4);
+          spawnExplosion(a.x, a.y, "#ffcc33", IS_LOW_POWER ? 10 : 20);
+          spawnImpactBurst(a.x, a.y, "#fff0b0", IS_LOW_POWER ? 8 : 16);
           spawnPowerup(a.x, a.y);
 
           if (a.kind === "explosive") {
@@ -2187,10 +2286,12 @@ function updateAndDraw() {
 
   enemies.forEach((e) => {
     e.update();
-    e.draw();
+    if (!window.__AETHER3D_ACTIVE) e.draw();
 
     if (Math.hypot(e.x - player.x, e.y - player.y) < e.radius + player.radius) {
       e.dead = true;
+      spawnImpactBurst((e.x + player.x) * .5, (e.y + player.y) * .5, "#ff6688", IS_LOW_POWER ? 7 : 13);
+      spawnExplosion(e.x, e.y, "#ff6688", IS_LOW_POWER ? 6 : 12);
       player.takeDamage("CHOQUE CON NAVE ENEMIGA");
     }
 
@@ -2198,10 +2299,14 @@ function updateAndDraw() {
       if (!b.dead && !e.dead && Math.hypot(b.x - e.x, b.y - e.y) < e.radius + 6) {
         b.dead = true;
         e.hp -= b.dmg;
+        spawnImpactBurst(b.x, b.y, "#ff8bc8", IS_LOW_POWER ? 3 : 6);
+        SoundFX.play("targetHit");
         if (e.hp <= 0) {
           e.dead = true;
           SoundFX.play("boom");
-          spawnExplosion(e.x, e.y, "#ff2a85", 16);
+          state.shake = Math.max(state.shake, e.radius > 24 ? 9 : 5);
+          spawnExplosion(e.x, e.y, "#ff2a85", IS_LOW_POWER ? 12 : 24);
+          spawnImpactBurst(e.x, e.y, "#ffd6ed", IS_LOW_POWER ? 8 : 17);
           spawnPowerup(e.x, e.y);
           state.score += 120 * state.combo;
           recordMissionProgress("kills", 1);
@@ -2213,7 +2318,7 @@ function updateAndDraw() {
 
   if (boss) {
     boss.update();
-    boss.draw();
+    if (!window.__AETHER3D_ACTIVE) boss.draw();
     const hpBar = document.getElementById("boss-hp");
     if (hpBar) hpBar.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
     const bossName = document.getElementById("boss-name");
@@ -2300,7 +2405,7 @@ function updateAndDraw() {
   });
   ctx.globalAlpha = 1;
 
-  player.draw();
+  if (!window.__AETHER3D_ACTIVE) player.draw();
 
   bullets = bullets.filter((b) => !b.dead);
   enemyBullets = enemyBullets.filter((eb) => !eb.dead);

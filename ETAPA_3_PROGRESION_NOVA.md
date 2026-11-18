@@ -39,3 +39,19 @@ Ampliar el hangar existente sin reemplazar el sistema comercial ni alterar los i
 - Comprobación de que los identificadores de mejoras heredadas siguen presentes: correcta.
 - Integridad del ZIP: correcta.
 - No se completó una prueba de juego en navegador ni en un dispositivo Android físico; no se afirman mediciones reales de FPS o validación de controles en hardware.
+
+
+## Alpha 6 — proyectiles de plasma ovalados
+Los disparos principales se representan como orbes ovalados con núcleo blanco, halo coloreado y cola de plasma alargada. Se conserva la simulación y las colisiones del motor original.
+
+
+## Alpha 7 — estela de plasma ampliada
+Se amplían los orbes ovalados y se reemplaza la cola estrecha por una estela de plasma en varias capas, más ancha en el origen y afinada hacia atrás. Se mantiene la simulación y colisiones del juego.
+
+
+## Alpha 8 — estela continua
+Se sustituyen las colas cónicas superpuestas por una estela tubular 3D continua, con perfil ovalado, degradado de transparencia y núcleo interno más fino. Esto busca evitar el aspecto de agujas o púas de la versión anterior.
+
+
+## Alpha 9 — estela de plasma redondeada
+Se reemplazan las mallas cónicas por volúmenes elipsoidales solapados con extremos redondeados. El disparo conserva el orbe ovalado y una cola luminosa suave, evitando el acabado de aguja o gota puntiaguda.
