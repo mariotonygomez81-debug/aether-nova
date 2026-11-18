@@ -1613,13 +1613,15 @@ class EnemyShip {
 class BossShip {
   constructor() {
     this.x = W / 2; this.y = 112; this.vx = 2.1;
-    this.variant = (state.level - 1) % 5;
-    const names = ["LEVIATÁN", "DESTRUCTOR", "ANOMALÍA", "REINA DEL VACÍO", "ECLIPSE SUPREMO"];
+    this.bossIndex = Math.max(0, Math.floor(state.level / 10) - 1);
+    this.variant = this.bossIndex % 10;
+    const names = ["LEVIATÁN","DESTRUCTOR","ANOMALÍA","REINA DEL VACÍO","ECLIPSE SUPREMO","COLOSOS DE OBSIDIANA","DEVORADOR DE ESTRELLAS","ARCA INFERNAL","SERAFÍN ABISMAL","NÚCLEO OMEGA"];
     this.name = names[this.variant];
-    this.radius = [48,54,46,62,58][this.variant];
+    this.radius = [48,54,46,62,58,66,60,70,64,74][this.variant];
     const sectorRamp = 1 + Math.max(0, state.level - 1) * 0.012;
     const bossDifficulty = state.difficulty === "hard" ? 1.24 : state.difficulty === "easy" ? 0.84 : 1;
-    this.maxHp = Math.round((210 + state.level * 29) * sectorRamp * bossDifficulty);
+    const milestoneRamp = 1 + this.bossIndex * 0.20;
+    this.maxHp = Math.round((210 + state.level * 29) * sectorRamp * milestoneRamp * bossDifficulty);
     this.hp = this.maxHp;
     this.timer = 0;
     this.phase = 1;
@@ -1686,6 +1688,13 @@ class BossShip {
       addFloatingText(W / 2, H * .22, "ECLIPSE: ESCUADRA DE ÉLITE", "#ff6688");
     }
 
+    if (this.variant === 5 && this.specialClock % (this.phase === 3 ? 145 : 230) === 0) {
+      for(let i=0;i<(this.phase===3?8:5);i++){const q=i*Math.PI*2/(this.phase===3?8:5);enemyBullets.push({x:this.x+Math.cos(q)*62,y:this.y+Math.sin(q)*38,vx:Math.cos(q)*2.1,vy:Math.sin(q)*2.1+1.1,color:"#d8e2f0"});}
+    }
+    if (this.variant === 6 && this.specialClock % (this.phase===3?170:260)<55 && player) {player.x+=Math.sign(this.x-player.x)*(this.phase===3?.95:.5);player.x=Math.max(player.radius,Math.min(W-player.radius,player.x));}
+    if (this.variant === 7 && this.specialClock % (this.phase===3?155:225)===0) {for(const side of [-1,1])for(let i=0;i<3;i++)enemyBullets.push({x:this.x+side*48,y:this.y+20,vx:side*(1.5+i*.65),vy:3.4+i*.25,color:"#ff874a"});}
+    if (this.variant === 8 && this.specialClock % (this.phase===3?125:195)===0) {const lanes=this.phase===3?7:5;for(let i=0;i<lanes;i++){const x=(i+1)*W/(lanes+1);enemyBullets.push({x,y:this.y+22,vx:(player?Math.sign(player.x-x):0)*.65,vy:4.4,color:"#b9a0ff"});}}
+    if (this.variant === 9 && this.phase===3 && this.specialClock%145===0) {for(let i=0;i<18;i++){const q=i*Math.PI*2/18;enemyBullets.push({x:this.x,y:this.y,vx:Math.cos(q)*4.4,vy:Math.sin(q)*4.4,color:"#ff3d8d"});}state.flash=Math.max(state.flash,.14);}
     const cadence = Math.max(22, (this.phase === 1 ? 68 : this.phase === 2 ? 48 : 32) - Math.floor(state.level / 4));
     if (player && this.attackClock % cadence === 0 && enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
       const aim = Math.atan2(player.y - this.y, player.x - this.x);
@@ -1718,11 +1727,23 @@ class BossShip {
         // Reina: abanicos escalonados que cubren zonas distintas.
         const offsets = this.phase === 3 ? [-.62, -.46, -.30, -.14, .02, .18, .34, .50, .66] : [-.48, -.30, -.12, .06, .24, .42];
         offsets.forEach(o => addShot(aim + o, speed * (this.phase === 3 ? 1.08 : .92), "#75f0c4"));
+      } else if (this.variant === 4) {
+        const count=this.phase===3?18:12;for(let i=0;i<count;i++)addShot(i*Math.PI*2/count+this.timer*.12,speed*.82,"#ff3864");
+        [-.30,-.15,0,.15,.30].forEach(o=>addShot(aim+o,speed*(this.phase===3?1.45:1.18),"#fff06a"));
+      } else if (this.variant === 5) {
+        for(let i=-3;i<=3;i++)addShot(aim+i*.2,speed*(i%2?1.05:1.3),"#d8e2f0");
+        if(this.phase>=2)for(let i=0;i<8;i++)addShot(i*Math.PI/4+this.timer*.025,speed*.68,"#9aa8bc");
+      } else if (this.variant === 6) {
+        const n=this.phase===3?20:14;for(let i=0;i<n;i++)addShot(i*Math.PI*2/n-this.timer*.09,speed*(this.phase===3?1.12:.78),"#ffad66");
+        if(this.phase>=2)addShot(aim,speed*1.65,"#fff0c2");
+      } else if (this.variant === 7) {
+        for(const side of [-1,1])for(let i=0;i<4;i++)addShot(aim+side*(.18+i*.13),speed*(1+i*.12),"#ff874a");
+      } else if (this.variant === 8) {
+        const n=this.phase===3?16:10;for(let i=0;i<n;i++)addShot(i*Math.PI*2/n+this.timer*.045,speed*.9,"#b9a0ff");
+        [-.12,0,.12].forEach(o=>addShot(aim+o,speed*1.5,"#fff"));
       } else {
-        // Eclipse Supremo: doble espiral más una ráfaga de precisión.
-        const count = this.phase === 3 ? 18 : 12;
-        for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * .12, speed * .82, "#ff3864");
-        [-.30, -.15, 0, .15, .30].forEach(o => addShot(aim + o, speed * (this.phase === 3 ? 1.45 : 1.18), "#fff06a"));
+        const n=this.phase===3?24:16;for(let i=0;i<n;i++)addShot(i*Math.PI*2/n+this.timer*.14,speed*1.02,"#ff3d8d");
+        for(let i=-3;i<=3;i++)addShot(aim+i*.11,speed*1.62,"#fff0f6");
       }
     }
   }
@@ -1737,7 +1758,7 @@ class BossShip {
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
-    const glow = ["#a855f7", "#e879f9", "#22f0d0", "#ff9f1c", "#ff3864"][this.variant];
+    const glow = ["#a855f7","#e879f9","#22f0d0","#ff9f1c","#ff3864","#d8e2f0","#ffad66","#ff874a","#b9a0ff","#ff3d8d"][this.variant];
     ctx.shadowBlur = IS_LOW_POWER ? 0 : 24;
     ctx.shadowColor = glow;
     ctx.fillStyle = this.phase === 3 ? "#4a071c" : "#2b0918";
@@ -1761,9 +1782,18 @@ class BossShip {
     } else if (this.variant === 3) {
       ctx.moveTo(0, 58); ctx.lineTo(-68, 8); ctx.lineTo(-42, -42); ctx.lineTo(-12, -24);
       ctx.lineTo(0, -54); ctx.lineTo(12, -24); ctx.lineTo(42, -42); ctx.lineTo(68, 8);
+    } else if (this.variant === 4) {
+      ctx.moveTo(0,66);ctx.lineTo(-76,22);ctx.lineTo(-54,-44);ctx.lineTo(-18,-34);ctx.lineTo(0,-62);ctx.lineTo(18,-34);ctx.lineTo(54,-44);ctx.lineTo(76,22);
+    } else if (this.variant === 5) {
+      ctx.moveTo(-78,40);ctx.lineTo(-68,-28);ctx.lineTo(-28,-56);ctx.lineTo(0,-42);ctx.lineTo(28,-56);ctx.lineTo(68,-28);ctx.lineTo(78,40);ctx.lineTo(30,25);ctx.lineTo(0,60);ctx.lineTo(-30,25);
+    } else if (this.variant === 6) {
+      ctx.moveTo(0,-72);ctx.lineTo(28,-28);ctx.lineTo(70,-8);ctx.lineTo(42,22);ctx.lineTo(54,62);ctx.lineTo(0,40);ctx.lineTo(-54,62);ctx.lineTo(-42,22);ctx.lineTo(-70,-8);ctx.lineTo(-28,-28);
+    } else if (this.variant === 7) {
+      ctx.moveTo(-82,-34);ctx.lineTo(-22,-50);ctx.lineTo(0,-26);ctx.lineTo(22,-50);ctx.lineTo(82,-34);ctx.lineTo(60,10);ctx.lineTo(28,24);ctx.lineTo(18,62);ctx.lineTo(-18,62);ctx.lineTo(-28,24);ctx.lineTo(-60,10);
+    } else if (this.variant === 8) {
+      for(let i=0;i<12;i++){const q=-Math.PI/2+i*Math.PI/6,r=i%2?35:72,x=Math.cos(q)*r,y=Math.sin(q)*r;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}
     } else {
-      ctx.moveTo(0, 66); ctx.lineTo(-76, 22); ctx.lineTo(-54, -44); ctx.lineTo(-18, -34);
-      ctx.lineTo(0, -62); ctx.lineTo(18, -34); ctx.lineTo(54, -44); ctx.lineTo(76, 22);
+      ctx.moveTo(0,-78);ctx.lineTo(22,-38);ctx.lineTo(78,-20);ctx.lineTo(42,8);ctx.lineTo(62,64);ctx.lineTo(0,36);ctx.lineTo(-62,64);ctx.lineTo(-42,8);ctx.lineTo(-78,-20);ctx.lineTo(-22,-38);
     }
     ctx.closePath();
     ctx.fill();
@@ -1906,7 +1936,8 @@ function updateSpawner() {
   const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
   const diff = (1 + (state.level - 1) * 0.038 + Math.floor((state.level - 1) / 10) * 0.08) * (DIFFICULTY[state.difficulty]?.spawn || 1) * eventDifficulty;
 
-  if (!boss && state.levelProgress >= state.levelTarget - 1) {
+  const isBossSector = state.runMode === "campaign" && state.level % 10 === 0;
+  if (isBossSector && !boss && state.levelProgress >= state.levelTarget - 1) {
     boss = new BossShip();
     return;
   }
@@ -1996,7 +2027,7 @@ function showSectorBanner(level) {
     document.body.appendChild(el);
   }
   const era = ERAS[Math.min(9, Math.floor((level - 1) / 10))];
-  const bossText = level % 5 === 0 ? " • GUARDIÁN DETECTADO" : "";
+  const bossText = level % 10 === 0 ? " • COMANDANTE DE SECTOR DETECTADO" : "";
   el.innerHTML = `<span>SECTOR ${String(level).padStart(2,"0")} / 100</span><strong>${era.name}</strong><small>${level % 10 === 1 ? "NUEVA ZONA ESTELAR" : "AMENAZA EN AUMENTO"}${bossText}</small>`;
   el.classList.remove("show");
   void el.offsetWidth;
@@ -2083,7 +2114,12 @@ function showBossCinematic(name, variant) {
     "CAMPO MAGNÉTICO HOSTIL. PREPARATE PARA EMBESTIDAS Y DESCARGAS.",
     "EMISIÓN GAMMA DETECTADA. NO CRUCES SU HAZ FRONTAL.",
     "BLINDAJE DE OBSIDIANA. CONCENTRÁ EL FUEGO EN EL NÚCLEO.",
-    "NÉMESIS DEL ECLIPSE. TODAS LAS ARMAS AUTORIZADAS."
+    "NÉMESIS DEL ECLIPSE. TODAS LAS ARMAS AUTORIZADAS.",
+    "BLINDAJE DE OBSIDIANA. DESTRUÍ SUS PLACAS ANTES DEL NÚCLEO.",
+    "DEVORADOR ESTELAR. EVITÁ LA SUCCIÓN Y SUS ONDAS DE CHOQUE.",
+    "ARCA INFERNAL. NEUTRALIZÁ SUS BATERÍAS LATERALES.",
+    "SERAFÍN ABISMAL. ATENCIÓN A LOS HACES CRUZADOS.",
+    "NÚCLEO OMEGA. TODAS LAS DEFENSAS EN ESTADO CRÍTICO."
   ];
   document.getElementById("boss-intro-title").textContent = name;
   document.getElementById("boss-intro-subtitle").textContent = subtitles[variant] || "IDENTIFICÁ EL NÚCLEO EXPUESTO Y SOBREVIVÍ.";
