@@ -2451,17 +2451,17 @@ async function startPhonepadPairing(){
         phonepadState.bomb=bomb;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
         phonepadStatus("CELULAR CONECTADO",true);
       });
-    await new Promise((resolve,reject)=>{
-      const timeout=setTimeout(()=>reject(new Error("Tiempo agotado al conectar. Revisá Realtime.")),12000);
-      channel.subscribe(s=>{if(s==="SUBSCRIBED"){clearTimeout(timeout);resolve(s);}else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){clearTimeout(timeout);reject(new Error("Realtime rechazó el canal. Revisá si los canales públicos están habilitados."));}});
-    });
     phonepadState.client=client;phonepadState.channel=channel;phonepadState.code=code;phonepadState.lastAt=Date.now();
     const link=new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/");link.searchParams.set("code",code);
     const codeEl=document.getElementById("phonepad-code");if(codeEl)codeEl.textContent=code;
     const linkEl=document.getElementById("phonepad-link");if(linkEl){linkEl.href=link.href;linkEl.textContent=link.href;}
     const qr=document.getElementById("phonepad-qr");if(qr){qr.innerHTML="";const appLink="aethernova://connect?code="+encodeURIComponent(code);if(window.QRCode)new QRCode(qr,{text:appLink,width:150,height:150,colorDark:"#07111f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});else qr.textContent="Escaneá el QR con AETHER NOVA Joystick o abrí el enlace HTTPS.";}
     document.getElementById("phonepad-pairing")?.classList.remove("hidden");
-    phonepadStatus("QR LISTO · ESCANEÁ PARA CONECTAR",false);
+    phonepadStatus("CÓDIGO GENERADO · CONECTANDO…",false);
+    await new Promise((resolve,reject)=>{
+      const timeout=setTimeout(()=>reject(new Error("Código generado, pero Supabase tardó en conectar. Revisá Realtime e intentá nuevamente.")),12000);
+      channel.subscribe(s=>{if(s==="SUBSCRIBED"){clearTimeout(timeout);phonepadStatus("QR LISTO · ESCANEÁ PARA CONECTAR",false);resolve(s);}else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){clearTimeout(timeout);reject(new Error("Código generado, pero Realtime rechazó el canal. Revisá si los canales públicos están habilitados."));}});
+    });
   }catch(error){console.error("Phonepad pairing:",error);phonepadStatus(error.message||"NO SE PUDO VINCULAR",false);}
 }
 function pollPhonepadTimeout(){
