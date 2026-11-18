@@ -911,6 +911,7 @@ class Player {
   }
 
   update() {
+    this.prevX = this.x; this.prevY = this.y;
     let moveDir = 0;
     if (keys.Left) moveDir -= 1;
     if (keys.Right) moveDir += 1;
@@ -2380,7 +2381,8 @@ function updateAndDraw() {
       phenomena: phenomena.filter(ph => !ph.dead).map(ph => ({
         id: ph.aether3dId || (ph.aether3dId = "phenomenon-" + Math.random().toString(36).slice(2)),
         kind: ph.kind, x: ph.x, y: ph.y, radius: ph.radius,
-        timer: ph.timer, maxTimer: ph.maxTimer, angle: ph.angle,
+        timer: ph.timer, maxTimer: ph.maxTimer, detonated: !!ph.detonated,
+        blastProgress: ph.detonated ? Math.max(0, Math.min(1, ph.timer / Math.max(1, ph.maxTimer))) : 0, angle: ph.angle,
         strikeX: ph.strikeX, strikeFlash: ph.strikeFlash
       }))
     };
@@ -2565,7 +2567,13 @@ function updateAndDraw() {
   });
 
   powerups.forEach((p) => {
+    p.prevX = p.x; p.prevY = p.y;
     p.y += p.vy;
+    // Los módulos cercanos corrigen su trayectoria hacia la nave para evitar que se escapen por los laterales.
+    const dx = player.x - p.x, dy = player.y - p.y;
+    if (Math.abs(dx) < 125 && Math.abs(dy) < 190) {
+      p.x += dx * 0.055;
+    }
     if (p.y > H + 30) p.dead = true;
 
     ctx.fillStyle = p.color;
@@ -2578,9 +2586,19 @@ function updateAndDraw() {
     ctx.textBaseline = "middle";
     ctx.fillText(p.label, p.x, p.y);
 
-    if (!p.dead && Math.hypot(p.x - player.x, p.y - player.y) < player.radius + 16) {
-      p.dead = true;
-      applyPowerup(p);
+    if (!p.dead) {
+      // Colisión barrida: comprueba el recorrido relativo entre dos frames, no solo la posición final.
+      const sx = (p.prevX ?? p.x) - (player.prevX ?? player.x);
+      const sy = (p.prevY ?? p.y) - (player.prevY ?? player.y);
+      const ex = p.x - player.x, ey = p.y - player.y;
+      const vx = ex - sx, vy = ey - sy;
+      const lengthSq = vx * vx + vy * vy;
+      const t = lengthSq > 0 ? Math.max(0, Math.min(1, -(sx * vx + sy * vy) / lengthSq)) : 0;
+      const closest = Math.hypot(sx + vx * t, sy + vy * t);
+      if (closest < player.radius + 28) {
+        p.dead = true;
+        applyPowerup(p);
+      }
     }
   });
 
