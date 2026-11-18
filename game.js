@@ -2417,6 +2417,12 @@ function paintEraBackground(era) {
 
 /* ALPHA 56 — GAMEPAD API: USB / BLUETOOTH / MANDOS EXPUESTOS POR WIFI */
 const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:false,connected:false,lastName:""};
+const keyboardInput={left:false,right:false};
+const touchInput={left:false,right:false};
+function refreshHorizontalInput(){
+  keys.Left=keyboardInput.left||touchInput.left||gamepadState.left;
+  keys.Right=keyboardInput.right||touchInput.right||gamepadState.right;
+}
 function controllerStatus(message,connected=false){
   const el=document.getElementById("controller-status");if(!el)return;
   el.textContent=message;el.classList.toggle("connected",connected);
@@ -2435,14 +2441,14 @@ function gamepadMenuMove(direction){
 function pollGamepad(){
   if(!navigator.getGamepads){
     if(!gamepadState.connected)controllerStatus("MANDO NO COMPATIBLE",false);
-    keys.Left=false;keys.Right=false;return;
+    gamepadState.left=gamepadState.right=false;refreshHorizontalInput();return;
   }
   let pads=[];
   try{pads=Array.from(navigator.getGamepads()||[]).filter(Boolean);}catch(e){}
   let gp=pads.find(p=>p.index===gamepadState.index)||pads[0]||null;
   if(!gp){
     gamepadState.index=null;gamepadState.connected=false;gamepadState.buttons=[];
-    gamepadState.left=gamepadState.right=false;keys.Left=false;keys.Right=false;
+    gamepadState.left=gamepadState.right=false;refreshHorizontalInput();
     controllerStatus("CONECTÁ TU JOYSTICK",false);return;
   }
   if(!gamepadState.connected||gamepadState.index!==gp.index){
@@ -2451,7 +2457,7 @@ function pollGamepad(){
   }
   const axis=Number(gp.axes?.[0]||0),axisY=Number(gp.axes?.[1]||0),hatLeft=gamepadButton(gp,14),hatRight=gamepadButton(gp,15);
   const left=axis<-.28||hatLeft,right=axis>.28||hatRight;
-  keys.Left=left;keys.Right=right;
+  gamepadState.left=left;gamepadState.right=right;refreshHorizontalInput();
   const axisDir=Math.abs(axis)>.62?(axis<0?-1:1):Math.abs(axisY)>.62?(axisY<0?-1:1):0;
   if(state.mode!=="PLAYING"&&axisDir&&gamepadState.axisDir!==axisDir)gamepadMenuMove(axisDir);
   gamepadState.axisDir=axisDir;
@@ -2479,7 +2485,7 @@ window.addEventListener("gamepadconnected",e=>{
   controllerStatus("CONECTADO · "+gamepadState.lastName.slice(0,25),true);
 });
 window.addEventListener("gamepaddisconnected",e=>{
-  if(gamepadState.index===e.gamepad.index){gamepadState.index=null;gamepadState.connected=false;gamepadState.buttons=[];keys.Left=keys.Right=false;controllerStatus("MANDO DESCONECTADO",false);}
+  if(gamepadState.index===e.gamepad.index){gamepadState.index=null;gamepadState.connected=false;gamepadState.buttons=[];gamepadState.left=gamepadState.right=false;refreshHorizontalInput();controllerStatus("MANDO DESCONECTADO",false);}
 });
 
 function updateAndDraw() {
@@ -3721,13 +3727,15 @@ function bindHold(id, dirKey) {
   if (!el) return;
   const on = (event) => {
     event.preventDefault();
-    keys[dirKey] = true;
+    touchInput[dirKey.toLowerCase()] = true;
+    refreshHorizontalInput();
     el.classList.add("pressed");
     try { el.setPointerCapture(event.pointerId); } catch (error) {}
   };
   const off = (event) => {
     if (event) event.preventDefault();
-    keys[dirKey] = false;
+    touchInput[dirKey.toLowerCase()] = false;
+    refreshHorizontalInput();
     el.classList.remove("pressed");
   };
   el.addEventListener("pointerdown", on);
@@ -3739,17 +3747,19 @@ bindHold("btn-right", "Right");
 
 window.addEventListener("keydown", (e) => {
   if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
-  if (e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = true;
-  if (e.code === "ArrowRight" || e.code === "KeyD") keys.Right = true;
+  if (e.code === "ArrowLeft" || e.code === "KeyA") keyboardInput.left = true;
+  if (e.code === "ArrowRight" || e.code === "KeyD") keyboardInput.right = true;
+  refreshHorizontalInput();
   if ((e.code === "KeyB" || e.code === "Space") && !e.repeat) triggerSuperBomb();
   if ((e.code === "KeyP" || (e.code === "Escape" && !document.fullscreenElement)) && !e.repeat) togglePause();
 });
 
 window.addEventListener("keyup", (e) => {
-  if (e.code === "ArrowLeft" || e.code === "KeyA") keys.Left = false;
-  if (e.code === "ArrowRight" || e.code === "KeyD") keys.Right = false;
+  if (e.code === "ArrowLeft" || e.code === "KeyA") keyboardInput.left = false;
+  if (e.code === "ArrowRight" || e.code === "KeyD") keyboardInput.right = false;
+  refreshHorizontalInput();
 });
-window.addEventListener("blur", () => { keys.Left = false; keys.Right = false; });
+window.addEventListener("blur", () => { keyboardInput.left=keyboardInput.right=false;touchInput.left=touchInput.right=false;gamepadState.left=gamepadState.right=false;refreshHorizontalInput(); });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && state.mode === "PLAYING") togglePause();
 });
