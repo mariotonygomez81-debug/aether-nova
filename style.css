@@ -841,3 +841,50 @@ button:focus-visible,input:focus-visible { outline:2px solid #fff; outline-offse
 .galactic-event-card .galactic-event-countdown{color:#ffe08a;font-weight:700;font-size:11px}
 .galactic-event-panel .rank-header{align-items:center}
 .galactic-event-panel .rank-header strong{font-size:12px}
+
+
+/* Alpha 6.4 — objetivos y recompensas de eventos */
+.galactic-event-card .event-card-objective {
+  display: block;
+  margin: 7px 0;
+  color: #ffe08a;
+  font-weight: 700;
+}
+.galactic-event-progress {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(0, 240, 255, .32);
+  border-radius: 12px;
+  background: rgba(0, 20, 38, .72);
+  color: #dffaff;
+  font-size: .88rem;
+}
+.galactic-event-progress strong { color: #70f4ff; }
+.event-progress-value { font-weight: 800; color: #ffe08a; }
+.event-progress-track {
+  width: 100%;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255,255,255,.12);
+}
+.event-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00c8ff, #a78bfa);
+  transition: width .2s ease;
+}
+
+.galactic-event-history-panel {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(8, 15, 34, .7);
+  border: 1px solid rgba(167, 139, 250, .22);
+}
+.galactic-event-history-panel strong { color: #c4b5fd; font-size: .76rem; letter-spacing: .08em; }
+.galactic-event-history-panel div { display: grid; gap: 5px; }

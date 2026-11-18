@@ -1255,7 +1255,10 @@ class EnemyShip {
     this.radius = variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16;
     const scale = 1 + Math.floor(state.level / 5) * 0.35;
     const baseHp = variant === "carrier" ? 22 : variant === "bomber" ? 14 : variant === "interceptor" || variant === "lancer" ? 8 : variant === "weaver" ? 6 : 4;
-    this.hp = Math.ceil(baseHp * scale);
+    const eventScale = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
+    this.vx *= eventScale;
+    this.vy *= eventScale;
+    this.hp = Math.ceil(baseHp * scale * eventScale);
     this.fireTimer = 48 + Math.floor(Math.random() * 48);
     this.dashTimer = 90 + Math.floor(Math.random() * 90);
     this.dead = false;
@@ -1581,7 +1584,8 @@ let spawnClock = 0;
 
 function updateSpawner() {
   spawnClock++;
-  const diff = (1 + (state.level - 1) * 0.038 + Math.floor((state.level - 1) / 10) * 0.08) * (DIFFICULTY[state.difficulty]?.spawn || 1);
+  const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
+  const diff = (1 + (state.level - 1) * 0.038 + Math.floor((state.level - 1) / 10) * 0.08) * (DIFFICULTY[state.difficulty]?.spawn || 1) * eventDifficulty;
 
   if (!boss && state.levelProgress >= state.levelTarget - 1) {
     boss = new BossShip();
@@ -1605,12 +1609,14 @@ function updateSpawner() {
   const enemyCap = Math.min(IS_LOW_POWER ? 10 : 16, 4 + Math.floor(state.level / 2));
   if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss && enemies.length < enemyCap) {
     const roll = Math.random();
-    let variant = "scout";
-    if (state.level >= 30 && roll < .13) variant = "carrier";
-    else if (state.level >= 16 && roll < .31) variant = "lancer";
-    else if (state.level >= 9 && roll < .49) variant = "weaver";
-    else if (state.level >= 18 && roll < .68) variant = "bomber";
-    else if (state.level >= 6 && roll < .84) variant = "interceptor";
+    let variant = activeGalacticEvent?.enemy_variant || "scout";
+    if (!activeGalacticEvent) {
+      if (state.level >= 30 && roll < .13) variant = "carrier";
+      else if (state.level >= 16 && roll < .31) variant = "lancer";
+      else if (state.level >= 9 && roll < .49) variant = "weaver";
+      else if (state.level >= 18 && roll < .68) variant = "bomber";
+      else if (state.level >= 6 && roll < .84) variant = "interceptor";
+    }
     enemies.push(new EnemyShip(variant));
 
     // Oleadas coordinadas: desde los sectores medios aparecen formaciones,
@@ -1618,9 +1624,11 @@ function updateSpawner() {
     const waveChance = Math.min(.72, .16 + state.level * .012);
     if (state.level >= 8 && Math.random() < waveChance) {
       const waveSize = state.level >= 45 ? 3 : state.level >= 20 ? 2 : 1;
-      const formation = state.level >= 30
-        ? ["weaver", "lancer", "bomber"]
-        : state.level >= 12 ? ["scout", "interceptor", "weaver"] : ["scout", "interceptor"];
+      const formation = activeGalacticEvent
+        ? [activeGalacticEvent.enemy_variant || "scout"]
+        : state.level >= 30
+          ? ["weaver", "lancer", "bomber"]
+          : state.level >= 12 ? ["scout", "interceptor", "weaver"] : ["scout", "interceptor"];
       for (let i = 0; i < waveSize && enemies.length < enemyCap; i++) {
         enemies.push(new EnemyShip(formation[(i + Math.floor(Math.random() * formation.length)) % formation.length]));
       }
@@ -1688,6 +1696,7 @@ function advanceProgress(amount = 1) {
 }
 
 function defeatBoss() {
+  void trackGalacticEventProgress('defeat_boss', 1);
   SoundFX.play("supernova");
   spawnExplosion(boss.x, boss.y, "#ff2a85", 45);
   state.score += 1000 * state.level;
@@ -1706,6 +1715,7 @@ function completeSector() {
 
     const completed = state.level;
     state.level++;
+    void trackGalacticEventProgress('reach_sector', 1);
     state.levelProgress = 0;
     evaluateAchievements();
     void saveProgress({ quiet: true });
@@ -2040,6 +2050,7 @@ function updateAndDraw() {
   bullets = bullets.filter((b) => !b.dead);
   enemyBullets = enemyBullets.filter((eb) => !eb.dead);
   asteroids = asteroids.filter((a) => !a.dead);
+  enemies.forEach(e => { if (e.dead && !e._eventCounted) { e._eventCounted = true; void trackGalacticEventProgress('destroy_enemies', 1); } });
   enemies = enemies.filter((e) => !e.dead);
   powerups = powerups.filter((p) => !p.dead);
   particles = particles.filter((pt) => pt.life > 0);
@@ -2119,6 +2130,8 @@ function startNewGame(savedData = null) {
   spawnClock = 0;
   state.combo = 1;
   state.runRewardPaid = false;
+  eventRunProgress = 0;
+  renderEventProgress();
   state.dailyChallengeWon = false;
   state.alternateEnding = false;
   state.runMode = savedData ? (["campaign", "survival"].includes(savedData.runMode) ? savedData.runMode : "campaign") : (state.runMode || "campaign");
@@ -2623,6 +2636,97 @@ async function refreshOnlineRanking() {
     });
   } catch (error) { list.replaceChildren(); const li = document.createElement("li"); li.textContent = `Clasificación no disponible: ${error.message}`; list.append(li); }
 }
+
+let activeGalacticEvent = null;
+let eventRunProgress = 0;
+let eventClaimBusy = false;
+
+function eventObjectiveLabel(event = activeGalacticEvent) {
+  if (!event) return "";
+  const target = Math.max(1, Number(event.objective_target) || 10);
+  const labels = {
+    destroy_enemies: `Destruye ${target} naves enemigas`,
+    reach_sector: `Alcanza el sector ${target}`,
+    defeat_boss: `Derrota ${target} jefe${target === 1 ? "" : "s"}`
+  };
+  return labels[event.objective_type] || labels.destroy_enemies;
+}
+function eventProgressValue(event = activeGalacticEvent) {
+  if (!event) return 0;
+  if (event.objective_type === "reach_sector") return Math.max(0, state.level);
+  return eventRunProgress;
+}
+function renderEventProgress() {
+  const box = document.getElementById("galactic-event-progress");
+  if (!box) return;
+  if (!activeGalacticEvent) {
+    box.textContent = "No hay una misión especial activa.";
+    return;
+  }
+  const target = Math.max(1, Number(activeGalacticEvent.objective_target) || 10);
+  const current = Math.min(target, eventProgressValue());
+  box.replaceChildren();
+  const title = document.createElement("strong");
+  title.textContent = `MISIÓN ESPECIAL: ${activeGalacticEvent.title}`;
+  const objective = document.createElement("span");
+  objective.textContent = eventObjectiveLabel();
+  const progress = document.createElement("span");
+  progress.className = "event-progress-value";
+  progress.textContent = `${current} / ${target}`;
+  const reward = document.createElement("small");
+  reward.textContent = `Recompensa: ✦ ${Math.max(0, Number(activeGalacticEvent.reward_credits) || 0).toLocaleString("es-AR")} créditos`;
+  const bar = document.createElement("div");
+  bar.className = "event-progress-track";
+  const fill = document.createElement("div");
+  fill.className = "event-progress-fill";
+  fill.style.width = `${Math.min(100, current / target * 100)}%`;
+  bar.append(fill);
+  box.append(title, objective, progress, bar, reward);
+}
+async function trackGalacticEventProgress(kind, amount = 1) {
+  const event = activeGalacticEvent;
+  if (!event || eventClaimBusy || state.mode !== "PLAYING") return;
+  if (event.objective_type !== kind) return;
+  eventRunProgress += Math.max(0, Number(amount) || 0);
+  renderEventProgress();
+  const target = Math.max(1, Number(event.objective_target) || 10);
+  if (eventProgressValue(event) < target) return;
+  eventClaimBusy = true;
+  try {
+    if (!cloudSession?.user?.id) {
+      addFloatingText(W / 2, H * .3, "OBJETIVO CUMPLIDO • CONECTA TU CUENTA PARA COBRAR", "#ffd166");
+      return;
+    }
+    await cloudFetch("galactic_event_claims", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        event_id: event.id,
+        user_id: cloudSession.user.id,
+        progress: eventProgressValue(event),
+        claimed_at: new Date().toISOString()
+      })
+    });
+    const reward = Math.max(0, Number(event.reward_credits) || 0);
+    commercialData.credits += reward;
+    const bonusScore = Math.max(0, Number(event.reward_score) || 0);
+    if (bonusScore) { state.score += bonusScore; updateHUD(); }
+    saveCommercialData();
+    addFloatingText(W / 2, H * .28, `¡EVENTO COMPLETADO! +${reward.toLocaleString("es-AR")} CR • +${bonusScore.toLocaleString("es-AR")} PTS`, "#ffd166");
+    event._claimedByCurrentPilot = true;
+    renderEventProgress();
+    void loadGalacticEvents();
+  } catch (error) {
+    const msg = /duplicate|unique|23505/i.test(error.message || "")
+      ? "ESTE EVENTO YA FUE COBRADO"
+      : "OBJETIVO CUMPLIDO • ERROR AL REGISTRAR RECOMPENSA";
+    addFloatingText(W / 2, H * .3, msg, "#ff9e80");
+    console.warn("No se pudo registrar la recompensa del evento:", error);
+  } finally {
+    eventClaimBusy = false;
+  }
+}
+
 function formatEventCountdown(targetDate, now = Date.now()) {
   const remaining = Math.max(0, new Date(targetDate).getTime() - now);
   const totalSeconds = Math.floor(remaining / 1000);
@@ -2649,39 +2753,70 @@ async function loadGalacticEvents() {
   }
   try {
     const now = new Date().toISOString();
-    const events = await cloudFetch(`galactic_events?select=title,description,starts_at,ends_at&published=eq.true&ends_at=gt.${encodeURIComponent(now)}&order=starts_at.asc&limit=8`);
+    const events = await cloudFetch(`galactic_events?select=id,title,description,starts_at,ends_at,objective_type,objective_target,reward_credits,reward_score,enemy_variant,difficulty_multiplier&published=eq.true&ends_at=gt.${encodeURIComponent(now)}&order=starts_at.asc&limit=8`);
+    let claimedEventIds = [];
+    const historyBox = document.getElementById("galactic-event-history");
+    if (cloudSession?.user?.id) {
+      try {
+        const claims = await cloudFetch(`galactic_event_claims?select=event_id,progress,claimed_at,galactic_events(title)&user_id=eq.${encodeURIComponent(cloudSession.user.id)}&order=claimed_at.desc&limit=5`);
+        claimedEventIds = (claims || []).map(item => Number(item.event_id));
+        if (historyBox) {
+          historyBox.replaceChildren();
+          if (!claims?.length) historyBox.textContent = "Todavía no completaste eventos.";
+          else claims.forEach(item => {
+            const line = document.createElement("small");
+            const relatedTitle = item.galactic_events?.title || `Evento #${item.event_id}`;
+            line.textContent = `${relatedTitle} • objetivo ${item.progress} • ${new Date(item.claimed_at).toLocaleDateString("es-AR")}`;
+            historyBox.append(line);
+          });
+        }
+      } catch (historyError) {
+        if (historyBox) historyBox.textContent = "Historial temporalmente no disponible.";
+      }
+    }
     box.replaceChildren();
     if (!Array.isArray(events) || events.length === 0) {
       const small = document.createElement("small");
       small.textContent = "No hay eventos publicados vigentes o próximos. Vuelve pronto, comandante.";
+      activeGalacticEvent = null;
+      renderEventProgress();
       box.append(small);
       return;
     }
     const currentTime = Date.now();
+    activeGalacticEvent = events.find(event => new Date(event.starts_at).getTime() <= currentTime && currentTime < new Date(event.ends_at).getTime() && !claimedEventIds.includes(Number(event.id))) || null;
+    renderEventProgress();
     events.forEach(event => {
       const starts = new Date(event.starts_at).getTime();
       const ends = new Date(event.ends_at).getTime();
       if (!Number.isFinite(starts) || !Number.isFinite(ends) || ends <= starts) return;
       const active = starts <= currentTime && currentTime < ends;
+      const claimed = claimedEventIds.includes(Number(event.id));
       const article = document.createElement("article");
-      article.className = `galactic-event-card ${active ? "is-active" : "is-upcoming"}`;
+      article.className = `galactic-event-card ${claimed ? "is-claimed" : active ? "is-active" : "is-upcoming"}`;
       const state = document.createElement("span");
       state.className = "galactic-event-state";
-      state.textContent = active ? "● EVENTO EN CURSO" : "◷ EVENTO PRÓXIMO";
+      state.textContent = claimed ? "✓ EVENTO COMPLETADO" : active ? "● EVENTO EN CURSO" : "◷ EVENTO PRÓXIMO";
       const title = document.createElement("strong");
       const desc = document.createElement("p");
       const dates = document.createElement("small");
       const countdown = document.createElement("small");
       title.textContent = event.title || "Transmisión galáctica";
       desc.textContent = event.description || "Transmisión del alto mando.";
+      const objective = document.createElement('small');
+      objective.className = 'event-card-objective';
+      objective.textContent = `${eventObjectiveLabel(event)} • Recompensa: ✦ ${Math.max(0, Number(event.reward_credits) || 0).toLocaleString('es-AR')} créditos`;
       dates.textContent = `${new Date(starts).toLocaleString("es-AR")} – ${new Date(ends).toLocaleString("es-AR")}`;
       countdown.className = "galactic-event-countdown";
-      countdown.textContent = active
-        ? `Finaliza en ${formatEventCountdown(ends, currentTime)}`
-        : `Comienza en ${formatEventCountdown(starts, currentTime)}`;
-      article.append(state, title, desc, dates, countdown);
+      countdown.textContent = claimed
+        ? "Recompensa ya reclamada por este piloto"
+        : active
+          ? `Finaliza en ${formatEventCountdown(ends, currentTime)}`
+          : `Comienza en ${formatEventCountdown(starts, currentTime)}`;
+      article.append(state, title, desc, objective, dates, countdown);
       box.append(article);
     });
+    if (!activeGalacticEvent) renderEventProgress();
     if (!box.children.length) {
       const small = document.createElement("small");
       small.textContent = "No hay eventos con fechas válidas para mostrar.";
