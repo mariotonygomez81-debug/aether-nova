@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha56-1-gamepad-tv";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=alpha56-1-gamepad-tv', './aether3d.js?v=alpha56-1-gamepad-tv', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-current-branding";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=current-branding', './aether3d.js?v=alpha56-1-gamepad-tv', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
