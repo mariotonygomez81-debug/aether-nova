@@ -470,6 +470,7 @@ let enemies = [];
 let boss = null;
 let phenomena = [];
 let powerups = [];
+let creditCoins = [];
 let campaignPickupKills = 0;
 let campaignPickupIndex = 0;
 let particles = [];
@@ -1972,6 +1973,17 @@ function awardCombatCredits(amount, x, y, label) {
   addFloatingText(x, y - 22, `+${reward} CR`, "#ffd166");
 }
 
+function spawnCreditCoin(x, y, amount) {
+  creditCoins.push({
+    x, y, amount: Math.max(1, Math.floor(amount)),
+    vx: (Math.random() - 0.5) * 1.25,
+    vy: 2.15 + Math.random() * 0.65,
+    spin: Math.random() * Math.PI * 2,
+    life: 900,
+    dead: false
+  });
+}
+
 function applyPowerup(p) {
   SoundFX.play("powerup");
   addFloatingText(p.x, p.y - 15, p.text, p.color);
@@ -2065,6 +2077,7 @@ function updateSpawner() {
   if (powerupSpawnClock >= powerupInterval) {
     spawnPowerup();
     powerupSpawnClock = 0;
+  creditCoins = [];
   }
   const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(1.05, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
   // Curva de campaña: el ritmo aumenta gradualmente, sin multiplicarse de forma abrupta.
@@ -2578,6 +2591,46 @@ function updateAndDraw() {
     }
   });
 
+  creditCoins.forEach((coin) => {
+    coin.x += coin.vx;
+    coin.y += coin.vy;
+    coin.spin += 0.16;
+    coin.life--;
+    if (coin.y > H + 24 || coin.life <= 0) coin.dead = true;
+
+    // Moneda dorada visible: brillo, canto y símbolo de crédito.
+    const squash = Math.max(0.22, Math.abs(Math.cos(coin.spin)));
+    ctx.save();
+    ctx.translate(coin.x, coin.y);
+    ctx.shadowBlur = 17;
+    ctx.shadowColor = "#ffd34e";
+    ctx.fillStyle = "#9b6412";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 11 * squash, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffd34e";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 8.5 * squash, 10.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#fff1a6";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = "#74420b";
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("¢", 0, 0);
+    ctx.restore();
+
+    if (!coin.dead && Math.hypot(coin.x - player.x, coin.y - player.y) < player.radius + 15) {
+      coin.dead = true;
+      awardCombatCredits(coin.amount, coin.x, coin.y, "MONEDA");
+      SoundFX.play("powerup");
+      addFloatingText(coin.x, coin.y - 20, `+${coin.amount} CRÉDITOS`, "#ffd34e");
+    }
+  });
+
   powerups.forEach((p) => {
     p.prevX = p.x; p.prevY = p.y;
     p.y += p.vy;
@@ -2666,12 +2719,13 @@ function updateAndDraw() {
       void trackGalacticEventProgress('destroy_enemies', 1);
       if (!e._noKillReward && !e._creditsAwarded) {
         e._creditsAwarded = true;
-        awardCombatCredits(5 + Math.floor(state.level / 10), e.x, e.y, "NAVE");
+        spawnCreditCoin(e.x, e.y, 5 + Math.floor(state.level / 10));
       }
     }
   });
   enemies = enemies.filter((e) => !e.dead);
   powerups = powerups.filter((p) => !p.dead);
+  creditCoins = creditCoins.filter((coin) => !coin.dead);
   particles = particles.filter((pt) => pt.life > 0);
   floatingTexts = floatingTexts.filter((ft) => ft.life > 0);
 
