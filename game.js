@@ -2284,9 +2284,15 @@ function checkSavedRun() {
   }
 }
 
-async function registerScore() {
+let latestCloudScoreEntry = null;
+let latestCloudScoreRunId = null;
+
+function registerScore() {
   const pilotName = activeProfile ? activeProfile.name : "Comandante";
   const entry = { name: pilotName, score: state.score, level: state.level, mode: state.runMode || "campaign" };
+  latestCloudScoreEntry = entry;
+  latestCloudScoreRunId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `run-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  updateCloudScoreStatus("Preparando envío de puntuación…");
   const stored = readStoredJSON("aether_nova_rank", []);
   const list = Array.isArray(stored) ? stored.filter(r => r && typeof r === "object") : [];
   list.push(entry);
@@ -2296,7 +2302,7 @@ async function registerScore() {
 
 
   renderRanking();
-  void submitCloudScore(entry);
+  void submitCloudScore(entry, latestCloudScoreRunId);
 }
 
 function renderRanking() {
@@ -2544,15 +2550,56 @@ async function restoreCloudSave() {
     cloudSetStatus(`Progreso recuperado. Copia del ${new Date(rows[0].updated_at).toLocaleString("es-AR")}.`);
   } catch (error) { cloudSetStatus(error.message, true); }
 }
-async function submitCloudScore(entry) {
-  if (!cloudSession?.user?.id || !cloudConfigured()) return;
+function updateCloudScoreStatus(message, isError = false) {
+  const status = document.getElementById("cloud-score-status");
+  if (status) {
+    status.textContent = message;
+    status.dataset.state = isError ? "error" : "ok";
+  }
+}
+async function submitLatestCloudScore() {
+  if (!latestCloudScoreEntry || !latestCloudScoreRunId) {
+    updateCloudScoreStatus("No hay una puntuación reciente para enviar.", true);
+    return;
+  }
+  await submitCloudScore(latestCloudScoreEntry, latestCloudScoreRunId);
+}
+async function submitCloudScore(entry, runId) {
+  if (!cloudConfigured()) {
+    updateCloudScoreStatus("Backend no configurado. El récord local quedó guardado.", true);
+    return false;
+  }
+  if (!cloudSession?.user?.id || !cloudSession?.access_token) {
+    updateCloudScoreStatus("Inicia sesión online para enviar esta puntuación. El récord local está conservado.", true);
+    return false;
+  }
+  const markerKey = "aether_cloud_submitted_runs_v1";
+  const submitted = readStoredJSON(markerKey, []);
+  if (Array.isArray(submitted) && submitted.includes(runId)) {
+    updateCloudScoreStatus("Esta partida ya fue enviada a la clasificación galáctica.");
+    return true;
+  }
+  const button = document.getElementById("btn-submit-score");
+  if (button) { button.disabled = true; button.textContent = "ENVIANDO…"; }
+  updateCloudScoreStatus("Enviando resultado a la clasificación galáctica…");
   try {
     await cloudFetch("leaderboard", {
       method: "POST", headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: String(entry.name || "Comandante").slice(0, 16), score: Math.max(0, Math.floor(entry.score)), sector: Math.max(1, Math.floor(entry.level)), mode: ["campaign", "survival", "daily"].includes(entry.mode) ? entry.mode : "campaign" })
     });
+    const nextSubmitted = Array.isArray(submitted) ? submitted : [];
+    nextSubmitted.push(runId);
+    try { localStorage.setItem(markerKey, JSON.stringify(nextSubmitted.slice(-100))); } catch (_) {}
+    updateCloudScoreStatus("✓ Puntuación enviada correctamente. Ya figura en la clasificación galáctica.");
     await refreshOnlineRanking();
-  } catch (error) { console.warn("No se pudo enviar el récord online:", error); }
+    return true;
+  } catch (error) {
+    console.warn("No se pudo enviar el récord online:", error);
+    updateCloudScoreStatus(`No se pudo enviar: ${error.message}. Puedes reintentar con el botón.`, true);
+    return false;
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "REENVIAR PUNTUACIÓN"; }
+  }
 }
 async function refreshOnlineRanking() {
   const list = document.getElementById("online-ranking-list");
@@ -2730,6 +2777,7 @@ bindTap("btn-cloud-upload", uploadCloudSave);
 bindTap("btn-cloud-restore", restoreCloudSave);
 bindTap("btn-cloud-logout", cloudLogout);
 bindTap("btn-refresh-online-rank", refreshOnlineRanking);
+bindTap("btn-submit-score", submitLatestCloudScore);
 bindTap("btn-logout", () => {
   activeProfile = null;
   localStorage.removeItem("aether_profile");

@@ -814,3 +814,18 @@ button:focus-visible,input:focus-visible { outline:2px solid #fff; outline-offse
 @media(max-width:520px){.cloud-actions button{min-width:100px;font-size:10px}.cloud-login,.cloud-account-box,.online-rank-panel,.galactic-event-panel{padding:9px}}
 
 .cosmetic-profile-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;color:#b8d8f2;font-size:11px}.cosmetic-profile-row select{max-width:58%;padding:8px;border-radius:8px;border:1px solid rgba(108,180,255,.28);background:#071020;color:#eaf6ff}
+
+/* Alpha 6.2 — envío visible de puntuaciones */
+.cloud-score-submit {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+.cloud-score-submit small {
+  display: block;
+  color: var(--muted, #a9b7ca);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+.cloud-score-submit small[data-state="error"] { color: #ff9b9b; }
+#btn-submit-score:disabled { opacity: .65; cursor: wait; }

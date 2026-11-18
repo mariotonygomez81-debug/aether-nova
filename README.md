@@ -1,4 +1,4 @@
-# AETHER NOVA: ECLIPSE — Comercial 3.0 Alpha 5
+# AETHER NOVA: ECLIPSE — Comercial 3.0 Alpha 6.2
 
 PWA arcade espacial híbrida con campaña de 100 sectores, supervivencia infinita, desafíos diarios, progresión local, perfiles online opcionales, copia de nube y clasificación semanal.
 
@@ -25,3 +25,4 @@ Consulta `ETAPA_6_ONLINE_HIBRIDA.md`. La experiencia local funciona sin backend.
 
 ## Alpha 6.1 — Seguridad online
 Sesiones temporales, renovación y revocación de sesión, timeout de red, validación previa de restauración y límite de tamaño para copias. Ver `ETAPA_6_1_SEGURIDAD_SINCRONIZACION.md`. La conexión Supabase sigue desactivada hasta configurar credenciales públicas del proyecto.
+\n\n## Alpha 6.2 — Ranking visible\nLa pantalla de resultado informa el envío online de puntuaciones y permite reintentar si falla. El ranking semanal conserva su actualización manual. Consulta `ETAPA_6_2_RANKING_VISIBLE.md` para publicar y probar.\n
