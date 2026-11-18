@@ -547,10 +547,73 @@ function renderHangar() {
       if (level >= def.max || commercialData.credits < cost) return;
       commercialData.credits -= cost; commercialData.upgrades[def.id] = level + 1;
       SoundFX.play("powerup"); saveCommercialData(); renderHangar();
+      const loadoutNotice = document.getElementById("hangar-purchase-status");
+      if (loadoutNotice) loadoutNotice.textContent = `${def.name} instalado en nivel ${level + 1}. El cambio se aplicará en tu próxima expedición.`;
     });
     card.append(title, desc, rank, buy); grid.append(card);
   });
+  renderHangarLoadout();
   updateCommercialUI();
+}
+function renderHangarLoadout() {
+  const panel = document.getElementById("hangar-loadout");
+  if (!panel) return;
+  const upgrades = commercialData.upgrades || {};
+  const ship = SHIP_TYPES[state.selectedShip] || SHIP_TYPES.valkyrie;
+  const reactor = upgrades.reactor || 0;
+  const cannon = upgrades.cannon || 0;
+  const hull = upgrades.hull || 0;
+  const bombs = upgrades.bombBay || 0;
+  const aegis = upgrades.aegis || 0;
+  const missiles = upgrades.seeker || 0;
+  const drones = upgrades.droneBay || 0;
+  const speed = (ship.speed * (1 + reactor * 0.05)).toFixed(2);
+  const fireRate = Math.max(4, ship.fireRate * (1 - cannon * 0.045) * (1 - (state.selectedShip === "valkyrie" ? 0.06 : 0))).toFixed(1);
+  const installed = UPGRADE_DEFS.filter(def => (upgrades[def.id] || 0) > 0);
+  panel.replaceChildren();
+  const heading = document.createElement("div");
+  heading.className = "hangar-loadout-heading";
+  const title = document.createElement("strong");
+  title.textContent = `CONFIGURACIÓN ACTIVA • ${ship.name}`;
+  const note = document.createElement("span");
+  note.textContent = "Las mejoras compradas se aplican al comenzar la próxima expedición.";
+  heading.append(title, note);
+  const stats = document.createElement("div");
+  stats.className = "hangar-loadout-stats";
+  const values = [
+    ["VELOCIDAD", `${speed}`, `Base ${ship.speed.toFixed(1)} · Reactor +${reactor * 5}%`],
+    ["INTERVALO DE DISPARO", `${fireRate}`, "Menor intervalo = dispara más rápido"],
+    ["DAÑO DEL CAÑÓN", `x${(1 + cannon * 0.12).toFixed(2)}`, `Bonificación de daño +${cannon * 12}%`],
+    ["CASCO", `${Math.min(6, ship.lives + hull)}`, `${ship.lives} base · +${hull} blindaje`],
+    ["SUPER BOMBAS", `${Math.min(5, 1 + bombs)}`, `Bodega táctica nivel ${bombs}`],
+    ["ESCUDO AEGIS", `${Math.min(3, aegis)}`, "Cargas protectoras iniciales"],
+    ["MISILES", `${missiles}/3`, "Lanzamiento guiado periódico"],
+    ["DRONES", `${drones}/3`, "Disparos laterales de escolta"],
+    ["SALVAMENTO", `+${(upgrades.salvage || 0) * 8}%`, "Créditos adicionales por misión"]
+  ];
+  values.forEach(([label, value, detail]) => {
+    const item = document.createElement("div"); item.className = "hangar-loadout-stat";
+    const name = document.createElement("span"); name.textContent = label;
+    const strong = document.createElement("strong"); strong.textContent = value;
+    const small = document.createElement("small"); small.textContent = detail;
+    item.append(name, strong, small); stats.append(item);
+  });
+  const tech = document.createElement("div"); tech.className = "hangar-installed-tech";
+  const techTitle = document.createElement("strong"); techTitle.textContent = "SISTEMAS INSTALADOS";
+  const tags = document.createElement("div"); tags.className = "hangar-tech-tags";
+  if (!installed.length) {
+    const empty = document.createElement("span"); empty.className = "hangar-tech-empty";
+    empty.textContent = "Todavía no hay mejoras instaladas. Compra un módulo para modificar esta configuración.";
+    tags.append(empty);
+  } else {
+    installed.forEach(def => {
+      const tag = document.createElement("span"); tag.className = "hangar-tech-tag";
+      tag.textContent = `${def.name} • NIVEL ${upgrades[def.id]}/${def.max}`;
+      tags.append(tag);
+    });
+  }
+  tech.append(techTitle, tags);
+  panel.append(heading, stats, tech);
 }
 function awardRunCredits(victory) {
   if (state.runRewardPaid) return 0;
@@ -2930,6 +2993,7 @@ document.querySelectorAll(".ship-opt").forEach((btn) => {
     document.querySelectorAll(".ship-opt").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     state.selectedShip = btn.dataset.ship;
+    if (typeof renderHangarLoadout === "function") renderHangarLoadout();
   });
 });
 
