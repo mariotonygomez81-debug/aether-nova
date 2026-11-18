@@ -2461,11 +2461,11 @@ async function startPhonepadPairing(){
     const linkEl=document.getElementById("phonepad-link");if(linkEl){linkEl.href=link.href;linkEl.textContent=link.href;}
     const qr=document.getElementById("phonepad-qr");if(qr){qr.innerHTML="";if(window.QRCode)new QRCode(qr,{text:link.href,width:150,height:150,colorDark:"#07111f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});else qr.textContent="Abrí el enlace del mando y escribí el código.";}
     document.getElementById("phonepad-pairing")?.classList.remove("hidden");
-    phonepadStatus("ESPERANDO EL CELULAR…",false);
+    phonepadStatus("QR LISTO · ESCANEÁ PARA CONECTAR",false);
   }catch(error){console.error("Phonepad pairing:",error);phonepadStatus(error.message||"NO SE PUDO VINCULAR",false);}
 }
 function pollPhonepadTimeout(){
-  if(phonepadState.connected&&Date.now()-phonepadState.lastAt>1300){phonepadState.connected=false;phonepadRelease();phonepadStatus("CELULAR DESCONECTADO",false);}
+  if(phonepadState.connected&&Date.now()-phonepadState.lastAt>1800){phonepadState.connected=false;phonepadRelease();phonepadStatus("CELULAR DESCONECTADO · ESCANEÁ EL QR PARA REINTENTAR",false);}
 }
 function controllerStatus(message,connected=false){
   const el=document.getElementById("controller-status");if(!el)return;
