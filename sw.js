@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha46-dynamic-powerup-flow";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha46-dynamic-powerup-flow', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha47-meteor-powerups-combat-credits";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha47-meteor-powerups-combat-credits', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
