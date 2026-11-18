@@ -1238,14 +1238,14 @@ class CosmicPhenomenon {
       }
     } else if (this.kind === "magnetar") {
       // Pulsos gravitomagnéticos expansivos: empujan nave, enemigos y rocas.
-      const phase = this.timer % 105;
-      const pulseRadius = phase * 5.2;
-      const waveNumber = Math.floor(this.timer / 105);
-      if (phase > 3 && phase < 68) {
+      const phase = this.timer % 140;
+      const pulseRadius = phase * 7.6;
+      const waveNumber = Math.floor(this.timer / 140);
+      if (phase > 3 && phase < 108) {
         const repel = (obj, strength) => {
           const dx = obj.x - this.x, dy = obj.y - this.y, d = Math.hypot(dx, dy);
           if (d < pulseRadius + 24 && d > 8 && d > pulseRadius - 28) {
-            const f = strength * (1 - Math.min(1, d / 620));
+            const f = strength * (1 - Math.min(.72, d / 1100));
             obj.x += dx / d * f; obj.y += dy / d * f;
           }
         };
@@ -1253,21 +1253,20 @@ class CosmicPhenomenon {
         enemies.forEach(e => repel(e, 9));
         if (boss && !boss.dead) repel(boss, 11);
         bullets.forEach(b => repel(b, 8));
-        if (player.buffs.faraday <= 0) {
-          const distance = Math.hypot(player.x - this.x, player.y - this.y);
-          if (Math.abs(distance - pulseRadius) < 28 && this.lastPlayerPulse !== waveNumber) {
-            this.lastPlayerPulse = waveNumber;
-            player.absorbCosmicThreat("DESTRUIDO POR ONDA GRAVITACIONAL DEL MAGNETAR", "faraday");
-            state.shake = Math.max(state.shake, 15);
-          }
-          if (state.mode === "PLAYING") {
-            const beforeX = player.x, beforeY = player.y;
-            repel(player, 12);
-            if (beforeX !== player.x || beforeY !== player.y) {
-              state.shake = Math.max(state.shake, 7);
-              if (phase <= 14) addFloatingText(player.x, player.y - 25, "¡ONDA GRAVITACIONAL!", "#e879f9");
-            }
-          }
+        const distance = Math.hypot(player.x - this.x, player.y - this.y);
+        const waveContact = Math.abs(distance - pulseRadius) < 34;
+        if (player.buffs.faraday <= 0 && waveContact && this.lastPlayerPulse !== waveNumber) {
+          this.lastPlayerPulse = waveNumber;
+          const survived = player.absorbCosmicThreat("DESTRUIDO POR ONDA GRAVITACIONAL DEL MAGNETAR", "faraday");
+          if (survived && state.mode === "PLAYING") repel(player, 30);
+          state.shake = Math.max(state.shake, 17);
+        } else if (state.mode === "PLAYING") {
+          const beforeX = player.x, beforeY = player.y;
+          repel(player, 24);
+          if (beforeX !== player.x || beforeY !== player.y) state.shake = Math.max(state.shake, 9);
+        }
+        if (phase <= 5 && this.lastPlayerPulse !== waveNumber) {
+          addFloatingText(this.x, this.y - 34, "¡PULSO GRAVITACIONAL!", "#e879f9");
         }
         enemyBullets.forEach(b => repel(b, 8));
       }
@@ -1349,6 +1348,18 @@ class CosmicPhenomenon {
       defeatBoss();
     }
     spawnExplosion(this.x, this.y, "#ffffff", 40);
+    const cap = IS_LOW_POWER ? 72 : 118;
+    const palette = ["#ffffff", "#fff1a8", "#ffb347", "#ff5b35", "#ff2f75", "#8feaff"];
+    for (let i = 0; i < cap && particles.length < (IS_LOW_POWER ? 75 : 145); i++) {
+      const angle = Math.random() * Math.PI * 2, shell = i % 3;
+      const speed = (shell === 0 ? 5.5 : shell === 1 ? 9 : 13) + Math.random() * 4.5;
+      particles.push({
+        x: this.x + Math.cos(angle) * (shell * 5), y: this.y + Math.sin(angle) * (shell * 5),
+        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+        life: 34 + Math.random() * 24, maxLife: 58,
+        color: palette[i % palette.length], size: (shell === 2 ? 5 : 3) + Math.random() * 3
+      });
+    }
     player.absorbCosmicThreat("DESTRUIDO POR LA EXPLOSIÓN DE SUPERNOVA", "cryo");
   }
 
@@ -1357,25 +1368,29 @@ class CosmicPhenomenon {
     ctx.translate(this.x, this.y);
 
     if (this.kind === "supernova") {
-      ctx.strokeStyle = "rgba(255, 85, 0, 0.5)";
-      ctx.setLineDash([8, 6]);
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, 173, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      const g = ctx.createRadialGradient(0, 0, 4, 0, 0, this.radius);
-      g.addColorStop(0, "#ffffff");
-      g.addColorStop(0.4, "#ffcc33");
-      g.addColorStop(0.8, "#ff3b00");
-      g.addColorStop(1, "rgba(255, 0, 0, 0)");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-      ctx.fill();
+      const pulse = 1 + Math.sin(this.timer * .19) * .1, charge = this.timer / this.maxTimer;
+      ctx.save(); ctx.rotate(this.angle * 1.7);
+      for (let i = 0; i < 16; i++) {
+        const a = i * Math.PI / 8, inner = this.radius * .72;
+        const outer = this.radius * (1.25 + .28 * Math.sin(this.timer * .13 + i));
+        ctx.strokeStyle = i % 3 === 0 ? "rgba(255,255,225,.95)" : "rgba(255,105,35,.72)";
+        ctx.lineWidth = i % 3 === 0 ? 3 : 1.6;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);
+        ctx.lineTo(Math.cos(a+.08)*outer,Math.sin(a+.08)*outer); ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle = "rgba(255,210,120,.68)"; ctx.lineWidth = 3 + charge * 3;
+      ctx.beginPath(); ctx.arc(0,0,this.radius*1.45*pulse,0,Math.PI*2); ctx.stroke();
+      const glow = ctx.createRadialGradient(0,0,2,0,0,this.radius*1.65);
+      glow.addColorStop(0,"#ffffff"); glow.addColorStop(.18,"#fff8cf");
+      glow.addColorStop(.42,"#ffb52e"); glow.addColorStop(.72,"#ff4b20");
+      glow.addColorStop(1,"rgba(255,35,0,0)");
+      ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,0,this.radius*1.65*pulse,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#fff"; ctx.shadowBlur=IS_LOW_POWER?0:24; ctx.shadowColor="#ffb347";
+      ctx.beginPath(); ctx.arc(0,0,Math.max(5,this.radius*.2),0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
     } else if (this.kind === "blackhole") {
       const pulse = 1 + Math.sin(this.timer * .09) * .07;
+      ctx.scale(1.24, 1.24);
       ctx.rotate(this.angle * 1.7);
       // Disco de acreción en dos anillos: el núcleo permanece negro.
       for (let i = 0; i < 3; i++) {
@@ -1393,14 +1408,19 @@ class CosmicPhenomenon {
       ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill();
       ctx.strokeStyle="rgba(160,110,255,.8)"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,0,29,0,Math.PI*2); ctx.stroke();
     } else if (this.kind === "magnetar") {
-      const wave = 28 + (this.timer % 70) * 1.15;
+      const phase = this.timer % 140, wave = phase * 7.6;
       ctx.rotate(-this.angle * 1.4);
-      // Líneas curvas del campo magnético y pulsos concéntricos.
-      ctx.strokeStyle="rgba(198,80,255,.35)"; ctx.lineWidth=2;
-      for(let i=0;i<4;i++){ ctx.beginPath(); ctx.ellipse(0,0,26+i*13,48+i*12,0,0,Math.PI*2); ctx.stroke(); }
-      ctx.strokeStyle="rgba(255,90,245,.9)"; ctx.lineWidth=3;
-      ctx.beginPath(); ctx.ellipse(0,0,wave,wave*.62,0,0,Math.PI*2); ctx.stroke();
-      ctx.fillStyle="rgba(180,70,255,.18)"; ctx.beginPath(); ctx.arc(0,0,42,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="rgba(198,80,255,.38)"; ctx.lineWidth=2.5;
+      for(let i=0;i<5;i++){ ctx.beginPath(); ctx.ellipse(0,0,26+i*13,48+i*12,0,0,Math.PI*2); ctx.stroke(); }
+      for(let ring=0;ring<3;ring++){
+        const r=Math.max(8,wave-ring*115), alpha=Math.max(.08,.92-(phase/112));
+        ctx.strokeStyle=ring===0?"rgba(255,245,255,"+alpha+")":(ring===1?"rgba(224,105,255,"+(alpha*.82)+")":"rgba(95,225,255,"+(alpha*.82)+")");
+        ctx.lineWidth=ring===0?5:3; ctx.shadowBlur=IS_LOW_POWER?0:18;
+        ctx.shadowColor=ring===1?"#d946ef":"#67e8f9";
+        ctx.beginPath(); ctx.ellipse(0,0,r,r*.72,0,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.shadowBlur=0;
+      ctx.fillStyle="rgba(180,70,255,.22)"; ctx.beginPath(); ctx.arc(0,0,48,0,Math.PI*2); ctx.fill();
       const mg=ctx.createRadialGradient(-5,-7,2,0,0,24); mg.addColorStop(0,"#fff"); mg.addColorStop(.35,"#f0abfc"); mg.addColorStop(1,"#7e22ce");
       ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(0,0,19,0,Math.PI*2); ctx.fill();
       ctx.fillStyle="#fff"; ctx.fillRect(-2,-52,4,104);
