@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha35-distinct-ship-models";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha35-distinct-ship-models', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha36-sculpted-fleet";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha36-sculpted-fleet', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
