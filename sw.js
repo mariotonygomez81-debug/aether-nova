@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha30-eclipse-soundtrack";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha30-eclipse-soundtrack', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha31-audio-unmuted-fix";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha31-audio-unmuted-fix', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
