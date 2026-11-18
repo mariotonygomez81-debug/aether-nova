@@ -604,7 +604,7 @@ function makePhenomenon(kind){
   const halo=ring(2.85,.055,additive(0x56cfff,.42));halo.rotation.x=Math.PI/2.12;g.add(halo);halo.userData.halo=true;
   const light=new THREE.PointLight(0xff8a43,14,34);g.add(light);
  }else if(kind==='supernova'){
-  const core=sphere(.72,new THREE.MeshBasicMaterial({color:0xffffff}),48);g.add(core);
+  const core=sphere(.72,additive(0xffffff,.98),48);core.userData.blastCore=true;g.add(core);
   const inner=sphere(1.02,additive(0xfff1b8,.82),48);g.add(inner);inner.userData.corona=1;
   const outer=sphere(1.8,additive(0xff4b27,.24),48);g.add(outer);outer.userData.corona=2;
   const hotHalo=ring(1.45,.15,additive(0xffe1a0,.92),144);hotHalo.rotation.x=Math.PI/2.2;g.add(hotHalo);hotHalo.userData.hotHalo=true;
@@ -637,7 +637,7 @@ function makePhenomenon(kind){
   }
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));pg.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
   const debris=new THREE.Points(pg,new THREE.PointsMaterial({size:.105,vertexColors:true,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));debris.userData.debris=true;debris.userData.directions=directions;debris.userData.initialPositions=positions.slice();g.add(debris);
-  const light=new THREE.PointLight(0xff8a42,42,90);g.add(light);
+  const light=new THREE.PointLight(0xff8a42,42,90);light.userData.blastLight=true;g.add(light);
   const flash=sphere(1.65,additive(0xffffff,.42),40);g.add(flash);flash.userData.flash=true;
  }else if(kind==='magnetar'){
   const star=sphere(.72,new THREE.MeshStandardMaterial({color:0xf1e5ff,emissive:0x9c27ff,emissiveIntensity:5,metalness:.18,roughness:.16}),40);g.add(star);
@@ -677,25 +677,26 @@ function syncPhenomena(items,width,height,now){
   let g=phenomenonMeshes.get(item.id);
   if(!g){g=makePhenomenon(item.kind);scene.add(g);phenomenonMeshes.set(item.id,g);}
   g.visible=true;g.position.copy(worldPos(item.x,item.y,width,height,-13));
-  const age=item.timer||0,life=Math.max(1,item.maxTimer||250),progress=Math.min(1,age/life);
+  const age=item.timer||0,life=Math.max(1,item.maxTimer||250),progress=item.kind==='supernova'&&item.detonated?Math.max(0,Math.min(1,Number(item.blastProgress)||0)):Math.min(1,age/life);
   if(item.kind==='supernova'){
-   const base=Math.max(.5,(item.radius||18)/36),pulse=1+Math.sin(phase*4.5)*.055;
+   // La detonación usa su propio reloj y escala: no hereda el radio de carga 2D (220 px).
+   const base=item.detonated?1:Math.max(.5,(item.radius||18)/36),pulse=1+Math.sin(phase*4.5)*.055;
    g.scale.setScalar(base*pulse);g.rotation.y=phase*.18;
    g.children.forEach((o,i)=>{
     if(o.userData.shock!==undefined){
-     const k=o.userData.shock,spread=.22+progress*(5.1+k*.34);
+     const k=o.userData.shock,spread=.28+progress*(7.2+k*.52);
      o.scale.setScalar(spread);o.rotation.z=phase*(.18+k*.075);o.rotation.x=Math.PI/2.4+k*.53;
      o.material.opacity=Math.max(0,(.98-k*.12)*(1-progress*.82));
     }
     if(o.userData.blastShell!==undefined){
-     const k=o.userData.blastShell,spread=.28+progress*(4.8+k*.58);
+     const k=o.userData.blastShell,spread=.22+progress*(6.8+k*.7);
      o.scale.setScalar(spread);o.material.opacity=Math.max(0,[.3,.2,.13][k]*(1-progress*.9));
     }
     if(o.userData.wave!==undefined){
      const k=o.userData.wave,p=(progress*1.55+k*.3)%1;
      o.scale.setScalar(.35+p*(4.5+k*.5));o.material.opacity=.25*(1-p)*(1-progress*.55);
     }
-    if(o.userData.corona){const k=o.userData.corona;o.scale.setScalar(k===1?1.05+Math.sin(phase*5)*.13:1.8+Math.sin(phase*2.2)*.2);o.material.opacity=k===1?.62:.22;}
+    if(o.userData.corona){const k=o.userData.corona;o.scale.setScalar((k===1?1.05+Math.sin(phase*5)*.13:1.8+Math.sin(phase*2.2)*.2)*(item.detonated?1+progress*2.2:1));o.material.opacity=(k===1?.62:.22)*(item.detonated?1-progress:1);}
     if(o.userData.hotHalo){o.rotation.z=phase*.35;o.scale.setScalar(1+progress*4.4);o.material.opacity=Math.max(0,.92*(1-progress*.82));}
     if(o.userData.filaments){
      const attr=o.geometry.attributes.position,initial=o.userData.initialPositions,len=1+progress*5.2;
@@ -705,7 +706,9 @@ function syncPhenomena(items,width,height,now){
      }
      attr.needsUpdate=true;o.material.opacity=Math.max(0,.9*(1-progress));
     }
-    if(o.userData.flash){const f=Math.min(1,age/9);o.scale.setScalar(1+f*5.4);o.material.opacity=Math.max(0,.42*(1-f));}
+    if(o.userData.flash){const f=Math.min(1,age/9);o.scale.setScalar(1+f*7.2);o.material.opacity=Math.max(0,.72*(1-f));}
+    if(o.userData.blastCore){o.scale.setScalar(1+progress*2.2);o.material.opacity=Math.max(0,.98*(1-progress));}
+    if(o.userData.blastLight){o.intensity=46*(1-progress);o.distance=95+progress*35;}
     if(o.userData.debris){
      const attr=o.geometry.attributes.position,dirs=o.userData.directions,initial=o.userData.initialPositions;
      for(let j=0;j<attr.count;j++){
