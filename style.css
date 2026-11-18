@@ -971,3 +971,59 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 @keyframes hero-engine-pulse{from{opacity:.65;transform:scaleY(.82)}to{opacity:1;transform:scaleY(1.18)}}
 @media(max-width:520px){.menu-cinematic-hero{height:150px;margin-bottom:10px}.hero-ship{width:76%;left:0}.hero-planet{right:10%;width:70px}.hero-caption{left:10px;bottom:10px}.hero-coordinate{font-size:6px;right:8px;bottom:11px}.main-card{max-width:100%}}
 @media(prefers-reduced-motion:reduce){.hero-starfield,.hero-starfield:before,.hero-starfield:after,.hero-nebula,.hero-planet,.hero-ship,.hero-engine-glow{animation:none!important}}
+
+
+/* ALPHA 27 — portada expandida: centro de mando cinematográfico */
+.overlay:has(.main-card){align-items:flex-start;padding:clamp(12px,2.4vw,30px);background:radial-gradient(ellipse at 50% 0%,rgba(10,72,125,.25),transparent 52%),radial-gradient(ellipse at 88% 48%,rgba(87,24,125,.13),transparent 38%),rgba(2,4,12,.94)}
+.main-card{width:min(100%,1160px);max-width:1160px;max-height:none;overflow:visible;margin:auto;padding:clamp(16px,2.2vw,28px);border-radius:24px;position:relative}
+.menu-cinematic-hero{height:clamp(250px,34vw,390px);margin-bottom:20px;border-radius:20px;background:radial-gradient(ellipse at 40% 75%,rgba(0,210,255,.27),transparent 42%),radial-gradient(ellipse at 80% 30%,rgba(120,54,190,.3),transparent 35%),linear-gradient(110deg,#020712,#071a36 48%,#160b2b)}
+.menu-cinematic-hero:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(2,8,20,.04),transparent 52%,rgba(2,8,20,.22)),linear-gradient(0deg,rgba(2,5,15,.8),transparent 43%)}
+.hero-ship{width:min(68%,650px);height:96%;left:2%;top:-1%;filter:drop-shadow(0 0 18px rgba(0,220,255,.62)) drop-shadow(0 18px 20px rgba(0,0,0,.45))}
+.hero-planet{width:clamp(125px,17vw,210px);right:13%;top:10%;box-shadow:0 0 34px #3a9bdc,0 0 100px rgba(30,140,255,.48),inset -28px -15px 36px #020615}
+.hero-planet-ring{width:clamp(200px,29vw,340px);height:64px;right:6%;top:37%;border-width:3px;filter:drop-shadow(0 0 9px #36bfff)}
+.hero-caption{left:clamp(18px,3vw,38px);bottom:clamp(18px,2.8vw,32px);z-index:2;gap:8px}
+.hero-caption span{font-size:10px;color:#8ef4ff}
+.hero-caption strong{font-size:clamp(17px,2.5vw,27px);letter-spacing:.13em}
+.hero-coordinate{z-index:2;right:clamp(18px,3vw,38px);bottom:25px;font-size:9px}
+.badge{margin-top:2px}
+.game-title{font-size:clamp(38px,5vw,58px);letter-spacing:.14em;margin-bottom:10px}
+.game-title span{font-size:clamp(20px,2.5vw,27px);letter-spacing:.62em}
+.lore-intro{max-width:760px;margin:0 auto 22px;font-size:14px;line-height:1.65}
+.command-showcase{margin:0 0 22px;padding:18px;border:1px solid rgba(80,190,255,.25);border-radius:18px;background:linear-gradient(125deg,rgba(6,19,40,.9),rgba(12,10,31,.88));box-shadow:inset 0 0 35px rgba(0,145,255,.055)}
+.showcase-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;text-align:left}
+.showcase-heading span{font-size:9px;font-weight:900;letter-spacing:.18em;color:#65e8ff}
+.showcase-heading strong{font-size:clamp(10px,1.25vw,13px);letter-spacing:.1em;color:#d9eaff}
+.showcase-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.showcase-card{position:relative;isolation:isolate;min-height:126px;display:flex;align-items:flex-start;gap:11px;overflow:hidden;padding:15px 12px;border:1px solid rgba(119,177,230,.2);border-radius:13px;background:linear-gradient(145deg,rgba(15,35,64,.86),rgba(5,12,29,.9));text-align:left;transition:transform .25s,border-color .25s,box-shadow .25s}
+.showcase-card:hover{transform:translateY(-4px);border-color:rgba(94,226,255,.65);box-shadow:0 10px 28px rgba(0,160,255,.13)}
+.showcase-card:after{content:"";position:absolute;z-index:-1;width:150px;height:150px;right:-70px;bottom:-95px;border-radius:50%;background:radial-gradient(circle,rgba(0,190,255,.2),transparent 68%)}
+.showcase-icon{flex:0 0 32px;width:32px;height:32px;display:grid;place-items:center;border-radius:10px;color:#8ff5ff;font-size:20px;border:1px solid rgba(88,225,255,.35);background:rgba(0,190,255,.1);box-shadow:0 0 18px rgba(0,190,255,.1)}
+.showcase-card div{min-width:0;display:grid;gap:5px}
+.showcase-card small{font-size:8px;font-weight:900;letter-spacing:.12em;color:#86b6d9}
+.showcase-card strong{font-size:clamp(11px,1.2vw,14px);letter-spacing:.06em;color:#f3fbff}
+.showcase-card p{max-width:210px;font-size:10px;line-height:1.45;color:#a9bdd5}
+.showcase-card i{position:absolute;right:8px;bottom:7px;width:46px;height:46px;opacity:.65;pointer-events:none}
+.sector-orbit{border:1px solid #49dfff;border-radius:50%;transform:rotate(-28deg) scaleY(.38);box-shadow:0 0 12px #159cff}
+.sector-orbit:after{content:"";position:absolute;inset:9px;border:1px solid rgba(140,225,255,.6);border-radius:50%}
+.boss-silhouette{background:linear-gradient(135deg,transparent 20%,rgba(255,80,115,.8) 21% 28%,transparent 29% 40%,rgba(255,80,115,.55) 41% 48%,transparent 49%);clip-path:polygon(50% 0,68% 30%,100% 40%,76% 58%,84% 100%,50% 76%,16% 100%,24% 58%,0 40%,32% 30%)}
+.fleet-silhouette{border:1px solid rgba(0,230,255,.5);clip-path:polygon(50% 0,62% 43%,100% 82%,61% 72%,50% 100%,39% 72%,0 82%,38% 43%);background:linear-gradient(180deg,#b8faff,#087ab6 55%,#071b37);filter:drop-shadow(0 0 7px #00dfff)}
+.event-singularity{border-radius:50%;background:radial-gradient(circle,#02030a 0 24%,#ffb35b 27% 32%,#ff5b24 35% 39%,transparent 42%);filter:drop-shadow(0 0 8px #ff7b39);animation:singularity-pulse 3s ease-in-out infinite}
+.showcase-footer{display:flex;justify-content:space-between;gap:10px;margin-top:13px;padding-top:11px;border-top:1px solid rgba(120,170,220,.15);font-size:8px;font-weight:800;letter-spacing:.12em;color:#7899ba}
+.signal-live{display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:#4dffba;box-shadow:0 0 9px #4dffba;animation:signal-blink 1.4s infinite}
+@keyframes singularity-pulse{0%,100%{transform:scale(.92);filter:drop-shadow(0 0 6px #ff7b39)}50%{transform:scale(1.08);filter:drop-shadow(0 0 14px #ff7b39)}}
+@keyframes signal-blink{50%{opacity:.35}}
+.auth-panel{display:grid;grid-template-columns:1fr;max-width:100%;padding:16px;background:linear-gradient(135deg,rgba(5,12,27,.9),rgba(7,10,24,.9));border-color:rgba(90,165,220,.24)}
+.cloud-login{grid-template-columns:1fr 1fr;align-items:center}
+.cloud-login .section-kicker,.cloud-login #cloud-auth-status{grid-column:1/-1}
+.cloud-login .cloud-actions{grid-column:1/-1}
+.run-mode-options{gap:10px}
+.run-mode-opt{min-height:68px}
+.ship-selector{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.ship-opt{min-height:82px;padding:13px 10px;background:linear-gradient(145deg,rgba(15,32,60,.94),rgba(5,12,28,.94))}
+.ship-opt strong{font-size:12px}
+.ship-opt small{font-size:10px}
+.menu-actions{max-width:620px;margin:14px auto}
+.menu-tools{justify-content:center}
+@media(max-width:850px){.showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.main-card{width:100%}.hero-ship{width:76%;left:-5%}.hero-planet{right:8%}}
+@media(max-width:560px){.overlay:has(.main-card){padding:7px}.main-card{padding:12px;border-radius:16px}.menu-cinematic-hero{height:205px;margin-bottom:14px}.hero-ship{width:92%;left:-12%;top:0}.hero-planet{width:95px;right:5%;top:10%}.hero-planet-ring{width:150px;height:38px;right:0;top:37%}.hero-caption{left:12px;bottom:12px}.hero-caption strong{font-size:14px}.hero-coordinate{font-size:6px;right:10px;bottom:14px}.game-title{font-size:34px}.lore-intro{font-size:12px}.command-showcase{padding:11px}.showcase-grid{grid-template-columns:1fr 1fr;gap:7px}.showcase-card{min-height:130px;padding:10px 8px;gap:7px}.showcase-icon{width:26px;height:26px;flex-basis:26px;font-size:16px}.showcase-card p{font-size:9px}.showcase-heading{align-items:flex-start;flex-direction:column;gap:5px}.showcase-footer{font-size:6px;flex-wrap:wrap}.cloud-login{grid-template-columns:1fr}.cloud-login .section-kicker,.cloud-login #cloud-auth-status,.cloud-login .cloud-actions{grid-column:auto}.ship-selector{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.event-singularity,.signal-live{animation:none!important}}
