@@ -552,6 +552,17 @@ function buildEnemy(variant='scout'){
  add(new THREE.BoxGeometry(variant==='carrier'?1.25:.48,.12,1.15),enemyDark,[0,.16,-.18],[0,0,0],g);
  add(new THREE.SphereGeometry(variant==='carrier'?.34:.22,18,14),enemyCyan,[0,.20,1.05],[0,0,0],g);
  const dorsal=add(new THREE.BoxGeometry(.12,.10,variant==='carrier'?3.1:1.9),accent,[0,.22,.05],[0,0,0],g);
+ // Aletas facetadas, paneles de blindaje y líneas de energía propias de cada clase.
+ for(const side of [-1,1]){
+  const span=variant==='carrier'?3.5:variant==='bomber'?2.2:variant==='lancer'?1.15:1.65;
+  const plate=add(new THREE.BoxGeometry(span*.72,.075,.86),enemyDark,[side*span*.48,.08,.35],[0,side*.16,side*.08],g);
+  plate.material=enemyDark;
+  add(new THREE.BoxGeometry(span*.62,.045,.12),accent,[side*span*.48,.13,-.02],[0,side*.16,side*.08],g);
+  add(new THREE.BoxGeometry(.10,.075,.62),enemyCyan,[side*span*.65,.15,.48],[0,side*.16,0],g);
+  const exhaust=new THREE.Mesh(new THREE.ConeGeometry(.16,.92,12,1,true),new THREE.MeshBasicMaterial({color:variant==='bomber'?0xffb35c:variant==='weaver'?0xb18aff:0x4cecff,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  exhaust.rotation.x=Math.PI/2;exhaust.position.set(side*.55,-.14,2.72);exhaust.userData.enemyFlame=true;g.add(exhaust);
+ }
+ for(let i=0;i<3;i++)add(new THREE.BoxGeometry(.18,.045,.28),enemyDark,[-.25+i*.25,.25,.55],[0,0,0],g);
  return g;
 }
 
@@ -563,6 +574,7 @@ function syncEnemies(items,width,height){
   if(!mesh){mesh=buildEnemy(item.variant);scene.add(mesh);enemyMeshes.set(item.id,mesh);}
   mesh.position.copy(worldPos(item.x,item.y,width,height,-11));
   mesh.rotation.z=Math.sin((item.age||0)*.04)*.035;
+  mesh.traverse(part=>{if(part.userData.enemyFlame){const pulse=.82+.2*Math.sin((item.age||0)*.22);part.scale.set(1,pulse,1);part.material.opacity=.26+.2*pulse;}});
   // El modelo 3D respeta el tamaño del hitbox 2D; antes era mucho más ancho
   // que su radio lógico y daba la impresión de que los disparos lo atravesaban.
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
@@ -596,6 +608,20 @@ function buildBoss(v=0){
  else if(v===7){p(9,1.4,7,0,0,0,bossBlack);c(0,.7,-1.4,1.3);for(const q of [-1,1]){p(2,.7,5,q*5,0,1);for(let i=0;i<3;i++)add(new THREE.CylinderGeometry(.55,.8,2.2,12),bossCore,[q*(3.2+i*.9),-.2,3],[Math.PI/2,0,0],bossGroup);}}
  else if(v===8){c(0,0,0,1.15);for(let i=0;i<4;i++)add(new THREE.TorusGeometry(2.5+i*.6,.18,12,64),bossCore,[0,0,0],[Math.PI/2,i*.55,i*.8],bossGroup);for(let i=0;i<8;i++){const q=i*Math.PI/4;p(.5,.5,4,Math.cos(q)*3.8,Math.sin(q)*3,0,bossBlack,[0,0,q]);}}
  else{p(8,1.2,6,0,0,0,bossBlack);c(0,.5,-.7,1.7);for(const q of [-1,1]){p(3,.5,5,q*4,.1,.2,bossMat,[0,0,q*.35]);for(let i=0;i<3;i++)add(new THREE.ConeGeometry(.45,3,8),bossCore,[q*(2.4+i*.9),0,2.6],[Math.PI/2,0,q*.1],bossGroup);}add(new THREE.TorusGeometry(5,.16,12,96),bossCore,[0,0,0],[Math.PI/2,0,0],bossGroup);}
+ // Kit de comandante: placas laterales, aros de reactor y balizas de energía.
+ for(const side of [-1,1]){
+  add(new THREE.BoxGeometry(2.05,.22,2.65),bossMat,[side*3.25,-.58,.35],[0,0,side*.12],bossGroup);
+  add(new THREE.SphereGeometry(.24,18,14),bossCore,[side*4.2,.25,1.42],[0,0,0],bossGroup);
+  add(new THREE.BoxGeometry(.16,.13,2.35),bossCore,[side*2.25,.55,-.12],[0,0,side*.08],bossGroup);
+ }
+ for(let i=0;i<2;i++){
+  const halo=add(new THREE.TorusGeometry(5.65+i*.55,.075,10,96),bossCore,[0,.08,0],[Math.PI/2.1+i*.4,.2+i*.48,i*.35],bossGroup);
+  halo.userData.bossHalo=i;
+ }
+ for(let i=0;i<8;i++){
+  const angle=i*Math.PI/4,beacon=add(new THREE.SphereGeometry(.105,12,8),bossCore,[Math.cos(angle)*5.25,Math.sin(angle)*3.15,.12],[0,0,0],bossGroup);
+  beacon.userData.bossBeacon=i;
+ }
 }
 function syncBoss(b,width,height,now){
  if(!b){bossGroup.visible=false;return;}
@@ -603,6 +629,7 @@ function syncBoss(b,width,height,now){
  bossGroup.visible=true;bossGroup.position.copy(worldPos(b.x,b.y,width,height,-10));
  bossGroup.scale.setScalar(Math.max(.85,b.radius/52));
  bossGroup.rotation.y=Math.sin(now*.001)*.08;bossGroup.rotation.z=Math.sin(now*.002)*.035;
+ bossGroup.traverse(part=>{if(part.userData.bossHalo!==undefined)part.rotation.z=now*.00035*(part.userData.bossHalo%2?-1:1);if(part.userData.bossBeacon!==undefined)part.material.emissiveIntensity=1.4+Math.sin(now*.009+part.userData.bossBeacon)*.8;});
  bossCore.emissiveIntensity=2.5+Math.sin(now*.012)*1.3+(b.phase===3?2:0);
 }
 
@@ -789,7 +816,7 @@ function syncPhenomena(items,width,height,now){
 }
 let last = performance.now();
 let lastRender = 0;
-const renderInterval = 1000 / 24; // Overlay 3D limitado a 24 FPS para priorizar fluidez del juego.
+const renderInterval = 1000 / 30; // 30 FPS estables para una respuesta visual más fluida sin saturar equipos modestos.
 let targetX = 0, targetY = 0;
 function resize() {
   const w=window.innerWidth, h=window.innerHeight; camera.aspect=w/h; camera.updateProjectionMatrix();
