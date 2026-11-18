@@ -997,6 +997,36 @@ class Player {
     }
   }
 
+  absorbCosmicThreat(reason, countermeasure = null) {
+    if (countermeasure && this.buffs[countermeasure] > 0) {
+      addFloatingText(this.x, this.y - 36, "CONTRAMEDIDA ACTIVA • AMENAZA NEUTRALIZADA", "#72f7ff");
+      return true;
+    }
+    if (this.permanentShieldCharges > 0) {
+      this.permanentShieldCharges--;
+      this.invuln = 55;
+      SoundFX.play("shieldHit");
+      spawnExplosion(this.x, this.y, "#55eaff", IS_LOW_POWER ? 10 : 18);
+      addFloatingText(this.x, this.y - 34, "AEGIS ABSORBIÓ LA AMENAZA • " + this.permanentShieldCharges + " CARGAS", "#72f7ff");
+      return true;
+    }
+    if (this.buffs.shield > 0) {
+      this.buffs.shield = 0;
+      this.invuln = 55;
+      SoundFX.play("shieldHit");
+      spawnExplosion(this.x, this.y, "#55eaff", IS_LOW_POWER ? 10 : 18);
+      addFloatingText(this.x, this.y - 34, "ESCUDO DE ENERGÍA ABSORBIÓ LA AMENAZA", "#00f0ff");
+      return true;
+    }
+    state.shake = 34;
+    state.flash = 0.9;
+    spawnExplosion(this.x, this.y, "#ffffff", IS_LOW_POWER ? 22 : 38);
+    addFloatingText(this.x, this.y - 40, reason, "#ff4d6d");
+    this.lives = 0;
+    endGame(false);
+    return false;
+  }
+
   takeDamage(reason = "IMPACTO") {
     if (this.invuln > 0) return;
     // Señal audiovisual inmediata: el jugador siempre percibe el contacto.
@@ -1134,6 +1164,7 @@ class CosmicPhenomenon {
     this.strikeX = W * (0.2 + Math.random() * 0.6);
     this.strikeFlash = 0;
     this.lastStrike = -90;
+    this.lastPlayerPulse = -1;
     this.dead = false;
   }
 
@@ -1181,17 +1212,20 @@ class CosmicPhenomenon {
       const pdx = this.x - player.x;
       const pdy = this.y - player.y;
       const pd = Math.hypot(pdx, pdy);
-      // La singularidad atrae en ambos ejes; el campo antigravedad anula el efecto.
       if (pd < pullRange && pd > 0.001 && player.buffs.antigrav <= 0) {
         const force = Math.max(1.4, 5.8 * (1 - pd / pullRange));
         player.x += (pdx / pd) * force;
         player.y += (pdy / pd) * force * 0.72;
-        if (pd < 58) { player.takeDamage("ABSORBIDO POR AGUJERO NEGRO"); state.shake = Math.max(state.shake, 15); }
+        if (pd < 58) {
+          player.absorbCosmicThreat("ABSORBIDO POR AGUJERO NEGRO", "antigrav");
+          state.shake = Math.max(state.shake, 20);
+        }
       }
     } else if (this.kind === "magnetar") {
       // Pulsos gravitomagnéticos expansivos: empujan nave, enemigos y rocas.
       const phase = this.timer % 105;
       const pulseRadius = phase * 5.2;
+      const waveNumber = Math.floor(this.timer / 105);
       if (phase > 3 && phase < 68) {
         const repel = (obj, strength) => {
           const dx = obj.x - this.x, dy = obj.y - this.y, d = Math.hypot(dx, dy);
@@ -1203,11 +1237,19 @@ class CosmicPhenomenon {
         asteroids.forEach(a => repel(a, 7.5));
         enemies.forEach(e => repel(e, 9));
         if (player.buffs.faraday <= 0) {
-          const beforeX = player.x, beforeY = player.y;
-          repel(player, 12);
-          if (beforeX !== player.x || beforeY !== player.y) {
-            state.shake = Math.max(state.shake, 5);
-            if (phase === 12) addFloatingText(player.x, player.y - 25, "¡ONDA MAGNETAR!", "#e879f9");
+          const distance = Math.hypot(player.x - this.x, player.y - this.y);
+          if (Math.abs(distance - pulseRadius) < 28 && this.lastPlayerPulse !== waveNumber) {
+            this.lastPlayerPulse = waveNumber;
+            player.absorbCosmicThreat("DESTRUIDO POR ONDA GRAVITACIONAL DEL MAGNETAR", "faraday");
+            state.shake = Math.max(state.shake, 15);
+          }
+          if (state.mode === "PLAYING") {
+            const beforeX = player.x, beforeY = player.y;
+            repel(player, 12);
+            if (beforeX !== player.x || beforeY !== player.y) {
+              state.shake = Math.max(state.shake, 7);
+              if (phase <= 14) addFloatingText(player.x, player.y - 25, "¡ONDA GRAVITACIONAL!", "#e879f9");
+            }
           }
         }
         enemyBullets.forEach(b => repel(b, 8));
@@ -1222,11 +1264,17 @@ class CosmicPhenomenon {
         return Math.abs(along) < 520 && across < width;
       };
       if (this.timer > 35 && this.timer % 9 === 0) {
-        enemies.forEach(e => { if (hitBeam(e, 34)) { e.hp -= 3; if (e.hp <= 0) e.dead = true; } });
-        asteroids.forEach(a => { if (hitBeam(a, 30)) { a.hp -= 2; if (a.hp <= 0) a.dead = true; } });
+        enemies.forEach(e => { if (hitBeam(e, 34)) { spawnExplosion(e.x, e.y, "#ff6bff", 5); e.dead = true; } });
+        asteroids.forEach(a => { if (hitBeam(a, 30)) { spawnExplosion(a.x, a.y, "#ffb4ff", 4); a.dead = true; } });
+        enemyBullets.forEach(b => { if (hitBeam(b, 24)) b.dead = true; });
+        bullets.forEach(b => { if (hitBeam(b, 24)) b.dead = true; });
+        if (boss && !boss.dead && hitBeam(boss, Math.max(48, boss.radius))) {
+          boss.hp = 0;
+          defeatBoss();
+        }
         if (player.buffs.antigamma <= 0 && hitBeam(player, 42)) {
-          player.takeDamage("RAYO GAMMA DEL PÚLSAR");
-          state.shake = Math.max(state.shake, 10);
+          player.absorbCosmicThreat("DESTRUIDO POR RAYO GAMMA DEL PÚLSAR", "antigamma");
+          state.shake = Math.max(state.shake, 18);
         }
       }
     } else if (this.kind === "ionstorm") {
@@ -1277,14 +1325,14 @@ class CosmicPhenomenon {
       spawnExplosion(e.x, e.y, "#ff5500", 10);
       e.dead = true;
     });
-    enemyBullets = [];
-    spawnExplosion(this.x, this.y, "#ffffff", 40);
-
-    if (player.buffs.cryo > 0) {
-      addFloatingText(player.x, player.y - 35, "¡CRIO-ESCUDO RESISTIÓ SUPERNOVA!", "#00f0ff");
-    } else {
-      player.takeDamage("ONDA DE SUPERNOVA");
+    bullets.forEach(b => { b.dead = true; });
+    enemyBullets.forEach(b => { b.dead = true; });
+    if (boss && !boss.dead) {
+      boss.hp = 0;
+      defeatBoss();
     }
+    spawnExplosion(this.x, this.y, "#ffffff", 40);
+    player.absorbCosmicThreat("DESTRUIDO POR LA EXPLOSIÓN DE SUPERNOVA", "cryo");
   }
 
   draw() {
