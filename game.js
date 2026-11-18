@@ -462,11 +462,13 @@ function loadCommercialData() {
       dailyClaimed: typeof raw.dailyClaimed === "string" ? raw.dailyClaimed : "",
       dailyChallengeClaimed: typeof raw.dailyChallengeClaimed === "string" ? raw.dailyChallengeClaimed : "",
       survivalBestSector: Math.max(1, Number(raw.survivalBestSector) || 1),
-      survivalBestScore: Math.max(0, Number(raw.survivalBestScore) || 0)
+      survivalBestScore: Math.max(0, Number(raw.survivalBestScore) || 0),
+      bossDefeats: Math.max(0, Number(raw.bossDefeats) || 0),
+      bossTrophies: Array.isArray(raw.bossTrophies) ? raw.bossTrophies.filter(x => typeof x === "string").slice(-20) : []
     };
   } catch (error) {
     console.warn("Se reiniciaron los datos comerciales locales.", error);
-    return { credits: 0, upgrades: {}, achievements: [], totalRuns: 0, totalScore: 0, bestSector: 1, bestScore: 0, sound: true, dailyClaimed: "", dailyChallengeClaimed: "", survivalBestSector: 1, survivalBestScore: 0 };
+    return { credits: 0, upgrades: {}, achievements: [], totalRuns: 0, totalScore: 0, bestSector: 1, bestScore: 0, sound: true, dailyClaimed: "", dailyChallengeClaimed: "", survivalBestSector: 1, survivalBestScore: 0, bossDefeats: 0, bossTrophies: [] };
   }
 }
 let commercialData = loadCommercialData();
@@ -1419,7 +1421,7 @@ class BossShip {
   constructor() {
     this.x = W / 2; this.y = 112; this.vx = 2.1;
     this.variant = (state.level - 1) % 5;
-    const names = ["DEVORADOR DE ÓRBITAS", "LANZALANZAS MAGNÉTICO", "SENTINELA PULSAR", "COLOSUS DE OBSIDIANA", "NÉMESIS DEL ECLIPSE"];
+    const names = ["LEVIATÁN", "DESTRUCTOR", "ANOMALÍA", "REINA DEL VACÍO", "ECLIPSE SUPREMO"];
     this.name = names[this.variant];
     this.radius = [48,54,46,62,58][this.variant];
     this.maxHp = Math.round((190 + state.level * 31) * (DIFFICULTY[state.difficulty]?.spawn || 1));
@@ -1430,6 +1432,8 @@ class BossShip {
     this.weakRadius = this.radius + 22;
     this.attackClock = 0;
     this.phaseTransitionLock = false;
+    this.specialClock = 0;
+    this.summonClock = 0;
     const bossWrap = document.getElementById("boss-bar-wrap");
     const bossName = document.getElementById("boss-name");
     if (bossWrap) bossWrap.classList.remove("hidden");
@@ -1467,6 +1471,25 @@ class BossShip {
     this.y = 112 + Math.sin(this.timer * (this.phase === 3 ? .045 : .025)) * (this.phase === 3 ? 48 : 34);
     this.weakAngle += this.phase === 3 ? .055 : .025;
 
+    this.specialClock++;
+    // Cada comandante tiene una mecánica propia además de sus patrones de disparo.
+    if (this.variant === 2 && player && this.specialClock % (this.phase === 3 ? 150 : 220) < 48) {
+      const pull = this.phase === 3 ? 0.72 : 0.38;
+      player.x += Math.sign(this.x - player.x) * pull;
+      player.x = Math.max(player.radius, Math.min(W - player.radius, player.x));
+      if (this.specialClock % 55 === 0) addFloatingText(W / 2, H * .62, "CAMPO GRAVITATORIO: ¡CONTRARRESTA!", "#ffd166");
+    }
+    if (this.variant === 3 && this.specialClock % (this.phase === 3 ? 165 : 245) === 0 && enemies.length < (IS_LOW_POWER ? 8 : 12)) {
+      const adds = this.phase === 3 ? 3 : 2;
+      for (let i = 0; i < adds; i++) enemies.push(new EnemyShip(["weaver", "interceptor", "scout"][i % 3]));
+      addFloatingText(this.x, this.y + 64, "LA REINA INVOCA REFUERZOS", "#7cf7c8");
+    }
+    if (this.variant === 4 && this.phase === 3 && this.specialClock % 190 === 0) {
+      for (let i = 0; i < 2; i++) enemies.push(new EnemyShip(i ? "lancer" : "bomber"));
+      state.flash = Math.max(state.flash, .10);
+      addFloatingText(W / 2, H * .22, "ECLIPSE: ESCUADRA DE ÉLITE", "#ff6688");
+    }
+
     const cadence = Math.max(22, (this.phase === 1 ? 68 : this.phase === 2 ? 48 : 32) - Math.floor(state.level / 4));
     if (player && this.attackClock % cadence === 0 && enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
       const aim = Math.atan2(player.y - this.y, player.x - this.x);
@@ -1477,20 +1500,33 @@ class BossShip {
         }
       };
 
-      if (this.phase === 1) {
-        if (this.variant === 0 || this.variant === 3) {
-          const count = this.variant === 0 ? 10 : 8;
-          for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * .035, speed * .82, "#a855f7");
-        } else {
-          [-.42, -.28, -.14, 0, .14, .28, .42].forEach(offset => addShot(aim + offset, speed, "#e879f9"));
+      if (this.variant === 0) {
+        // Leviatán: anillos de plasma que se expanden y abanicos de cobertura.
+        const count = this.phase === 3 ? 16 : this.phase === 2 ? 12 : 9;
+        for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * (this.phase === 3 ? .09 : .035), speed * .78, "#a855f7");
+        if (this.phase >= 2) [-.34, 0, .34].forEach(o => addShot(aim + o, speed * 1.05, "#ff9e00"));
+      } else if (this.variant === 1) {
+        // Destructor: lanzas rápidas dirigidas al lugar del piloto.
+        const spread = this.phase === 3 ? .075 : .13;
+        for (let i = -2; i <= 2; i++) addShot(aim + i * spread, speed * (this.phase === 3 ? 1.48 : 1.2), "#ff9e45");
+        if (this.phase >= 2) {
+          addShot(aim - .55, speed * .9, "#ffe08a");
+          addShot(aim + .55, speed * .9, "#ffe08a");
         }
-      } else if (this.phase === 2) {
-        for (let i = -2; i <= 2; i++) addShot(aim + i * .19, speed * 1.08, "#ff9e00");
-        for (let i = 0; i < 8; i++) addShot(i * Math.PI / 4 + this.timer * .045, speed * .68, "#a855f7");
+      } else if (this.variant === 2) {
+        // Anomalía: espiral gravitatoria que obliga a cambiar de carril.
+        const count = this.phase === 3 ? 14 : 10;
+        for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * .075, speed * .72, "#22f0d0");
+        if (this.phase >= 2) [-.22, 0, .22].forEach(o => addShot(aim + o, speed * 1.05, "#fff06a"));
+      } else if (this.variant === 3) {
+        // Reina: abanicos escalonados que cubren zonas distintas.
+        const offsets = this.phase === 3 ? [-.62, -.46, -.30, -.14, .02, .18, .34, .50, .66] : [-.48, -.30, -.12, .06, .24, .42];
+        offsets.forEach(o => addShot(aim + o, speed * (this.phase === 3 ? 1.08 : .92), "#75f0c4"));
       } else {
-        // Espiral doble y ráfaga dirigida: el jugador debe moverse, no quedarse quieto.
-        for (let i = 0; i < 12; i++) addShot(i * Math.PI / 6 + this.timer * .12, speed * .78, "#ff3864");
-        [-.24, -.12, 0, .12, .24].forEach(offset => addShot(aim + offset, speed * 1.18, "#fff06a"));
+        // Eclipse Supremo: doble espiral más una ráfaga de precisión.
+        const count = this.phase === 3 ? 18 : 12;
+        for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * .12, speed * .82, "#ff3864");
+        [-.30, -.15, 0, .15, .30].forEach(o => addShot(aim + o, speed * (this.phase === 3 ? 1.45 : 1.18), "#fff06a"));
       }
     }
   }
@@ -1513,13 +1549,26 @@ class BossShip {
     ctx.lineWidth = this.phase === 3 ? 4 : 3;
 
     ctx.beginPath();
-    ctx.moveTo(0, 52);
-    ctx.lineTo(-62, 12);
-    ctx.lineTo(-48, -38);
-    ctx.lineTo(-22, -48);
-    ctx.lineTo(22, -48);
-    ctx.lineTo(48, -38);
-    ctx.lineTo(62, 12);
+    if (this.variant === 0) {
+      ctx.moveTo(0, 58); ctx.lineTo(-72, 18); ctx.lineTo(-58, -28); ctx.lineTo(-24, -50);
+      ctx.lineTo(24, -50); ctx.lineTo(58, -28); ctx.lineTo(72, 18);
+    } else if (this.variant === 1) {
+      ctx.moveTo(0, 62); ctx.lineTo(-30, 12); ctx.lineTo(-22, -48); ctx.lineTo(0, -35);
+      ctx.lineTo(22, -48); ctx.lineTo(30, 12);
+    } else if (this.variant === 2) {
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + i * Math.PI * 2 / 10;
+        const r = i % 2 ? 34 : 66;
+        const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+    } else if (this.variant === 3) {
+      ctx.moveTo(0, 58); ctx.lineTo(-68, 8); ctx.lineTo(-42, -42); ctx.lineTo(-12, -24);
+      ctx.lineTo(0, -54); ctx.lineTo(12, -24); ctx.lineTo(42, -42); ctx.lineTo(68, 8);
+    } else {
+      ctx.moveTo(0, 66); ctx.lineTo(-76, 22); ctx.lineTo(-54, -44); ctx.lineTo(-18, -34);
+      ctx.lineTo(0, -62); ctx.lineTo(18, -34); ctx.lineTo(54, -44); ctx.lineTo(76, 22);
+    }
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -1759,10 +1808,20 @@ function advanceProgress(amount = 1) {
 }
 
 function defeatBoss() {
+  if (!boss) return;
+  const defeated = boss.name;
+  const rewardCredits = [500, 650, 800, 1000, 1500][boss.variant] || 500;
   void trackGalacticEventProgress('defeat_boss', 1);
   SoundFX.play("supernova");
   spawnExplosion(boss.x, boss.y, "#ff2a85", 45);
   state.score += 1000 * state.level;
+  commercialData.credits += rewardCredits;
+  commercialData.bossDefeats = (commercialData.bossDefeats || 0) + 1;
+  commercialData.bossTrophies = Array.isArray(commercialData.bossTrophies) ? commercialData.bossTrophies : [];
+  if (!commercialData.bossTrophies.includes(defeated)) commercialData.bossTrophies.push(defeated);
+  saveCommercialData();
+  addFloatingText(W / 2, H * .42, `JEFE DERROTADO: ${defeated}`, "#ffe08a");
+  addFloatingText(W / 2, H * .48, `+${rewardCredits} CRÉDITOS • +1 BOMBA`, "#75f0c4");
   player.bombs = Math.min(5, player.bombs + 1);
   boss = null;
   document.getElementById("boss-bar-wrap").classList.add("hidden");
