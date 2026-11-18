@@ -2513,7 +2513,6 @@ function updateAndDraw() {
           state.shake = Math.max(state.shake, e.radius > 24 ? 9 : 5);
           spawnExplosion(e.x, e.y, "#ff2a85", IS_LOW_POWER ? 12 : 24);
           spawnImpactBurst(e.x, e.y, "#ffd6ed", IS_LOW_POWER ? 8 : 17);
-          awardCombatCredits(5 + Math.floor(state.level / 10), e.x, e.y, "NAVE");
           state.score += 120 * state.combo;
           recordMissionProgress("kills", 1);
           advanceProgress(2);
@@ -2524,6 +2523,7 @@ function updateAndDraw() {
     // Solo si sobrevivió a los disparos puede chocar con el jugador.
     if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < e.radius + player.radius) {
       e.dead = true;
+      e._noKillReward = true;
       const impactX = (e.x + player.x) * 0.5;
       const impactY = (e.y + player.y) * 0.5;
       spawnImpactBurst(impactX, impactY, "#ff6688", IS_LOW_POWER ? 9 : 17);
@@ -2582,12 +2582,7 @@ function updateAndDraw() {
     p.prevX = p.x; p.prevY = p.y;
     p.y += p.vy;
     p.x += (p.vx || 0);
-    // Campo magnético de recogida más amplio: guía los módulos hacia la nave.
-    const dx = player.x - p.x, dy = player.y - p.y;
-    if (Math.abs(dx) < 185 && Math.abs(dy) < 260) {
-      p.x += dx * 0.09;
-      p.y += dy * 0.035;
-    }
+    // Sin atracción magnética: los potenciadores mantienen su trayectoria de caída.
     if (p.y > H + 30) p.dead = true;
 
     if (p.meteor) {
@@ -2627,7 +2622,7 @@ function updateAndDraw() {
       const lengthSq = vx * vx + vy * vy;
       const t = lengthSq > 0 ? Math.max(0, Math.min(1, -(sx * vx + sy * vy) / lengthSq)) : 0;
       const closest = Math.hypot(sx + vx * t, sy + vy * t);
-      if (closest < player.radius + 46) {
+      if (closest < player.radius + 14) {
         p.dead = true;
         applyPowerup(p);
       }
@@ -2665,7 +2660,16 @@ function updateAndDraw() {
   bullets = bullets.filter((b) => !b.dead);
   enemyBullets = enemyBullets.filter((eb) => !eb.dead);
   asteroids = asteroids.filter((a) => !a.dead);
-  enemies.forEach(e => { if (e.dead && !e._eventCounted) { e._eventCounted = true; void trackGalacticEventProgress('destroy_enemies', 1); } });
+  enemies.forEach(e => {
+    if (e.dead && !e._eventCounted) {
+      e._eventCounted = true;
+      void trackGalacticEventProgress('destroy_enemies', 1);
+      if (!e._noKillReward && !e._creditsAwarded) {
+        e._creditsAwarded = true;
+        awardCombatCredits(5 + Math.floor(state.level / 10), e.x, e.y, "NAVE");
+      }
+    }
+  });
   enemies = enemies.filter((e) => !e.dead);
   powerups = powerups.filter((p) => !p.dead);
   particles = particles.filter((pt) => pt.life > 0);
