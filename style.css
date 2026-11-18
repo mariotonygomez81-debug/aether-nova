@@ -939,3 +939,35 @@ button:focus-visible,input:focus-visible { outline:2px solid #fff; outline-offse
 /* AETHER NOVA 3D bridge: transparent renderer layered over the legacy scene. */
 #aether3dCanvas { position: fixed; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity .25s ease; }
 body.aether3d-ready #aether3dCanvas { opacity: 1; }
+
+
+/* ALPHA 26 — portada cinematográfica del centro de operaciones */
+.menu-cinematic-hero{
+  position:relative;isolation:isolate;height:clamp(156px,25vh,218px);margin:0 0 15px;
+  overflow:hidden;border-radius:16px;border:1px solid rgba(91,220,255,.34);
+  background:radial-gradient(ellipse at 52% 68%,rgba(0,176,255,.22),transparent 43%),linear-gradient(125deg,#030713,#0b1731 48%,#160b2a);
+  box-shadow:inset 0 0 34px rgba(0,190,255,.12),0 12px 34px rgba(0,0,0,.3);
+}
+.hero-starfield,.hero-starfield:before,.hero-starfield:after{position:absolute;inset:-40%;content:"";pointer-events:none;background-image:radial-gradient(1px 1px at 12% 22%,#fff 99%,transparent),radial-gradient(2px 2px at 42% 68%,#b9f7ff 99%,transparent),radial-gradient(1px 1px at 72% 31%,#fff 99%,transparent),radial-gradient(1px 1px at 84% 78%,#8bbaff 99%,transparent),radial-gradient(1px 1px at 26% 82%,#fff 99%,transparent);background-size:190px 150px;opacity:.8;animation:hero-stars-drift 38s linear infinite}
+.hero-starfield:before{transform:scale(1.4);opacity:.45;animation-duration:58s}
+.hero-starfield:after{transform:scale(1.8);opacity:.3;animation-duration:78s}
+.hero-nebula{position:absolute;width:62%;height:90%;border-radius:50%;filter:blur(24px);opacity:.3;mix-blend-mode:screen}
+.hero-nebula-a{left:-12%;top:8%;background:radial-gradient(ellipse,#075caa,transparent 68%);animation:hero-nebula-float 12s ease-in-out infinite alternate}
+.hero-nebula-b{right:-12%;top:-20%;background:radial-gradient(ellipse,#692a9e,transparent 70%);animation:hero-nebula-float 15s ease-in-out infinite alternate-reverse}
+.hero-planet{position:absolute;width:clamp(68px,14vw,116px);aspect-ratio:1;border-radius:50%;right:16%;top:15%;background:radial-gradient(circle at 32% 27%,#d8fbff 0,#5c9ec4 13%,#173c68 47%,#070d22 78%);box-shadow:0 0 22px #3a9bdc,0 0 55px rgba(30,140,255,.42),inset -18px -9px 22px #020615;animation:hero-planet-breathe 7s ease-in-out infinite}
+.hero-planet-ring{position:absolute;width:clamp(110px,24vw,190px);height:35px;right:9%;top:39%;border:2px solid rgba(113,220,255,.48);border-left-color:transparent;border-radius:50%;transform:rotate(-19deg);filter:drop-shadow(0 0 5px #36bfff)}
+.hero-ship{position:absolute;width:min(70%,390px);height:90%;left:7%;top:1%;overflow:visible;filter:drop-shadow(0 0 12px rgba(0,210,255,.45));animation:hero-ship-hover 5.5s ease-in-out infinite}
+.hero-engine-glow{transform-origin:260px 145px;animation:hero-engine-pulse 1.2s ease-in-out infinite alternate}
+.hero-scanline{position:absolute;inset:0;pointer-events:none;background:linear-gradient(transparent 48%,rgba(88,218,255,.07) 50%,transparent 52%);background-size:100% 7px;opacity:.25}
+.hero-caption{position:absolute;left:16px;bottom:13px;display:grid;gap:4px;text-align:left;text-shadow:0 2px 9px #020611}
+.hero-caption span,.hero-coordinate{font-size:8px;font-weight:900;letter-spacing:.17em;color:#8feaff}
+.hero-caption strong{font-size:clamp(11px,2.5vw,16px);letter-spacing:.09em;color:#fff}
+.hero-coordinate{position:absolute;right:12px;bottom:14px;color:#b9c9e5;font-size:7px}
+.main-card{max-width:650px}
+@keyframes hero-stars-drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(7%,5%,0)}}
+@keyframes hero-nebula-float{from{transform:translate3d(-5px,4px,0) scale(.95)}to{transform:translate3d(16px,-8px,0) scale(1.12)}}
+@keyframes hero-planet-breathe{0%,100%{filter:brightness(.92)}50%{filter:brightness(1.2)}}
+@keyframes hero-ship-hover{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(1deg)}}
+@keyframes hero-engine-pulse{from{opacity:.65;transform:scaleY(.82)}to{opacity:1;transform:scaleY(1.18)}}
+@media(max-width:520px){.menu-cinematic-hero{height:150px;margin-bottom:10px}.hero-ship{width:76%;left:0}.hero-planet{right:10%;width:70px}.hero-caption{left:10px;bottom:10px}.hero-coordinate{font-size:6px;right:8px;bottom:11px}.main-card{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.hero-starfield,.hero-starfield:before,.hero-starfield:after,.hero-nebula,.hero-planet,.hero-ship,.hero-engine-glow{animation:none!important}}
