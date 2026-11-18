@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-android-apk-1";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=aether-nova-eclipse-mobile-pad-2', './aether3d.js?v=aether-nova-eclipse-mobile-pad-2', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html', './phone-controller.html'];
+const CACHE_NAME = "aether-nova-eclipse-phonepad-code-fix-1";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=phonepad-code-fix-1', './aether3d.js?v=aether-nova-eclipse-mobile-pad-2', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html', './phone-controller.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
