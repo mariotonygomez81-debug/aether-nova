@@ -198,6 +198,7 @@ makeVariant("omega",({part,wing,nose,engine,mat})=>{
 // Alpha 36: alas esculpidas, blindaje facetado, cabina y propulsión con volumen.
 // Cada clase recibe una geometría de ala propia, además de su estructura específica.
 const wingProfiles = {
+  valkyrie:[[.34,-1.8],[1.05,-1.15],[3.45,-.35],[2.85,.65],[1.2,.42],[.42,1.22]],
   viper:[[.35,-1.65],[1.05,-.95],[3.45,.35],[2.55,.72],[1.25,.35],[.5,1.15]],
   titan:[[.35,-1.35],[1.1,-1.1],[3.75,-.45],[3.25,.9],[1.2,1.25],[.4,1.05]],
   wraith:[[.3,-1.7],[1.25,-1.1],[3.8,.85],[2.75,.55],[1.2,.25],[.45,1.2]],
@@ -207,19 +208,20 @@ const wingProfiles = {
   omega:[[.3,-1.8],[1.0,-1.1],[3.8,.4],[2.8,.65],[1.15,.2],[.4,1.2]]
 };
 const armorMats = {
-  viper:variantMats.green,titan:variantMats.amber,wraith:variantMats.stealth,
+  valkyrie:hullMat,viper:variantMats.green,titan:variantMats.amber,wraith:variantMats.stealth,
   bastion:variantMats.ice,phoenix:variantMats.red,singularity:variantMats.lime,omega:variantMats.white
 };
-for(const [id,group] of Object.entries(shipVariants)){
+for(const [id,group] of [["valkyrie",shipModel],...Object.entries(shipVariants)]){
   const profile=wingProfiles[id]||wingProfiles.viper;
   const mat=armorMats[id]||hullMat;
+  const armorMaterial=mat.clone(); armorMaterial.side=THREE.DoubleSide;
   for(const side of [-1,1]){
     const shape=new THREE.Shape();
     profile.forEach(([x,z],i)=>i?shape.lineTo(side*x,z):shape.moveTo(side*x,z));
     shape.closePath();
     const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.075,bevelThickness:.055});
-    geo.rotateX(Math.PI/2);
-    const armor=new THREE.Mesh(geo,mat);
+    geo.rotateX(-Math.PI/2);
+    const armor=new THREE.Mesh(geo,armorMaterial);
     armor.position.y=-.17; armor.castShadow=false; group.add(armor);
     // Líneas de borde luminosas y nervaduras metálicas.
     const edge=new THREE.Mesh(new THREE.BoxGeometry(.055,.055,2.15),glowMat);
