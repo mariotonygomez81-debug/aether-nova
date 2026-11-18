@@ -210,28 +210,35 @@ function getShotMaterial(color) {
 function createShotMesh(item){
   const group=new THREE.Group();
   const mats=getShotMaterial(item.color);
-  // Orbe frontal realmente esférico: el núcleo ya no se estira en el eje de avance.
+  // Orbe de plasma compacto con tres capas luminosas concéntricas.
   const core=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.core);
-  core.scale.setScalar(item.missile?.23:.19);
+  core.scale.setScalar(item.missile?.24:.205);
   group.add(core);
   const shell=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.shell);
-  shell.scale.setScalar(item.missile?.34:.285);
+  shell.scale.setScalar(item.missile?.35:.30);
   group.add(shell);
   const halo=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),mats.glow);
-  halo.scale.setScalar(item.missile?.48:.40);
+  halo.scale.setScalar(item.missile?.49:.43);
   group.add(halo);
-  // Estela detrás del orbe: volúmenes redondeados decrecientes, no una cápsula larga.
+  // Estela continua: esferas solapadas para eliminar el efecto de puntos separados.
   const trailSpecs=item.missile
-    ? [[.24,-.34],[.19,-.67],[.13,-1.02],[.075,-1.34]]
-    : [[.19,-.31],[.145,-.59],[.10,-.86],[.055,-1.10]];
+    ? [[.235,-.17],[.215,-.34],[.185,-.51],[.145,-.68],[.105,-.84],[.065,-.99]]
+    : [[.205,-.16],[.185,-.31],[.155,-.46],[.12,-.61],[.085,-.75],[.05,-.88]];
   for(let i=0;i<trailSpecs.length;i++){
     const [radius,offset]=trailSpecs[i];
-    const material=i===0?mats.shell:mats.tail;
-    const volume=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),material);
-    volume.scale.setScalar(radius);
+    const volume=new THREE.Mesh(
+      new THREE.SphereGeometry(1,24,18),
+      i<2?mats.shell:mats.tail
+    );
+    volume.scale.set(radius,radius*1.12,radius);
     volume.position.y=offset;
     group.add(volume);
   }
+  // Brillo difuso central que une visualmente el orbe y la estela.
+  const bridge=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mats.glow);
+  bridge.scale.set(item.missile?.19:.16,item.missile?.53:.43,item.missile?.19:.16);
+  bridge.position.y=item.missile?-.39:-.32;
+  group.add(bridge);
   if(item.missile){
     const fins=new THREE.Group();
     for(const side of [-1,1]){
