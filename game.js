@@ -2177,6 +2177,10 @@ function updateAndDraw() {
       type: player.type, color: player.color, accent: player.accent,
       invulnerable: player.invuln > 0 && Math.floor(player.invuln / 5) % 2 === 0,
       shield: player.buffs.shield > 0, playing: state.mode === "PLAYING",
+      enemyShots: enemyBullets.filter(b => !b.dead).map(b => ({
+        id: b.aether3dId || (b.aether3dId = "enemy-shot-" + Math.random().toString(36).slice(2)),
+        x: b.x, y: b.y, vx: b.vx, vy: b.vy, color: b.color || "#ff4d6d"
+      })),
       shots: bullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "shot-" + Math.random().toString(36).slice(2)),
         x: b.x, y: b.y, color: b.color || "#39eaff", missile: !!b.missile
@@ -2348,10 +2352,12 @@ function updateAndDraw() {
     eb.y += eb.vy;
     if (eb.y > H + 20 || eb.x < -20 || eb.x > W + 20) eb.dead = true;
 
-    ctx.fillStyle = eb.color;
-    ctx.beginPath();
-    ctx.arc(eb.x, eb.y, 4.5, 0, Math.PI * 2);
-    ctx.fill();
+    if (!window.__AETHER3D_ACTIVE) {
+      ctx.fillStyle = eb.color;
+      ctx.beginPath();
+      ctx.arc(eb.x, eb.y, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     if (!eb.dead && Math.hypot(eb.x - player.x, eb.y - player.y) < player.radius - 3) {
       eb.dead = true;
