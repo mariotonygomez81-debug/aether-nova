@@ -15,9 +15,18 @@ renderer.toneMappingExposure = 1.24;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 300);
 function worldPos(x,y,width,height,z=-10){
-  const depth=camera.position.z-z, viewH=2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*depth, viewW=viewH*camera.aspect;
-  const centerY=camera.position.y+(z-camera.position.z)*((-3.4)/23);
-  return new THREE.Vector3(((x/width)-.5)*viewW,centerY+(.5-y/height)*viewH,z);
+  const depth=camera.position.z-z;
+  const viewH=2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*depth;
+  const viewW=viewH*camera.aspect;
+  // Centro exacto del plano a profundidad z sobre el eje óptico de la cámara.
+  // Esto mantiene la coordenada 2D del jugador en la misma altura que su modelo 3D.
+  const targetX=camera.position.x*.25;
+  const targetY=camera.position.y*.18;
+  const targetZ=-7;
+  const t=(z-camera.position.z)/(targetZ-camera.position.z);
+  const centerX=camera.position.x+(targetX-camera.position.x)*t;
+  const centerY=camera.position.y+(targetY-camera.position.y)*t;
+  return new THREE.Vector3(centerX+((x/width)-.5)*viewW,centerY+(.5-y/height)*viewH,z);
 }
 camera.position.set(0, 3.4, 16);
 camera.lookAt(0, 0, -7);
@@ -184,34 +193,52 @@ function syncAsteroids(items, width, height, dt) {
 const shotMeshes = new Map();
 const shotMaterials = new Map();
 function getShotMaterial(color) {
-  const key = String(color || '#39eaff');
-  if (!shotMaterials.has(key)) {
-    let tint = 0x39eaff;
-    if (/^#[0-9a-f]{6}$/i.test(key)) tint = Number.parseInt(key.slice(1), 16);
-    shotMaterials.set(key, {
-      core: new THREE.MeshBasicMaterial({ color: tint }),
-      glow: new THREE.MeshBasicMaterial({ color: tint, transparent: true, opacity: .34, blending: THREE.AdditiveBlending, depthWrite: false })
+  const key=String(color||'#39eaff');
+  if(!shotMaterials.has(key)){
+    let tint=0x39eaff;
+    if(/^#[0-9a-f]{6}$/i.test(key)) tint=Number.parseInt(key.slice(1),16);
+    const colorObj=new THREE.Color(tint);
+    shotMaterials.set(key,{
+      core:new THREE.MeshBasicMaterial({color:colorObj}),
+      shell:new THREE.MeshBasicMaterial({color:colorObj,transparent:true,opacity:.92,blending:THREE.AdditiveBlending,depthWrite:false}),
+      glow:new THREE.MeshBasicMaterial({color:colorObj,transparent:true,opacity:.24,blending:THREE.AdditiveBlending,depthWrite:false}),
+      tail:new THREE.MeshBasicMaterial({color:colorObj,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false})
     });
   }
   return shotMaterials.get(key);
 }
-function createShotMesh(item) {
-  const group = new THREE.Group();
-  const mats = getShotMaterial(item.color);
-  const core = new THREE.Mesh(new THREE.SphereGeometry(item.missile ? .105 : .075, 12, 8), mats.core);
-  core.scale.set(.85, 1.0, item.missile ? 2.6 : 1.9);
+function createShotMesh(item){
+  const group=new THREE.Group();
+  const mats=getShotMaterial(item.color);
+  // Orbe de plasma redondeado con núcleo blanco/cromático y carcasa energética.
+  const core=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mats.core);
+  core.scale.set(.105,.30,.105);
   group.add(core);
-  const halo = new THREE.Mesh(new THREE.SphereGeometry(item.missile ? .19 : .14, 12, 8), mats.glow);
-  halo.scale.set(1, 1, item.missile ? 2.8 : 2.2);
+  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mats.shell);
+  shell.scale.set(.19,.47,.19);
+  group.add(shell);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,20,16),mats.glow);
+  halo.scale.set(.31,.72,.27);
   group.add(halo);
-  if (item.missile) {
-    const tail = new THREE.Mesh(new THREE.ConeGeometry(.13, .72, 10), mats.glow);
-    tail.rotation.x = -Math.PI / 2;
-    tail.position.z = .48;
-    group.add(tail);
+  // Estela compuesta por volúmenes elipsoidales solapados: evita el aspecto de aguja.
+  const trailSpecs=item.missile
+    ? [[.23,.62,.23,-.48],[.17,.48,.17,-.98],[.105,.34,.105,-1.43]]
+    : [[.17,.48,.17,-.62],[.125,.39,.125,-1.02],[.075,.27,.075,-1.36]];
+  for(let i=0;i<trailSpecs.length;i++){
+    const [sx,sy,sz,py]=trailSpecs[i];
+    const volume=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),i===0?mats.shell:mats.tail);
+    volume.scale.set(sx,sy,sz);
+    volume.position.y=py;
+    group.add(volume);
+  }
+  if(item.missile){
+    const nose=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),mats.core);
+    nose.scale.set(.13,.22,.13);
+    nose.position.y=.22;
+    group.add(nose);
   }
   scene.add(group);
-  shotMeshes.set(item.id, group);
+  shotMeshes.set(item.id,group);
   return group;
 }
 function syncShots(items, width, height) {
