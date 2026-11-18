@@ -1251,3 +1251,20 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 .controller-instructions b{display:grid;place-items:center;min-width:34px;height:30px;border:1px solid rgba(105,215,255,.35);border-radius:7px;color:#80eaff;font-size:12px}
 .controller-footnote{margin:12px 0 0;color:#7894a9;font-size:10px;line-height:1.5}
 @media(max-width:700px){.controller-top{align-items:flex-start;flex-direction:column}.controller-status{max-width:100%}.controller-bottom{grid-template-columns:repeat(2,minmax(0,1fr))}.controller-instructions{font-size:9px}}
+
+
+/* VISUAL UPGRADE 1 — respuesta cinematográfica del hangar */
+#screen-menu .menu-cinematic-hero{isolation:isolate;perspective:900px}
+#screen-menu .hero-ship{transform-origin:50% 55%;filter:drop-shadow(0 0 9px rgba(62,221,255,.55)) drop-shadow(0 16px 22px rgba(0,0,0,.45));animation:an-ship-hover 6s ease-in-out infinite,an-ship-glint 4.8s ease-in-out infinite}
+#screen-menu .hero-engine-glow{transform-origin:50% 75%;animation:an-engine-pulse .72s ease-in-out infinite alternate}
+#screen-menu .hero-nebula{will-change:transform,opacity;animation:an-nebula-drift 18s ease-in-out infinite alternate}
+#screen-menu .hero-nebula-b{animation-duration:24s;animation-direction:alternate-reverse}
+#screen-menu .hero-planet{box-shadow:inset -22px -8px 32px rgba(0,0,0,.65),inset 8px 4px 18px rgba(120,220,255,.16),0 0 44px rgba(35,145,255,.2)}
+#screen-menu .hero-planet-ring{filter:drop-shadow(0 0 7px rgba(91,206,255,.38))}
+#screen-menu .hero-scanline{pointer-events:none;opacity:.32}
+@keyframes an-ship-hover{0%,100%{transform:translate3d(0,0,0) rotate(-1deg)}50%{transform:translate3d(0,-9px,0) rotate(1deg)}}
+@keyframes an-ship-glint{0%,100%{filter:drop-shadow(0 0 8px rgba(62,221,255,.4)) drop-shadow(0 16px 22px rgba(0,0,0,.45))}50%{filter:drop-shadow(0 0 16px rgba(62,221,255,.8)) drop-shadow(0 16px 26px rgba(0,0,0,.5))}}
+@keyframes an-engine-pulse{from{opacity:.58;transform:scale(.92)}to{opacity:1;transform:scale(1.12)}}
+@keyframes an-nebula-drift{from{transform:translate3d(-1.5%,1%,0) scale(1)}to{transform:translate3d(2%,-2%,0) scale(1.08)}}
+@media(prefers-reduced-motion:reduce){#screen-menu .hero-ship,#screen-menu .hero-engine-glow,#screen-menu .hero-nebula{animation:none}}
+@media(min-width:1100px){#screen-menu .menu-cinematic-hero{min-height:250px}#screen-menu .hero-ship{transform:scale(1.04)}}
