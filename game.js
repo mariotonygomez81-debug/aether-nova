@@ -2581,7 +2581,7 @@ function updateAndDraw() {
   powerups.forEach((p) => {
     p.prevX = p.x; p.prevY = p.y;
     p.y += p.vy;
-    p.x += p.vx || 0;
+    p.x += (p.vx || 0);
     // Campo magnético de recogida más amplio: guía los módulos hacia la nave.
     const dx = player.x - p.x, dy = player.y - p.y;
     if (Math.abs(dx) < 185 && Math.abs(dy) < 260) {
