@@ -1483,7 +1483,7 @@ class EnemyShip {
     this.age = Math.floor(Math.random() * 90);
     this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" || variant === "lancer" ? 2.8 : 1.6);
     this.vy = variant === "bomber" || variant === "carrier" ? 0.9 : variant === "lancer" ? 2.2 : 1.4;
-    this.radius = variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16;
+    this.radius = (variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16) * 1.35;
     const sectorTier = Math.max(0, Math.floor((state.level - 1) / 10));
     const scale = 1 + Math.floor(state.level / 5) * 0.22 + sectorTier * 0.08;
     const baseHp = variant === "carrier" ? 22 : variant === "bomber" ? 14 : variant === "interceptor" || variant === "lancer" ? 8 : variant === "weaver" ? 6 : 4;
