@@ -1137,3 +1137,11 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
  #screen-menu .cloud-login{grid-template-columns:1fr}
  #screen-menu #btn-play{min-height:54px;font-size:14px}
 }
+
+
+/* ALPHA 30 — banda sonora ambiental original con activación voluntaria */
+#screen-menu .menu-cinematic-hero{position:relative}
+#screen-menu .hero-music-toggle{position:absolute;z-index:5;top:14px;right:15px;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:1px solid rgba(107,224,255,.5);border-radius:999px;background:rgba(2,12,27,.76);color:#b9f5ff;font-size:9px;font-weight:900;letter-spacing:.1em;cursor:pointer;backdrop-filter:blur(8px);box-shadow:0 0 18px rgba(0,195,255,.12);transition:background .2s,border-color .2s,box-shadow .2s}
+#screen-menu .hero-music-toggle:hover,#screen-menu .hero-music-toggle.is-playing{background:rgba(0,153,190,.24);border-color:#42eaff;box-shadow:0 0 22px rgba(0,214,255,.26)}
+#screen-menu .hero-music-toggle.is-playing:before{content:"";width:6px;height:6px;border-radius:50%;background:#5dffce;box-shadow:0 0 10px #5dffce}
+@media(max-width:600px){#screen-menu .hero-music-toggle{top:8px;right:8px;min-height:29px;padding:0 8px;font-size:8px}}
