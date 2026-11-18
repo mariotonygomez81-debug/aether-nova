@@ -1623,7 +1623,7 @@ class EnemyShip {
     this.vx *= eventScale;
     this.vy *= eventScale;
     this.hp = Math.ceil(baseHp * scale * eventScale);
-    this.fireTimer = 48 + Math.floor(Math.random() * 48);
+    this.fireTimer = 92 + Math.floor(Math.random() * 65);
     this.dashTimer = 90 + Math.floor(Math.random() * 90);
     this.dead = false;
   }
@@ -1658,7 +1658,7 @@ class EnemyShip {
     this.fireTimer--;
     if (this.fireTimer <= 0 && this.y > 40 && this.y < H * .72) {
       this.shoot();
-      this.fireTimer = this.variant === "interceptor" || this.variant === "lancer" ? 58 : this.variant === "carrier" ? 72 : 92;
+      this.fireTimer = this.variant === "interceptor" || this.variant === "lancer" ? 96 : this.variant === "carrier" ? 124 : 138;
     }
   }
 
@@ -2095,8 +2095,8 @@ function updateSpawner() {
     }
   }
 
-  const phenomenonInterval = Math.max(430, Math.round(760 - progress * 300));
-  if (spawnClock % phenomenonInterval === 0 && phenomena.length === 0 && state.level >= 8) {
+  const phenomenonInterval = Math.max(690, Math.round(1050 - progress * 360));
+  if (spawnClock % phenomenonInterval === 0 && phenomena.length === 0 && state.level >= 15) {
     const pool = ["blackhole", "supernova"];
     if (state.level >= 4) pool.push("magnetar");
     if (state.level >= 6) pool.push("pulsar");
