@@ -2449,9 +2449,12 @@ function pollGamepad(){
     gamepadState.index=gp.index;gamepadState.connected=true;gamepadState.lastName=gp.id||"Joystick";
     controllerStatus("CONECTADO · "+gamepadState.lastName.slice(0,25),true);
   }
-  const axis=Number(gp.axes?.[0]||0),hatLeft=gamepadButton(gp,14),hatRight=gamepadButton(gp,15);
+  const axis=Number(gp.axes?.[0]||0),axisY=Number(gp.axes?.[1]||0),hatLeft=gamepadButton(gp,14),hatRight=gamepadButton(gp,15);
   const left=axis<-.28||hatLeft,right=axis>.28||hatRight;
   keys.Left=left;keys.Right=right;
+  const axisDir=Math.abs(axis)>.62?(axis<0?-1:1):Math.abs(axisY)>.62?(axisY<0?-1:1):0;
+  if(state.mode!=="PLAYING"&&axisDir&&gamepadState.axisDir!==axisDir)gamepadMenuMove(axisDir);
+  gamepadState.axisDir=axisDir;
   const pressed=gp.buttons.map(b=>!!b&&(b.pressed||b.value>.55));
   const just=(index)=>!!pressed[index]&&!gamepadState.buttons[index];
   const menuMode=state.mode!=="PLAYING";
