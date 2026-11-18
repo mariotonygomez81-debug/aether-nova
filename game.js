@@ -2419,9 +2419,53 @@ function paintEraBackground(era) {
 const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:false,connected:false,lastName:""};
 const keyboardInput={left:false,right:false};
 const touchInput={left:false,right:false};
+const phonepadState={left:false,right:false,bomb:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:""};
 function refreshHorizontalInput(){
-  keys.Left=keyboardInput.left||touchInput.left||gamepadState.left;
-  keys.Right=keyboardInput.right||touchInput.right||gamepadState.right;
+  keys.Left=keyboardInput.left||touchInput.left||gamepadState.left||phonepadState.left;
+  keys.Right=keyboardInput.right||touchInput.right||gamepadState.right||phonepadState.right;
+}
+function phonepadStatus(message,connected=false){
+  const el=document.getElementById("phonepad-status");
+  if(el){el.textContent=message;el.classList.toggle("connected",connected);}
+}
+function phonepadRelease(){
+  phonepadState.left=phonepadState.right=phonepadState.bomb=phonepadState.pause=false;
+  refreshHorizontalInput();
+}
+async function startPhonepadPairing(){
+  try{
+    if(!cloudConfigured())throw new Error("La conexión online no está configurada.");
+    if(phonepadState.channel&&phonepadState.client)await phonepadState.client.removeChannel(phonepadState.channel);
+    const bytes=new Uint8Array(4);crypto.getRandomValues(bytes);
+    const code=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+    const sdk=await import("https://esm.sh/@supabase/supabase-js@2");
+    const client=sdk.createClient(CLOUD_CFG.supabaseUrl,CLOUD_CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:25}}});
+    const channel=client.channel("aether-phone-"+code,{config:{private:false,broadcast:{ack:false,self:false}}})
+      .on("broadcast",{event:"input"},({payload})=>{
+        if(!payload||typeof payload!=="object")return;
+        const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
+        phonepadState.left=payload.l===true;phonepadState.right=payload.r===true;
+        const bomb=payload.b===true,pause=payload.p===true;
+        if(bomb&&!phonepadState.bomb)triggerSuperBomb();
+        if(pause&&!phonepadState.pause)togglePause();
+        phonepadState.bomb=bomb;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
+        phonepadStatus("CELULAR CONECTADO",true);
+      });
+    await new Promise((resolve,reject)=>{
+      const timeout=setTimeout(()=>reject(new Error("Tiempo agotado al conectar. Revisá Realtime.")),12000);
+      channel.subscribe(s=>{if(s==="SUBSCRIBED"){clearTimeout(timeout);resolve(s);}else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){clearTimeout(timeout);reject(new Error("Realtime rechazó el canal. Revisá si los canales públicos están habilitados."));}});
+    });
+    phonepadState.client=client;phonepadState.channel=channel;phonepadState.code=code;phonepadState.lastAt=Date.now();
+    const link=new URL("./phone-controller.html",location.href);link.searchParams.set("code",code);
+    const codeEl=document.getElementById("phonepad-code");if(codeEl)codeEl.textContent=code;
+    const linkEl=document.getElementById("phonepad-link");if(linkEl){linkEl.href=link.href;linkEl.textContent=link.href;}
+    const qr=document.getElementById("phonepad-qr");if(qr){qr.innerHTML="";if(window.QRCode)new QRCode(qr,{text:link.href,width:150,height:150,colorDark:"#07111f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});else qr.textContent="Abrí el enlace del mando y escribí el código.";}
+    document.getElementById("phonepad-pairing")?.classList.remove("hidden");
+    phonepadStatus("ESPERANDO EL CELULAR…",false);
+  }catch(error){console.error("Phonepad pairing:",error);phonepadStatus(error.message||"NO SE PUDO VINCULAR",false);}
+}
+function pollPhonepadTimeout(){
+  if(phonepadState.connected&&Date.now()-phonepadState.lastAt>1300){phonepadState.connected=false;phonepadRelease();phonepadStatus("CELULAR DESCONECTADO",false);}
 }
 function controllerStatus(message,connected=false){
   const el=document.getElementById("controller-status");if(!el)return;
@@ -2491,6 +2535,7 @@ window.addEventListener("gamepaddisconnected",e=>{
 function updateAndDraw() {
   requestAnimationFrame(updateAndDraw);
   pollGamepad();
+  pollPhonepadTimeout();
 
   const era = ERAS[Math.min(9, Math.floor((state.level - 1) / 10))];
   paintEraBackground(era);
@@ -3744,6 +3789,8 @@ function bindHold(id, dirKey) {
 
 bindHold("btn-left", "Left");
 bindHold("btn-right", "Right");
+bindTap("btn-phonepad-pair", startPhonepadPairing);
+bindTap("btn-phonepad-copy",()=>{if(phonepadState.code)navigator.clipboard?.writeText(new URL("./phone-controller.html?code="+phonepadState.code,location.href).href).catch(()=>{});});
 
 window.addEventListener("keydown", (e) => {
   if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
