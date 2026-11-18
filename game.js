@@ -1137,53 +1137,730 @@ class CosmicPhenomenon {
       });
 
       enemies.forEach((e) => {
-    e.update();
-    if (!window.__AETHER3D_ACTIVE) e.draw();
+        const dx = this.x - e.x;
+        const dy = this.y - e.y;
+        const d = Math.hypot(dx, dy);
+        if (d < pullRange && d > 5) {
+          e.x += (dx / d) * 2.6;
+          e.y += (dy / d) * 2.6;
+          if (d < 30) e.dead = true;
+        }
+      });
 
-    // Primero resolver los disparos: un enemigo que llega junto al jugador
-    // no debe marcarse como destruido por choque antes de recibir impactos.
-    bullets.forEach((b) => {
-      if (b.dead || e.dead) return;
-      const x1 = Number.isFinite(b.prevX) ? b.prevX : b.x;
-      const y1 = Number.isFinite(b.prevY) ? b.prevY : b.y;
-      const x2 = b.x, y2 = b.y;
-      const dx = x2 - x1, dy = y2 - y1;
-      const len2 = dx * dx + dy * dy;
-      const t = len2 > 0 ? Math.max(0, Math.min(1, ((e.x - x1) * dx + (e.y - y1) * dy) / len2)) : 1;
-      const hitX = x1 + t * dx, hitY = y1 + t * dy;
-      const hitRadius = e.radius + (b.missile ? 11 : 9);
-      if (Math.hypot(hitX - e.x, hitY - e.y) < hitRadius) {
-        b.dead = true;
-        e.hp -= b.dmg;
-        e.hitFlash = 12;
-        spawnImpactBurst(hitX, hitY, "#ff8bc8", IS_LOW_POWER ? 4 : 8);
-        SoundFX.play("targetHit");
-        if (e.hp <= 0) {
-          e.dead = true;
-          SoundFX.play("boom");
-          state.shake = Math.max(state.shake, e.radius > 24 ? 9 : 5);
-          spawnExplosion(e.x, e.y, "#ff2a85", IS_LOW_POWER ? 12 : 24);
-          spawnImpactBurst(e.x, e.y, "#ffd6ed", IS_LOW_POWER ? 8 : 17);
-          spawnPowerup(e.x, e.y);
-          state.score += 120 * state.combo;
-          recordMissionProgress("kills", 1);
-          advanceProgress(2);
+      bullets.forEach((b) => {
+        const d = Math.hypot(this.x - b.x, this.y - b.y);
+        if (d < 95) b.dead = true;
+      });
+
+      const pdx = this.x - player.x;
+      const pdy = this.y - player.y;
+      const pd = Math.hypot(pdx, pdy);
+      // La singularidad atrae en ambos ejes; el campo antigravedad anula el efecto.
+      if (pd < pullRange && pd > 0.001 && player.buffs.antigrav <= 0) {
+        const force = Math.max(1.4, 5.8 * (1 - pd / pullRange));
+        player.x += (pdx / pd) * force;
+        player.y += (pdy / pd) * force * 0.72;
+        if (pd < 58) { player.takeDamage("ABSORBIDO POR AGUJERO NEGRO"); state.shake = Math.max(state.shake, 15); }
+      }
+    } else if (this.kind === "magnetar") {
+      // Pulsos gravitomagnéticos expansivos: empujan nave, enemigos y rocas.
+      const phase = this.timer % 105;
+      const pulseRadius = phase * 5.2;
+      if (phase > 3 && phase < 68) {
+        const repel = (obj, strength) => {
+          const dx = obj.x - this.x, dy = obj.y - this.y, d = Math.hypot(dx, dy);
+          if (d < pulseRadius + 24 && d > 8 && d > pulseRadius - 28) {
+            const f = strength * (1 - Math.min(1, d / 620));
+            obj.x += dx / d * f; obj.y += dy / d * f;
+          }
+        };
+        asteroids.forEach(a => repel(a, 7.5));
+        enemies.forEach(e => repel(e, 9));
+        if (player.buffs.faraday <= 0) {
+          const beforeX = player.x, beforeY = player.y;
+          repel(player, 12);
+          if (beforeX !== player.x || beforeY !== player.y) {
+            state.shake = Math.max(state.shake, 5);
+            if (phase === 12) addFloatingText(player.x, player.y - 25, "¡ONDA MAGNETAR!", "#e879f9");
+          }
+        }
+        enemyBullets.forEach(b => repel(b, 8));
+      }
+    } else if (this.kind === "pulsar") {
+      // Haz gamma giratorio de gran alcance; castiga también a objetivos y rocas.
+      const beamAngle = this.angle * 1.25;
+      const hitBeam = (obj, width) => {
+        const dx = obj.x - this.x, dy = obj.y - this.y;
+        const along = dx * Math.cos(beamAngle) + dy * Math.sin(beamAngle);
+        const across = Math.abs(-dx * Math.sin(beamAngle) + dy * Math.cos(beamAngle));
+        return Math.abs(along) < 520 && across < width;
+      };
+      if (this.timer > 35 && this.timer % 9 === 0) {
+        enemies.forEach(e => { if (hitBeam(e, 34)) { e.hp -= 3; if (e.hp <= 0) e.dead = true; } });
+        asteroids.forEach(a => { if (hitBeam(a, 30)) { a.hp -= 2; if (a.hp <= 0) a.dead = true; } });
+        if (player.buffs.antigamma <= 0 && hitBeam(player, 42)) {
+          player.takeDamage("RAYO GAMMA DEL PÚLSAR");
+          state.shake = Math.max(state.shake, 10);
         }
       }
-    });
+    } else if (this.kind === "ionstorm") {
+      // La tormenta anuncia cada descarga antes de atravesar una columna del escenario.
+      this.y = H * 0.5 + Math.sin(this.timer * 0.018) * H * 0.12;
+      if (this.timer - this.lastStrike >= 82) {
+        this.lastStrike = this.timer;
+        this.strikeX = W * (0.12 + Math.random() * 0.76);
+      }
+      const strikeAge = this.timer - this.lastStrike;
+      this.strikeFlash = strikeAge >= 18 && strikeAge <= 24 ? 1 : 0;
+      if (strikeAge === 21) {
+        const width = Math.max(34, W * 0.035);
+        asteroids.forEach(a => { if (Math.abs(a.x - this.strikeX) < width + a.radius) { a.hp -= 5; if (a.hp <= 0) a.dead = true; } });
+        enemies.forEach(e => { if (Math.abs(e.x - this.strikeX) < width + e.radius) { e.hp -= 8; if (e.hp <= 0) e.dead = true; } });
+        if (Math.abs(player.x - this.strikeX) < width + player.radius && player.buffs.antigamma <= 0) {
+          player.takeDamage("DESCARGA DE TORMENTA IÓNICA");
+          state.shake = Math.max(state.shake, 9);
+        }
+        spawnExplosion(this.strikeX, this.y, "#67e8f9", IS_LOW_POWER ? 7 : 13);
+      }
+    } else if (this.kind === "debrisfield") {
+      // Campo denso: fragmentos atraviesan el escenario y pueden encadenar explosiones.
+      if (this.timer % 29 === 0 && asteroids.length < (IS_LOW_POWER ? 24 : 38)) {
+        const rock = new Asteroid(Math.random() * W, -35, 10 + Math.random() * 16, Math.random() < 0.24 ? "explosive" : "normal");
+        rock.vx = (Math.random() - 0.5) * 3.8;
+        rock.vy = 2.8 + Math.random() * 2.2 + state.level * 0.025;
+        asteroids.push(rock);
+      }
+    }
 
-    // El choque con el jugador se comprueba después de dar oportunidad
-    // a todos los proyectiles de impactar y destruir al atacante.
-    if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < e.radius + player.radius) {
+    if (this.y > H + 120 || this.timer > this.maxTimer) {
+      this.dead = true;
+    }
+  }
+
+  detonateSupernova() {
+    SoundFX.play("supernova");
+    state.shake = 34;
+    state.flash = 0.88;
+    if (navigator.vibrate) { try { navigator.vibrate([180, 70, 280]); } catch (e) {} }
+
+    asteroids.forEach((a) => {
+      spawnExplosion(a.x, a.y, "#ffcc33", 6);
+      a.dead = true;
+    });
+    enemies.forEach((e) => {
+      spawnExplosion(e.x, e.y, "#ff5500", 10);
       e.dead = true;
-      const impactX = (e.x + player.x) * .5;
-      const impactY = (e.y + player.y) * .5;
-      spawnImpactBurst(impactX, impactY, "#ff6688", IS_LOW_POWER ? 9 : 17);
-      spawnExplosion(e.x, e.y, "#ff6688", IS_LOW_POWER ? 8 : 15);
-      SoundFX.play("boom");
-      player.takeDamage("CHOQUE CON NAVE ENEMIGA");
+    });
+    enemyBullets = [];
+    spawnExplosion(this.x, this.y, "#ffffff", 40);
+
+    if (player.buffs.cryo > 0) {
+      addFloatingText(player.x, player.y - 35, "¡CRIO-ESCUDO RESISTIÓ SUPERNOVA!", "#00f0ff");
+    } else {
+      player.takeDamage("ONDA DE SUPERNOVA");
+    }
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+
+    if (this.kind === "supernova") {
+      ctx.strokeStyle = "rgba(255, 85, 0, 0.5)";
+      ctx.setLineDash([8, 6]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 173, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const g = ctx.createRadialGradient(0, 0, 4, 0, 0, this.radius);
+      g.addColorStop(0, "#ffffff");
+      g.addColorStop(0.4, "#ffcc33");
+      g.addColorStop(0.8, "#ff3b00");
+      g.addColorStop(1, "rgba(255, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (this.kind === "blackhole") {
+      const pulse = 1 + Math.sin(this.timer * .09) * .07;
+      ctx.rotate(this.angle * 1.7);
+      // Disco de acreción en dos anillos: el núcleo permanece negro.
+      for (let i = 0; i < 3; i++) {
+        ctx.save(); ctx.rotate(i * 2.1);
+        ctx.strokeStyle = ["rgba(255,190,70,.95)","rgba(255,90,25,.82)","rgba(174,70,255,.72)"][i];
+        ctx.lineWidth = 7 - i;
+        ctx.beginPath(); ctx.ellipse(0,0,58*pulse,18+i*5,0,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+      }
+      const g = ctx.createRadialGradient(0,0,8,0,0,78);
+      g.addColorStop(0,"#000000"); g.addColorStop(.55,"#05030d"); g.addColorStop(.72,"rgba(70,25,110,.6)"); g.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,78,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="rgba(255,210,130,.95)"; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.ellipse(0,0,65,20,0,Math.PI,Math.PI*2); ctx.stroke();
+      ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(0,0,25,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="rgba(160,110,255,.8)"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,0,29,0,Math.PI*2); ctx.stroke();
+    } else if (this.kind === "magnetar") {
+      const wave = 28 + (this.timer % 70) * 1.15;
+      ctx.rotate(-this.angle * 1.4);
+      // Líneas curvas del campo magnético y pulsos concéntricos.
+      ctx.strokeStyle="rgba(198,80,255,.35)"; ctx.lineWidth=2;
+      for(let i=0;i<4;i++){ ctx.beginPath(); ctx.ellipse(0,0,26+i*13,48+i*12,0,0,Math.PI*2); ctx.stroke(); }
+      ctx.strokeStyle="rgba(255,90,245,.9)"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.ellipse(0,0,wave,wave*.62,0,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle="rgba(180,70,255,.18)"; ctx.beginPath(); ctx.arc(0,0,42,0,Math.PI*2); ctx.fill();
+      const mg=ctx.createRadialGradient(-5,-7,2,0,0,24); mg.addColorStop(0,"#fff"); mg.addColorStop(.35,"#f0abfc"); mg.addColorStop(1,"#7e22ce");
+      ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(0,0,19,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#fff"; ctx.fillRect(-2,-52,4,104);
+    } else if (this.kind === "pulsar") {
+      ctx.rotate(this.angle * 1.25);
+      const beamAlpha = .58 + Math.sin(this.timer * .16) * .28;
+      const beamGrad = ctx.createLinearGradient(-490,0,490,0);
+      beamGrad.addColorStop(0,"rgba(0,255,190,0)"); beamGrad.addColorStop(.5,`rgba(0,255,190,${beamAlpha})`); beamGrad.addColorStop(1,"rgba(0,255,190,0)");
+      ctx.fillStyle=beamGrad; ctx.fillRect(-490,-13,980,26);
+      ctx.fillStyle="rgba(95,255,225,.2)"; ctx.fillRect(-490,-25,980,50);
+      ctx.rotate(-this.angle * 2.5);
+      ctx.strokeStyle="rgba(120,255,235,.65)"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.ellipse(0,0,27,11,0,0,Math.PI*2); ctx.stroke();
+      const pg=ctx.createRadialGradient(-4,-5,1,0,0,20); pg.addColorStop(0,"#fff"); pg.addColorStop(.45,"#a7fff0"); pg.addColorStop(1,"#00a6a6");
+      ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(0,0,17,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="#fff"; ctx.fillRect(-2,-46,4,92);
+    } else if (this.kind === "ionstorm") {
+      ctx.translate(0, -this.y);
+      const warning = 0.35 + Math.sin(this.timer * 0.22) * 0.18;
+      ctx.fillStyle = `rgba(34,211,238,${warning})`;
+      ctx.fillRect(this.strikeX - 3, -H, 6, H * 2);
+      ctx.strokeStyle = "rgba(103,232,249,.75)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([7, 9]);
+      ctx.beginPath(); ctx.moveTo(this.strikeX, 0); ctx.lineTo(this.strikeX, H); ctx.stroke(); ctx.setLineDash([]);
+      if (this.strikeFlash) {
+        ctx.strokeStyle = "#e0fbff"; ctx.lineWidth = 5; ctx.shadowBlur = IS_LOW_POWER ? 0 : 24; ctx.shadowColor = "#22d3ee";
+        ctx.beginPath(); ctx.moveTo(this.strikeX, 0);
+        let x = this.strikeX;
+        for (let y = 0; y < H; y += 34) { x += (Math.random() - 0.5) * 48; ctx.lineTo(x, y + 34); }
+        ctx.stroke(); ctx.shadowBlur = 0;
+      }
+      ctx.fillStyle = "rgba(34,211,238,.08)"; ctx.fillRect(0, 0, W, H);
+    } else if (this.kind === "debrisfield") {
+      ctx.translate(0, -this.y);
+      ctx.strokeStyle = "rgba(251,191,36,.2)"; ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        const x = (i * 0.23 * W + this.timer * (i % 2 ? 1.1 : -0.8) + W) % W;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 90, H); ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(251,146,60,.055)"; ctx.fillRect(0, 0, W, H);
+    }
+
+    ctx.restore();
+  }
+}
+
+function detonateAsteroidChain(x, y, source, depth = 0) {
+  const blastRadius = 142 + depth * 12;
+  spawnExplosion(x, y, depth ? "#ff9f43" : "#ffcc33", IS_LOW_POWER ? 9 : 16);
+  state.shake = Math.max(state.shake, Math.max(3, 11 - depth));
+  if (depth === 0) addFloatingText(x, y - 24, "¡REACCIÓN EN CADENA!", "#ffd166");
+
+  asteroids.forEach(other => {
+    if (other === source || other.dead) return;
+    const d = Math.hypot(other.x - x, other.y - y);
+    if (d < blastRadius) {
+      if (other.kind === "explosive" && depth < 4) {
+        other.dead = true;
+        detonateAsteroidChain(other.x, other.y, other, depth + 1);
+      } else {
+        other.hp -= Math.max(2, 6 - depth);
+        if (other.hp <= 0) other.dead = true;
+      }
     }
   });
+  enemies.forEach(enemy => {
+    if (!enemy.dead && Math.hypot(enemy.x - x, enemy.y - y) < blastRadius + enemy.radius) {
+      enemy.hp -= Math.max(5, 15 - depth * 2);
+      if (enemy.hp <= 0) enemy.dead = true;
+    }
+  });
+  if (boss && Math.hypot(boss.x - x, boss.y - y) < blastRadius + boss.radius) {
+    boss.hp -= Math.max(2, 7 - depth);
+    if (boss.hp <= 0) defeatBoss();
+  }
+}
+
+class Asteroid {
+  constructor(x, y, radius, kind = "normal") {
+    this.aether3dId = (Asteroid._next3DId = (Asteroid._next3DId || 0) + 1);
+    this.x = x ?? Math.random() * (W - 60) + 30;
+    this.y = y ?? -45;
+    this.radius = radius;
+    this.kind = kind;
+    const diffMult = 1 + (state.level - 1) * 0.045;
+
+    if (kind === "shooting_star") {
+      this.vx = (Math.random() < 0.5 ? 1 : -1) * (3.5 + Math.random() * 2);
+      this.vy = 6.5 * diffMult;
+      this.hp = 1;
+    } else {
+      this.vx = (Math.random() - 0.5) * 1.6 * diffMult;
+      this.vy = (1.5 + Math.random() * 1.4) * diffMult;
+      const baseHp = radius > 32 ? 4 : radius > 20 ? 2 : 1;
+      this.hp = Math.ceil(baseHp * (1 + Math.floor(state.level / 10) * 0.4));
+    }
+
+    this.maxHp = this.hp;
+    this.rot = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random() - 0.5) * 0.05;
+    this.hitFlash = 0;
+    this.dead = false;
+  }
+
+  update() {
+    if (this.kind === "magnetic" && player) {
+      const dx = player.x - this.x;
+      this.vx += Math.sign(dx) * 0.04;
+    }
+
+    this.x += this.vx;
+    this.y += this.vy;
+    this.rot += this.rotSpeed;
+    if (this.hitFlash > 0) this.hitFlash--;
+
+    if (this.kind === "shooting_star" && particles.length < 110 && Math.random() < 0.7) {
+      particles.push({
+        x: this.x,
+        y: this.y,
+        vx: -this.vx * 0.2,
+        vy: -this.vy * 0.2,
+        life: 14,
+        maxLife: 14,
+        color: "#00f0ff",
+        size: 3.5
+      });
+    }
+
+    if (this.x < this.radius || this.x > W - this.radius) this.vx *= -1;
+    if (this.y > H + 60) this.dead = true;
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+
+    if (this.kind === "shooting_star") {
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowBlur = IS_LOW_POWER ? 0 : 16;
+      ctx.shadowColor = "#00f0ff";
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius * 0.72, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const eraIdx = Math.floor((state.level - 1) / 10);
+      const sprite = getRockSprite(eraIdx, this.kind, this.radius);
+      ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+    }
+
+    if (this.hitFlash > 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+/* ============================================================================
+   AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 4A)
+   ============================================================================ */
+
+class EnemyShip {
+  constructor(variant) {
+    this.variant = variant;
+    this.x = Math.random() * (W - 90) + 45;
+    this.y = -45;
+    this.baseX = this.x;
+    this.age = Math.floor(Math.random() * 90);
+    this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" || variant === "lancer" ? 2.8 : 1.6);
+    this.vy = variant === "bomber" || variant === "carrier" ? 0.9 : variant === "lancer" ? 2.2 : 1.4;
+    this.radius = variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16;
+    const sectorTier = Math.max(0, Math.floor((state.level - 1) / 10));
+    const scale = 1 + Math.floor(state.level / 5) * 0.22 + sectorTier * 0.08;
+    const baseHp = variant === "carrier" ? 22 : variant === "bomber" ? 14 : variant === "interceptor" || variant === "lancer" ? 8 : variant === "weaver" ? 6 : 4;
+    const eventScale = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
+    this.vx *= eventScale;
+    this.vy *= eventScale;
+    this.hp = Math.ceil(baseHp * scale * eventScale);
+    this.fireTimer = 48 + Math.floor(Math.random() * 48);
+    this.dashTimer = 90 + Math.floor(Math.random() * 90);
+    this.dead = false;
+  }
+
+  update() {
+    this.age++;
+    if (this.variant === "weaver") {
+      this.x += Math.sin(this.age * .075) * 3.1;
+      this.y += this.vy * 1.18;
+    } else if (this.variant === "lancer") {
+      this.x += this.vx * .55;
+      this.y += this.vy;
+      this.dashTimer--;
+      if (this.dashTimer <= 0 && player) {
+        const angle = Math.atan2(player.y - this.y, player.x - this.x);
+        this.vx = Math.cos(angle) * 4.8;
+        this.vy = Math.sin(angle) * 4.8;
+        this.dashTimer = 150;
+      } else if (this.dashTimer === 125) {
+        this.vx *= .45; this.vy = 1.8;
+      }
+    } else if (this.variant === "carrier") {
+      this.x += Math.sin(this.age * .025) * 1.5;
+      this.y += this.vy * .72;
+    } else {
+      this.x += this.vx;
+      this.y += this.vy;
+    }
+    if (this.x < 35 || this.x > W - 35) this.vx *= -1;
+    if (this.y > H + 70) this.dead = true;
+
+    this.fireTimer--;
+    if (this.fireTimer <= 0 && this.y > 40 && this.y < H * .72) {
+      this.shoot();
+      this.fireTimer = this.variant === "interceptor" || this.variant === "lancer" ? 58 : this.variant === "carrier" ? 72 : 92;
+    }
+  }
+
+  shoot() {
+    if (!player || enemyBullets.length > (IS_LOW_POWER ? 100 : 170)) return;
+    const ang = Math.atan2(player.y - this.y, player.x - this.x);
+    const shot = (angle, speed, color) => enemyBullets.push({
+      x: this.x, y: this.y + 14, vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed, color
+    });
+    if (this.variant === "scout" || this.variant === "weaver") {
+      shot(ang, this.variant === "weaver" ? 4.8 : 4.2, this.variant === "weaver" ? "#4df5ff" : "#ff4d6d");
+    } else if (this.variant === "interceptor") {
+      [-.13, .13].forEach(offset => shot(Math.PI / 2 + offset, 5.8, "#ff9e00"));
+    } else if (this.variant === "lancer") {
+      [-.08, 0, .08].forEach(offset => shot(ang + offset, 6.2, "#ff5e00"));
+    } else if (this.variant === "carrier") {
+      [-.34, -.17, 0, .17, .34].forEach(offset => shot(ang + offset, 4.4, "#c084fc"));
+    } else {
+      [-.28, 0, .28].forEach(offset => shot(ang + offset, 4.2, "#ff0055"));
+    }
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    const colors = {
+      scout: "#e63946", interceptor: "#ff9e00", bomber: "#ff0055",
+      weaver: "#4df5ff", lancer: "#ff6b35", carrier: "#c084fc"
+    };
+    const color = colors[this.variant] || "#ff4d6d";
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 12;
+    ctx.shadowColor = color;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = "rgba(255,255,255,.7)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    if (this.variant === "carrier") {
+      ctx.moveTo(-30, -8); ctx.lineTo(-18, -20); ctx.lineTo(18, -20);
+      ctx.lineTo(30, -8); ctx.lineTo(24, 15); ctx.lineTo(-24, 15);
+    } else if (this.variant === "weaver") {
+      ctx.moveTo(0, 22); ctx.lineTo(-20, -14); ctx.lineTo(-4, -8);
+      ctx.lineTo(0, -24); ctx.lineTo(4, -8); ctx.lineTo(20, -14);
+    } else if (this.variant === "lancer") {
+      ctx.moveTo(0, 25); ctx.lineTo(-14, -18); ctx.lineTo(0, -10); ctx.lineTo(14, -18);
+    } else {
+      ctx.moveTo(0, this.radius); ctx.lineTo(-this.radius, -this.radius * .7);
+      ctx.lineTo(0, -this.radius * .3); ctx.lineTo(this.radius, -this.radius * .7);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(-3, -5, 6, 8);
+    ctx.restore();
+  }
+}
+
+class BossShip {
+  constructor() {
+    this.x = W / 2; this.y = 112; this.vx = 2.1;
+    this.variant = (state.level - 1) % 5;
+    const names = ["LEVIATÁN", "DESTRUCTOR", "ANOMALÍA", "REINA DEL VACÍO", "ECLIPSE SUPREMO"];
+    this.name = names[this.variant];
+    this.radius = [48,54,46,62,58][this.variant];
+    const sectorRamp = 1 + Math.max(0, state.level - 1) * 0.012;
+    const bossDifficulty = state.difficulty === "hard" ? 1.24 : state.difficulty === "easy" ? 0.84 : 1;
+    this.maxHp = Math.round((210 + state.level * 29) * sectorRamp * bossDifficulty);
+    this.hp = this.maxHp;
+    this.timer = 0;
+    this.phase = 1;
+    this.weakAngle = -Math.PI / 2;
+    this.weakRadius = this.radius + 22;
+    this.attackClock = 0;
+    this.phaseTransitionLock = false;
+    this.specialClock = 0;
+    this.summonClock = 0;
+    const bossWrap = document.getElementById("boss-bar-wrap");
+    const bossName = document.getElementById("boss-name");
+    if (bossWrap) bossWrap.classList.remove("hidden");
+    if (bossName) bossName.textContent = `${this.name} • FASE 1/3`;
+    showBossCinematic(this.name, this.variant);
+    addFloatingText(W / 2, H * .28, `JEFE DE SECTOR • ${this.name}`, "#ff4bd8");
+    addFloatingText(W / 2, H * .34, "IDENTIFICÁ SU NÚCLEO EXPUESTO", "#ffe08a");
+    state.shake = Math.max(state.shake, 10);
+  }
+
+  update() {
+    this.timer++;
+    this.attackClock++;
+    const ratio = this.hp / this.maxHp;
+    const nextPhase = ratio <= .30 ? 3 : ratio <= .66 ? 2 : 1;
+    if (nextPhase !== this.phase) {
+      this.phase = nextPhase;
+      this.vx *= this.phase === 3 ? 1.55 : 1.25;
+      this.vx = Math.max(-5.2, Math.min(5.2, this.vx));
+      this.attackClock = 0;
+      this.phaseTransitionLock = true;
+      state.shake = Math.max(state.shake, 14);
+      state.flash = Math.max(state.flash, .18);
+      const phaseNames = ["", "PROTOCOLO DE ASALTO", "SOBRECARGA CRÍTICA", "NÚCLEO EN FURIA"];
+      addFloatingText(W / 2, H * .25, `¡${phaseNames[this.phase]}! FASE ${this.phase}/3`, "#ffcc33");
+      if (this.phase === 2) {
+        for (let i = 0; i < 2; i++) enemies.push(new EnemyShip(i === 0 ? "interceptor" : "bomber"));
+      } else {
+        for (let i = 0; i < 3; i++) enemies.push(new EnemyShip(["weaver", "lancer", "scout"][i]));
+      }
+    }
+
+    const lateralWave = this.variant === 2 ? Math.sin(this.timer * .035) * (this.phase === 3 ? 2.2 : 1.1) : 0;
+    this.x += this.vx * (this.phase === 3 ? 1.18 : 1) + lateralWave;
+    if (this.x < 68 || this.x > W - 68) this.vx *= -1;
+    this.y = 112 + Math.sin(this.timer * (this.phase === 3 ? .045 : .025)) * (this.phase === 3 ? 48 : 34);
+    this.weakAngle += this.phase === 3 ? .055 : .025;
+
+    this.specialClock++;
+    // Cada comandante tiene una mecánica propia además de sus patrones de disparo.
+    if (this.variant === 2 && player && this.specialClock % (this.phase === 3 ? 150 : 220) < 48) {
+      const pull = this.phase === 3 ? 0.72 : 0.38;
+      player.x += Math.sign(this.x - player.x) * pull;
+      player.x = Math.max(player.radius, Math.min(W - player.radius, player.x));
+      if (this.specialClock % 55 === 0) addFloatingText(W / 2, H * .62, "CAMPO GRAVITATORIO: ¡CONTRARRESTA!", "#ffd166");
+    }
+    if (this.variant === 3 && this.specialClock % (this.phase === 3 ? 165 : 245) === 0 && enemies.length < (IS_LOW_POWER ? 8 : 12)) {
+      const adds = this.phase === 3 ? 3 : 2;
+      for (let i = 0; i < adds; i++) enemies.push(new EnemyShip(["weaver", "interceptor", "scout"][i % 3]));
+      addFloatingText(this.x, this.y + 64, "LA REINA INVOCA REFUERZOS", "#7cf7c8");
+    }
+    if (this.variant === 4 && this.phase === 3 && this.specialClock % 190 === 0) {
+      for (let i = 0; i < 2; i++) enemies.push(new EnemyShip(i ? "lancer" : "bomber"));
+      state.flash = Math.max(state.flash, .10);
+      addFloatingText(W / 2, H * .22, "ECLIPSE: ESCUADRA DE ÉLITE", "#ff6688");
+    }
+
+    const cadence = Math.max(22, (this.phase === 1 ? 68 : this.phase === 2 ? 48 : 32) - Math.floor(state.level / 4));
+    if (player && this.attackClock % cadence === 0 && enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
+      const aim = Math.atan2(player.y - this.y, player.x - this.x);
+      const speed = 4.1 + Math.min(3.1, state.level * .04) + (this.phase - 1) * .55;
+      const addShot = (angle, velocity = speed, color = "#ff3864") => {
+        if (enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
+          enemyBullets.push({ x: this.x, y: this.y + 18, vx: Math.cos(angle) * velocity, vy: Math.sin(angle) * velocity, color });
+        }
+      };
+
+      if (this.variant === 0) {
+        // Leviatán: anillos de plasma que se expanden y abanicos de cobertura.
+        const count = this.phase === 3 ? 16 : this.phase === 2 ? 12 : 9;
+        for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * (this.phase === 3 ? .09 : .035), speed * .78, "#a855f7");
+        if (this.phase >= 2) [-.34, 0, .34].forEach(o => addShot(aim + o, speed * 1.05, "#ff9e00"));
+      } else if (this.variant === 1) {
+        // Destructor: lanzas rápidas dirigidas al lugar del piloto.
+        const spread = this.phase === 3 ? .075 : .13;
+        for (let i = -2; i <= 2; i++) addShot(aim + i * spread, speed * (this.phase === 3 ? 1.48 : 1.2), "#ff9e45");
+        if (this.phase >= 2) {
+          addShot(aim - .55, speed * .9, "#ffe08a");
+          addShot(aim + .55, speed * .9, "#ffe08a");
+        }
+      } else if (this.variant === 2) {
+        // Anomalía: espiral gravitatoria que obliga a cambiar de carril.
+        const count = this.phase === 3 ? 14 : 10;
+        for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * .075, speed * .72, "#22f0d0");
+        if (this.phase >= 2) [-.22, 0, .22].forEach(o => addShot(aim + o, speed * 1.05, "#fff06a"));
+      } else if (this.variant === 3) {
+        // Reina: abanicos escalonados que cubren zonas distintas.
+        const offsets = this.phase === 3 ? [-.62, -.46, -.30, -.14, .02, .18, .34, .50, .66] : [-.48, -.30, -.12, .06, .24, .42];
+        offsets.forEach(o => addShot(aim + o, speed * (this.phase === 3 ? 1.08 : .92), "#75f0c4"));
+      } else {
+        // Eclipse Supremo: doble espiral más una ráfaga de precisión.
+        const count = this.phase === 3 ? 18 : 12;
+        for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * .12, speed * .82, "#ff3864");
+        [-.30, -.15, 0, .15, .30].forEach(o => addShot(aim + o, speed * (this.phase === 3 ? 1.45 : 1.18), "#fff06a"));
+      }
+    }
+  }
+
+  getWeakPoint() {
+    return {
+      x: this.x + Math.cos(this.weakAngle) * this.weakRadius,
+      y: this.y + Math.sin(this.weakAngle) * this.weakRadius
+    };
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    const glow = ["#a855f7", "#e879f9", "#22f0d0", "#ff9f1c", "#ff3864"][this.variant];
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 24;
+    ctx.shadowColor = glow;
+    ctx.fillStyle = this.phase === 3 ? "#4a071c" : "#2b0918";
+    ctx.strokeStyle = glow;
+    ctx.lineWidth = this.phase === 3 ? 4 : 3;
+
+    ctx.beginPath();
+    if (this.variant === 0) {
+      ctx.moveTo(0, 58); ctx.lineTo(-72, 18); ctx.lineTo(-58, -28); ctx.lineTo(-24, -50);
+      ctx.lineTo(24, -50); ctx.lineTo(58, -28); ctx.lineTo(72, 18);
+    } else if (this.variant === 1) {
+      ctx.moveTo(0, 62); ctx.lineTo(-30, 12); ctx.lineTo(-22, -48); ctx.lineTo(0, -35);
+      ctx.lineTo(22, -48); ctx.lineTo(30, 12);
+    } else if (this.variant === 2) {
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + i * Math.PI * 2 / 10;
+        const r = i % 2 ? 34 : 66;
+        const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+    } else if (this.variant === 3) {
+      ctx.moveTo(0, 58); ctx.lineTo(-68, 8); ctx.lineTo(-42, -42); ctx.lineTo(-12, -24);
+      ctx.lineTo(0, -54); ctx.lineTo(12, -24); ctx.lineTo(42, -42); ctx.lineTo(68, 8);
+    } else {
+      ctx.moveTo(0, 66); ctx.lineTo(-76, 22); ctx.lineTo(-54, -44); ctx.lineTo(-18, -34);
+      ctx.lineTo(0, -62); ctx.lineTo(18, -34); ctx.lineTo(54, -44); ctx.lineTo(76, 22);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Blindaje exterior y núcleo central.
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255,255,255,.32)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 2, 25, 0, Math.PI * 2); ctx.stroke();
+    const core = ctx.createRadialGradient(-4, -4, 2, 0, 2, 18);
+    core.addColorStop(0, "#ffffff"); core.addColorStop(.35, glow); core.addColorStop(1, "#39051a");
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(0, 2, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    const weak = this.getWeakPoint();
+    const pulse = 1 + Math.sin(this.timer * .16) * .16;
+    ctx.save();
+    ctx.translate(weak.x, weak.y);
+    ctx.rotate(this.weakAngle);
+    ctx.strokeStyle = "#fff4a3";
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 18;
+    ctx.shadowColor = "#ffe66d";
+    ctx.beginPath(); ctx.arc(0, 0, 11 * pulse, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "#fff7c2";
+    ctx.beginPath(); ctx.moveTo(0, -7 * pulse); ctx.lineTo(7 * pulse, 0); ctx.lineTo(0, 7 * pulse); ctx.lineTo(-7 * pulse, 0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+const POWERUP_POOL = [
+  { id: "triple",    label: "W", color: "#00f0ff", text: "DISPARO TRIPLE" },
+  { id: "rapid",     label: "R", color: "#00ff88", text: "FUEGO RÁPIDO" },
+  { id: "shield",    label: "S", color: "#38b6ff", text: "ESCUDO ENERGÍA" },
+  { id: "wingmen",   label: "D", color: "#c77dff", text: "NAVES ESCOLTA" },
+  { id: "missiles",  label: "M", color: "#ff9e00", text: "MISILES BUSCADORES" },
+  { id: "bomb",      label: "B", color: "#ff2a85", text: "+1 SUPER BOMBA" },
+  { id: "life",      label: "+", color: "#52b788", text: "+1 VIDA CASCO" },
+  { id: "cryo",      label: "C", color: "#90e0ef", text: "CRIO-ESCUDO (SUPERNOVA)" },
+  { id: "antigrav",  label: "G", color: "#ffd166", text: "ANTIGRAVEDAD (AGUJERO)" },
+  { id: "faraday",   label: "F", color: "#b5179e", text: "JAULA FARADAY (MAGNETAR)" },
+  { id: "antigamma", label: "X", color: "#06d6a0", text: "BLINDAJE ANTI-GAMMA" }
+];
+
+function spawnPowerup(x, y) {
+  if (Math.random() > 0.24) return;
+  const item = POWERUP_POOL[Math.floor(Math.random() * POWERUP_POOL.length)];
+  powerups.push({ x, y, vy: 2.2, ...item });
+}
+
+function applyPowerup(p) {
+  SoundFX.play("powerup");
+  addFloatingText(p.x, p.y - 15, p.text, p.color);
+  if (p.id === "bomb") {
+    player.bombs = Math.min(5, player.bombs + 1);
+  } else if (p.id === "life") {
+    player.lives = Math.min(6, player.lives + 1);
+  } else {
+    player.buffs[p.id] = 660;
+  }
+  updateHUD();
+}
+/* ============================================================================
+   AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 4B)
+   ============================================================================ */
+
+function spawnExplosion(x, y, color, count = 14) {
+  if (IS_LOW_POWER) count = Math.ceil(count * 0.58);
+  if (particles.length > (IS_LOW_POWER ? 65 : 130)) return;
+  for (let i = 0; i < count; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = Math.random() * 4.5 + 1;
+    particles.push({
+      x,
+      y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      life: 22 + Math.random() * 12,
+      maxLife: 34,
+      color,
+      size: Math.random() * 3 + 1.5
+    });
+  }
+}
+
+function spawnImpactBurst(x, y, color = "#ff5a45", count = 13) {
+  const cap = IS_LOW_POWER ? 70 : 150;
+  for (let i = 0; i < count && particles.length < cap; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2.8 + Math.random() * 6.2;
+    particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life: 10 + Math.random() * 9, maxLife: 19, color,
+      size: 2.2 + Math.random() * 2.8 });
+  }
+}
+
+function addFloatingText(x, y, text, color = "#ffffff") {
+  if (floatingTexts.length > 12) floatingTexts.shift();
+  floatingTexts.push({ x, y, text, color, life: 55 });
+}
+
+function triggerSuperBomb() {
+  if (state.mode !== "PLAYING" || !player || player.bombs <= 0) return;
+  player.bombs--;
+  SoundFX.play("supernova");
+  state.shake = 28;
+  state.flash = 0.78;
+  if (navigator.vibrate) { try { navigator.vibrate(); } catch (e) {} }
+
+  asteroids.forEach((a) => {
+    spawnExplosion(a.x, a.y, "#ffcc33", 8);
+    state.score += 25;
+  });
+  asteroids = [];
+
+  enemies.forEach((e) => {
+    spawnExplosion(e.x, e.y, "#ff2a85", 12);
+    state.score += 100;
+  });
+  enemies = [];
+  enemyBullets = [];
 
   if (boss) {
     const bombBonus = (commercialData.upgrades?.capacitor || 0) * 0.04;
@@ -1556,8 +2233,6 @@ function updateAndDraw() {
         if (speed > maxSpeed) { b.vx = b.vx / speed * maxSpeed; b.vy = b.vy / speed * maxSpeed; }
       }
     }
-    b.prevX = b.x;
-    b.prevY = b.y;
     b.x += b.vx;
     b.y += b.vy;
     if (b.y < -30 || b.x < -30 || b.x > W + 30) b.dead = true;
