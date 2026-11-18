@@ -1268,3 +1268,11 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 @keyframes an-nebula-drift{from{transform:translate3d(-1.5%,1%,0) scale(1)}to{transform:translate3d(2%,-2%,0) scale(1.08)}}
 @media(prefers-reduced-motion:reduce){#screen-menu .hero-ship,#screen-menu .hero-engine-glow,#screen-menu .hero-nebula{animation:none}}
 @media(min-width:1100px){#screen-menu .menu-cinematic-hero{min-height:250px}#screen-menu .hero-ship{transform:scale(1.04)}}
+
+/* Mando móvil inalámbrico */
+.phonepad-launch{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:13px 14px;border:1px solid rgba(66,210,255,.2);border-radius:12px;background:rgba(4,15,32,.65)}
+.phonepad-launch>div{display:grid;gap:4px}.phonepad-launch b{font-size:11px;letter-spacing:.1em;color:#a8eaff}.phonepad-launch span{font-size:12px;color:#9fb5c8}
+.phonepad-pairing{display:flex;align-items:center;gap:18px;margin-top:12px;padding:14px;border-radius:12px;background:rgba(3,10,24,.86);border:1px solid rgba(66,210,255,.25)}
+.phonepad-qr{width:166px;min-width:166px;min-height:166px;padding:8px;background:#fff;border-radius:8px;display:grid;place-items:center}.phonepad-qr img{max-width:150px}
+.phonepad-details{display:grid;justify-items:start;gap:7px;min-width:0}.phonepad-details small{font-size:9px;letter-spacing:.12em;color:#8baec4}.phonepad-details strong{font-size:25px;letter-spacing:.22em;color:#7ceaff}.phonepad-details a{font-size:12px;color:#8fe9ff;overflow-wrap:anywhere}.phonepad-details span{font-size:10px;color:#a6c1d0;letter-spacing:.08em}.phonepad-details span.connected{color:#6effc6}
+@media(max-width:560px){.phonepad-launch{align-items:flex-start;flex-direction:column}.phonepad-pairing{align-items:center;flex-direction:column}}
