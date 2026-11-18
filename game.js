@@ -180,6 +180,7 @@ const SoundFX = {
   compressor: null,
   enabled: true,
   bgmTimer: null,
+  musicEnabled: false,
   step: 0,
   lastPlay: Object.create(null),
   noiseBuffer: null,
@@ -314,6 +315,7 @@ const SoundFX = {
     }
   },
   startMusic() {
+    this.musicEnabled = true;
     if (this.bgmTimer) return;
     const progression = [
       [55, 82.41, 110], [49, 73.42, 98],
@@ -322,7 +324,7 @@ const SoundFX = {
       [49, 73.42, 98], [65.41, 98, 130.81]
     ];
     this.bgmTimer = setInterval(() => {
-      if (!this.enabled || state.mode !== "PLAYING") return;
+      if (!this.enabled || !this.musicEnabled || !["MENU", "PLAYING"].includes(state.mode)) return;
       this.init();
       if (!this.ctx || this.ctx.state !== "running" || !this.master) return;
       const chord = progression[this.step % progression.length];
@@ -332,6 +334,9 @@ const SoundFX = {
       if (this.step % 2 === 0) {
         this.tone({ frequency: chord[2] * 2, endFrequency: chord[2] * 2.01, duration: .34, type: "sine", volume: .008, attack: .12 });
       }
+      const motif = [220, 261.63, 329.63, 392, 329.63, 293.66, 261.63, 196];
+      if (this.step % 2 === 0) this.tone({ frequency: motif[(this.step / 2) % motif.length], endFrequency: motif[(this.step / 2) % motif.length] * 1.004, duration: .48, type: "sine", volume: .009, attack: .16, detune: this.step % 4 ? 4 : -4 });
+      if (this.step % 4 === 0) this.tone({ frequency: chord[0] / 2, endFrequency: chord[0] / 2 * .99, duration: .9, type: "triangle", volume: .012, attack: .22, filter: { type: "lowpass", frequency: 180, endFrequency: 95 } });
       this.step++;
     }, 620);
   }
@@ -2511,7 +2516,6 @@ async function enterImmersiveMode() {
 function startNewGame(savedData = null) {
   enterImmersiveMode();
   SoundFX.init();
-  SoundFX.startMusic();
   bullets = [];
   enemyBullets = [];
   spawnClock = 0;
@@ -3317,6 +3321,17 @@ bindTap("btn-fullscreen", async () => {
 bindTap("btn-resume", togglePause);
 bindTap("btn-save", saveProgress);
 bindTap("btn-save-pause", saveProgress);
+
+
+bindTap("btn-menu-music", (e) => {
+  SoundFX.init();
+  if (!SoundFX.ctx) return;
+  SoundFX.musicEnabled = !SoundFX.musicEnabled;
+  if (SoundFX.musicEnabled) SoundFX.startMusic();
+  e.currentTarget.classList.toggle("is-playing", SoundFX.musicEnabled);
+  e.currentTarget.textContent = SoundFX.musicEnabled ? "♫ BANDA SONORA ACTIVADA" : "♫ ACTIVAR BANDA SONORA";
+  e.currentTarget.setAttribute("aria-pressed", String(SoundFX.musicEnabled));
+});
 
 bindTap("btn-audio", (e) => {
   SoundFX.enabled = !SoundFX.enabled;
