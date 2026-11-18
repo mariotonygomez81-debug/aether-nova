@@ -829,3 +829,15 @@ button:focus-visible,input:focus-visible { outline:2px solid #fff; outline-offse
 }
 .cloud-score-submit small[data-state="error"] { color: #ff9b9b; }
 #btn-submit-score:disabled { opacity: .65; cursor: wait; }
+
+
+/* Alpha 6.3 — estado y cuenta regresiva de eventos */
+.galactic-event-card{display:grid;gap:5px;padding:10px;margin-top:8px;border:1px solid rgba(88,190,255,.18);border-radius:9px;background:rgba(9,28,52,.55)}
+.galactic-event-card.is-active{border-color:rgba(67,226,164,.42);background:rgba(10,54,48,.28)}
+.galactic-event-state{font-size:9px;font-weight:800;letter-spacing:.1em;color:#8bdcff}
+.galactic-event-card.is-active .galactic-event-state{color:#70efb7}
+.galactic-event-card p{margin:0;color:#c4d9ee;line-height:1.45}
+.galactic-event-card small{color:#91abc5;font-size:10px}
+.galactic-event-card .galactic-event-countdown{color:#ffe08a;font-weight:700;font-size:11px}
+.galactic-event-panel .rank-header{align-items:center}
+.galactic-event-panel .rank-header strong{font-size:12px}

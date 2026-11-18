@@ -2623,6 +2623,19 @@ async function refreshOnlineRanking() {
     });
   } catch (error) { list.replaceChildren(); const li = document.createElement("li"); li.textContent = `Clasificación no disponible: ${error.message}`; list.append(li); }
 }
+function formatEventCountdown(targetDate, now = Date.now()) {
+  const remaining = Math.max(0, new Date(targetDate).getTime() - now);
+  const totalSeconds = Math.floor(remaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (days > 0) return `${days} d ${hours} h ${minutes} min`;
+  if (hours > 0) return `${hours} h ${minutes} min`;
+  if (minutes > 0) return `${minutes} min ${seconds} s`;
+  return `${seconds} s`;
+}
+
 async function loadGalacticEvents() {
   const box = document.getElementById("galactic-events");
   if (!box) return;
@@ -2636,9 +2649,7 @@ async function loadGalacticEvents() {
   }
   try {
     const now = new Date().toISOString();
-    // La columna correcta del esquema Alpha 6.1 es `published`.
-    // Se muestran eventos publicados que todavía no finalizaron, incluidos los próximos.
-    const events = await cloudFetch(`galactic_events?select=title,description,starts_at,ends_at&published=eq.true&ends_at=gt.${encodeURIComponent(now)}&order=starts_at.asc&limit=4`);
+    const events = await cloudFetch(`galactic_events?select=title,description,starts_at,ends_at&published=eq.true&ends_at=gt.${encodeURIComponent(now)}&order=starts_at.asc&limit=8`);
     box.replaceChildren();
     if (!Array.isArray(events) || events.length === 0) {
       const small = document.createElement("small");
@@ -2646,17 +2657,36 @@ async function loadGalacticEvents() {
       box.append(small);
       return;
     }
+    const currentTime = Date.now();
     events.forEach(event => {
+      const starts = new Date(event.starts_at).getTime();
+      const ends = new Date(event.ends_at).getTime();
+      if (!Number.isFinite(starts) || !Number.isFinite(ends) || ends <= starts) return;
+      const active = starts <= currentTime && currentTime < ends;
       const article = document.createElement("article");
+      article.className = `galactic-event-card ${active ? "is-active" : "is-upcoming"}`;
+      const state = document.createElement("span");
+      state.className = "galactic-event-state";
+      state.textContent = active ? "● EVENTO EN CURSO" : "◷ EVENTO PRÓXIMO";
       const title = document.createElement("strong");
       const desc = document.createElement("p");
       const dates = document.createElement("small");
+      const countdown = document.createElement("small");
       title.textContent = event.title || "Transmisión galáctica";
       desc.textContent = event.description || "Transmisión del alto mando.";
-      dates.textContent = `${new Date(event.starts_at).toLocaleDateString("es-AR")} – ${new Date(event.ends_at).toLocaleDateString("es-AR")}`;
-      article.append(title, desc, dates);
+      dates.textContent = `${new Date(starts).toLocaleString("es-AR")} – ${new Date(ends).toLocaleString("es-AR")}`;
+      countdown.className = "galactic-event-countdown";
+      countdown.textContent = active
+        ? `Finaliza en ${formatEventCountdown(ends, currentTime)}`
+        : `Comienza en ${formatEventCountdown(starts, currentTime)}`;
+      article.append(state, title, desc, dates, countdown);
       box.append(article);
     });
+    if (!box.children.length) {
+      const small = document.createElement("small");
+      small.textContent = "No hay eventos con fechas válidas para mostrar.";
+      box.append(small);
+    }
   } catch (error) {
     console.error("AETHER NOVA: error al cargar eventos galácticos:", error);
     box.textContent = `No se pudieron cargar los eventos: ${error.message || "error desconocido"}`;
@@ -2777,6 +2807,7 @@ bindTap("btn-cloud-upload", uploadCloudSave);
 bindTap("btn-cloud-restore", restoreCloudSave);
 bindTap("btn-cloud-logout", cloudLogout);
 bindTap("btn-refresh-online-rank", refreshOnlineRanking);
+bindTap("btn-refresh-events", loadGalacticEvents);
 bindTap("btn-submit-score", submitLatestCloudScore);
 bindTap("btn-logout", () => {
   activeProfile = null;
