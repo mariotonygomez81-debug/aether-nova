@@ -217,6 +217,8 @@
         <div class="controller-top"><div><span class="section-kicker">SISTEMA DE CONTROL UNIVERSAL</span><h3>JUGÁ CON TU JOYSTICK</h3><p>USB · Bluetooth · Wi-Fi* · mandos compatibles</p></div><span id="controller-status" class="controller-status"><i></i> BUSCANDO MANDO</span></div>
         <div class="controller-bottom"><div class="controller-instructions"><b>◀ ▶</b><span>Mover nave</span></div><div class="controller-instructions"><b>A / ✕</b><span>Superbomba</span></div><div class="controller-instructions"><b>START / ☰</b><span>Pausa</span></div><div class="controller-instructions"><b>A / ✕</b><span>Seleccionar en menús</span></div></div>
         <p class="controller-footnote">Conectá el mando al dispositivo antes de abrir el juego y presioná cualquier botón. *Los mandos Wi-Fi funcionan si el sistema los presenta al navegador como un Gamepad estándar. En Smart TV, abrí AETHER NOVA desde un navegador compatible o una consola / TV Box.</p>
+        <div class="phonepad-launch"><div><b>¿NO TENÉS JOYSTICK?</b><span>Usá tu celular como mando inalámbrico.</span></div><button type="button" id="btn-phonepad-pair" class="primary-btn">VINCULAR CELULAR</button></div>
+        <div id="phonepad-pairing" class="phonepad-pairing hidden"><div class="phonepad-qr" id="phonepad-qr"></div><div class="phonepad-details"><small>ESCANEÁ EL QR O ABRÍ EL ENLACE</small><strong id="phonepad-code">--------</strong><a id="phonepad-link" href="#" target="_blank" rel="noopener">Abrir mando en celular</a><button type="button" id="btn-phonepad-copy" class="mini-btn">COPIAR ENLACE</button><span id="phonepad-status">ESPERANDO EL CELULAR…</span></div></div>
       </section>
 
       <div class="menu-tools">
@@ -341,6 +343,7 @@
     </div>
   </section>
 
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
   <script src="./cloud-config.js" defer></script>
   <script src="./game.js?v=input-fix-1" defer></script>
   <script type="module" src="./aether3d.js?v=input-fix-1"></script>
