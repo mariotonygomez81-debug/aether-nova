@@ -2236,7 +2236,7 @@ function updateAndDraw() {
   if (window.__AETHER3D_ACTIVE) {
     window.__AETHER3D_STATE = {
       x: player.x, y: player.y, width: W, height: H, level: state.level, tilt: player.tilt,
-      type: player.type, color: player.color, accent: player.accent,
+      selectedShip: state.selectedShip, type: player.type, color: player.color, accent: player.accent,
       invulnerable: player.invuln > 0 && Math.floor(player.invuln / 5) % 2 === 0,
       shield: player.buffs.shield > 0, playing: state.mode === "PLAYING",
       enemyShots: enemyBullets.filter(b => !b.dead).map(b => ({
