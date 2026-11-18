@@ -409,7 +409,7 @@ function syncEnemies(items,width,height){
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
   const depth = camera.position.z - (-11);
   const worldPerPixel = (2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*depth)/height;
-  const targetWidth = item.radius * 2 * 1.18;
+  const targetWidth = item.radius * 2 * 1.42;
   const visualScale = THREE.MathUtils.clamp((targetWidth*worldPerPixel)/modelWidth,.22,.72);
   mesh.scale.setScalar(visualScale);
  }
@@ -451,22 +451,25 @@ const fxWhite=new THREE.MeshBasicMaterial({color:0xffffff});
 function makePhenomenon(kind){
  const g=new THREE.Group();
  if(kind==='blackhole'){
-  const core=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),fxBlack);core.scale.set(1,1,.42);g.add(core);
-  for(let i=0;i<4;i++){
-   const tor=new THREE.Mesh(new THREE.TorusGeometry(1.55+i*.16,.075-i*.009,10,72),i%2?fxViolet:fxGold);
-   tor.rotation.x=Math.PI/2.18+(i%2)*.12;tor.rotation.y=i*.35;g.add(tor);
-  }
-  const photon=new THREE.Mesh(new THREE.TorusGeometry(1.13,.045,8,64),fxWhite);photon.rotation.x=Math.PI/2.18;g.add(photon);
-  const lens=new THREE.PointLight(0xff8a43,5,18);g.add(lens);
+  const core=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),new THREE.MeshBasicMaterial({color:0x000106}));core.scale.set(1,1,.72);g.add(core);
+  const diskA=new THREE.Mesh(new THREE.RingGeometry(1.18,2.72,128,4),new THREE.MeshBasicMaterial({color:0xff7a32,side:THREE.DoubleSide,transparent:true,opacity:.62,blending:THREE.AdditiveBlending,depthWrite:false}));
+  diskA.rotation.x=Math.PI/2.18;diskA.scale.set(1,.56,1);g.add(diskA);
+  const diskB=new THREE.Mesh(new THREE.RingGeometry(2.05,3.15,128,2),new THREE.MeshBasicMaterial({color:0x7d42ff,side:THREE.DoubleSide,transparent:true,opacity:.38,blending:THREE.AdditiveBlending,depthWrite:false}));
+  diskB.rotation.x=Math.PI/2.18+.035;diskB.scale.set(1,.58,1);g.add(diskB);
+  for(let i=0;i<5;i++){const tor=new THREE.Mesh(new THREE.TorusGeometry(1.22+i*.31,.045-i*.005,12,112),i%2?fxViolet:fxGold);tor.rotation.x=Math.PI/2.18+(i%2)*.09;tor.rotation.y=i*.19;g.add(tor);}
+  const photon=new THREE.Mesh(new THREE.TorusGeometry(1.08,.085,12,112),new THREE.MeshBasicMaterial({color:0xffe6c1,transparent:true,opacity:.96,blending:THREE.AdditiveBlending}));photon.rotation.x=Math.PI/2.18;g.add(photon);
+  const jetMat=new THREE.MeshBasicMaterial({color:0x7bdcff,transparent:true,opacity:.23,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false});
+  const jet=new THREE.Mesh(new THREE.ConeGeometry(.24,2.6,24,1,true),jetMat);jet.position.y=2;g.add(jet);const jet2=jet.clone();jet2.position.y=-2;jet2.rotation.z=Math.PI;g.add(jet2);
+  const lens=new THREE.PointLight(0xff8a43,9,24);g.add(lens);
  } else if(kind==='supernova'){
-  const star=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),new THREE.MeshBasicMaterial({color:0xffe9b0}));
-  g.add(star);
-  const corona=new THREE.Mesh(new THREE.SphereGeometry(1.25,24,18),new THREE.MeshBasicMaterial({color:0xff5b22,transparent:true,opacity:.36,blending:THREE.AdditiveBlending,depthWrite:false}));g.add(corona);
-  for(let i=0;i<3;i++){
-   const shell=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshBasicMaterial({color:i===0?0xffe6a0:i===1?0xff653c:0xb94cff,wireframe:true,transparent:true,opacity:.42-i*.08,blending:THREE.AdditiveBlending,depthWrite:false}));
-   shell.userData.shell=i;g.add(shell);
-  }
-  const light=new THREE.PointLight(0xff6a36,9,36);g.add(light);
+  const star=new THREE.Mesh(new THREE.SphereGeometry(.82,48,32),new THREE.MeshBasicMaterial({color:0xfff5d7}));g.add(star);
+  const inner=new THREE.Mesh(new THREE.SphereGeometry(1.08,40,28),new THREE.MeshBasicMaterial({color:0xffd36a,transparent:true,opacity:.62,blending:THREE.AdditiveBlending,depthWrite:false}));g.add(inner);
+  const corona=new THREE.Mesh(new THREE.SphereGeometry(1.48,40,28),new THREE.MeshBasicMaterial({color:0xff5428,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false}));g.add(corona);
+  for(let i=0;i<4;i++){const shell=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),new THREE.MeshBasicMaterial({color:[0xffefb0,0xff7438,0xff3b91,0x8d58ff][i],wireframe:true,transparent:true,opacity:.34-i*.055,blending:THREE.AdditiveBlending,depthWrite:false}));shell.userData.shell=i;g.add(shell);}
+  for(let i=0;i<3;i++){const arc=new THREE.Mesh(new THREE.TorusGeometry(1.45+i*.36,.035,8,96),i===1?fxViolet:fxGold);arc.rotation.set(Math.PI/2+i*.44,i*.7,i*.35);g.add(arc);}
+  const positions=[];for(let i=0;i<520;i++){const u=Math.random()*2-1,phi=Math.random()*Math.PI*2,r=1.25+Math.random()*1.65,q=Math.sqrt(1-u*u);positions.push(r*q*Math.cos(phi),r*u,r*q*Math.sin(phi));}
+  const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));const debris=new THREE.Points(pg,new THREE.PointsMaterial({color:0xffc06b,size:.075,transparent:true,opacity:.82,blending:THREE.AdditiveBlending,depthWrite:false}));debris.userData.debris=true;g.add(debris);
+  const light=new THREE.PointLight(0xff6a36,16,48);g.add(light);
  } else if(kind==='magnetar'){
   const star=new THREE.Mesh(new THREE.SphereGeometry(.68,28,20),new THREE.MeshStandardMaterial({color:0xe5c8ff,emissive:0x9a28ff,emissiveIntensity:3.5,metalness:.25,roughness:.18}));g.add(star);
   for(let i=0;i<5;i++){
@@ -502,7 +505,7 @@ function syncPhenomena(items,width,height,now){
    const r=Math.max(.5,(item.radius||18)/36);
    g.scale.setScalar(r);
    g.rotation.y=phase*.24;
-   g.children.forEach(o=>{if(o.userData.shell!==undefined){const k=o.userData.shell;const s=1+k*.23+Math.min(2.5,age/(item.maxTimer||250)*2.2);o.scale.setScalar(s);}});
+   g.children.forEach(o=>{if(o.userData.shell!==undefined){const k=o.userData.shell,p=Math.min(1,age/(item.maxTimer||250)),s=1+k*.30+p*(2.8+k*.34);o.scale.setScalar(s);o.material.opacity=Math.max(.035,(.42-k*.065)*(1-p*.78));}if(o.userData.debris){o.rotation.y=phase*.22;o.scale.setScalar(1+Math.min(1.6,age/(item.maxTimer||250)*1.4));o.material.opacity=Math.max(.08,.82-age/(item.maxTimer||250)*.55);}});
   } else {
    const r=item.kind==='blackhole'?Math.max(.85,(item.radius||34)/34):item.kind==='magnetar'?1.25:1.15;
    g.scale.setScalar(r);
