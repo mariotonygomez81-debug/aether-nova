@@ -1282,7 +1282,7 @@ class CosmicPhenomenon {
         return Math.abs(along) < 520 && across < width;
       };
       if (this.timer > 35 && this.timer % 9 === 0) {
-        enemies.forEach(e => { if (hitBeam(e, 34)) { spawnExplosion(e.x, e.y, "#ff6bff", 5); e.dead = true; } });
+        enemies.forEach(e => { if (hitBeam(e, 34)) { spawnExplosion(e.x, e.y, "#ff6bff", 5); dropEnemyCredits(e); e.dead = true; } });
         asteroids.forEach(a => { if (hitBeam(a, 30)) { spawnExplosion(a.x, a.y, "#ffb4ff", 4); a.dead = true; } });
         enemyBullets.forEach(b => { if (hitBeam(b, 24)) b.dead = true; });
         bullets.forEach(b => { if (hitBeam(b, 24)) b.dead = true; });
@@ -1307,7 +1307,7 @@ class CosmicPhenomenon {
       if (strikeAge === 21) {
         const width = Math.max(34, W * 0.035);
         asteroids.forEach(a => { if (Math.abs(a.x - this.strikeX) < width + a.radius) { a.hp -= 5; if (a.hp <= 0) a.dead = true; } });
-        enemies.forEach(e => { if (Math.abs(e.x - this.strikeX) < width + e.radius) { e.hp -= 8; if (e.hp <= 0) e.dead = true; } });
+        enemies.forEach(e => { if (Math.abs(e.x - this.strikeX) < width + e.radius) { e.hp -= 8; if (e.hp <= 0) { dropEnemyCredits(e); e.dead = true; } } });
         if (Math.abs(player.x - this.strikeX) < width + player.radius && player.buffs.antigamma <= 0) {
           player.takeDamage("DESCARGA DE TORMENTA IÓNICA");
           state.shake = Math.max(state.shake, 9);
@@ -1341,6 +1341,7 @@ class CosmicPhenomenon {
     });
     enemies.forEach((e) => {
       spawnExplosion(e.x, e.y, "#ff5500", 10);
+      dropEnemyCredits(e);
       e.dead = true;
     });
     bullets.forEach(b => { b.dead = true; });
@@ -1970,18 +1971,29 @@ function awardCombatCredits(amount, x, y, label) {
   const reward = Math.max(1, Math.floor(amount));
   commercialData.credits = (Number(commercialData.credits) || 0) + reward;
   saveCommercialData();
+  updateHUD();
   addFloatingText(x, y - 22, `+${reward} CR`, "#ffd166");
 }
 
 function spawnCreditCoin(x, y, amount) {
   creditCoins.push({
     x, y, amount: Math.max(1, Math.floor(amount)),
-    vx: (Math.random() - 0.5) * 1.25,
-    vy: 2.15 + Math.random() * 0.65,
+    vx: (Math.random() - 0.5) * 2.8,
+    vy: -2.8 - Math.random() * 1.8,
+    gravity: 0.075,
     spin: Math.random() * Math.PI * 2,
     life: 900,
     dead: false
   });
+}
+
+function dropEnemyCredits(enemy) {
+  if (!enemy || enemy._creditsDropped || enemy._noKillReward) return;
+  enemy._creditsDropped = true;
+  const values = { interceptor: 12, lancer: 16, weaver: 14, bomber: 22, carrier: 35 };
+  const base = values[enemy.variant] || 8;
+  const sectorBonus = Math.floor(Math.max(0, state.level - 1) / 10) * 2;
+  spawnCreditCoin(enemy.x, enemy.y, base + sectorBonus);
 }
 
 function applyPowerup(p) {
@@ -2051,6 +2063,7 @@ function triggerSuperBomb() {
 
   enemies.forEach((e) => {
     spawnExplosion(e.x, e.y, "#ff2a85", 12);
+    dropEnemyCredits(e);
     state.score += 100;
   });
   enemies = [];
@@ -2476,8 +2489,6 @@ function updateAndDraw() {
           state.shake = Math.max(state.shake, a.radius > 28 ? 8 : 4);
           spawnExplosion(a.x, a.y, "#ffcc33", IS_LOW_POWER ? 10 : 20);
           spawnImpactBurst(a.x, a.y, "#fff0b0", IS_LOW_POWER ? 8 : 16);
-          awardCombatCredits(2 + Math.floor(state.level / 15), a.x, a.y, "ASTEROIDE");
-
           if (a.kind === "explosive") {
             detonateAsteroidChain(a.x, a.y, a);
           } else if (a.radius > 28 && asteroids.length < 22) {
@@ -2525,6 +2536,7 @@ function updateAndDraw() {
           state.shake = Math.max(state.shake, e.radius > 24 ? 9 : 5);
           spawnExplosion(e.x, e.y, "#ff2a85", IS_LOW_POWER ? 12 : 24);
           spawnImpactBurst(e.x, e.y, "#ffd6ed", IS_LOW_POWER ? 8 : 17);
+          dropEnemyCredits(e);
           state.score += 120 * state.combo;
           recordMissionProgress("kills", 1);
           advanceProgress(2);
@@ -2593,6 +2605,8 @@ function updateAndDraw() {
   creditCoins.forEach((coin) => {
     coin.x += coin.vx;
     coin.y += coin.vy;
+    coin.vy = Math.min(5.2, coin.vy + (coin.gravity || 0.075));
+    coin.vx *= 0.992;
     coin.spin += 0.16;
     coin.life--;
     if (coin.y > H + 24 || coin.life <= 0) coin.dead = true;
@@ -2605,21 +2619,21 @@ function updateAndDraw() {
     ctx.shadowColor = "#ffd34e";
     ctx.fillStyle = "#9b6412";
     ctx.beginPath();
-    ctx.ellipse(0, 0, 11 * squash, 13, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 14 * squash, 16, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#ffd34e";
     ctx.beginPath();
-    ctx.ellipse(0, 0, 8.5 * squash, 10.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 11 * squash, 13, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.strokeStyle = "#fff1a6";
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.fillStyle = "#74420b";
-    ctx.font = "bold 11px sans-serif";
+    ctx.font = coin.amount >= 100 ? "bold 8px sans-serif" : "bold 10px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("¢", 0, 0);
+    ctx.fillText(String(coin.amount), 0, 0);
     ctx.restore();
 
     if (!coin.dead && Math.hypot(coin.x - player.x, coin.y - player.y) < player.radius + 15) {
@@ -2716,10 +2730,7 @@ function updateAndDraw() {
     if (e.dead && !e._eventCounted) {
       e._eventCounted = true;
       void trackGalacticEventProgress('destroy_enemies', 1);
-      if (!e._noKillReward && !e._creditsAwarded) {
-        e._creditsAwarded = true;
-        spawnCreditCoin(e.x, e.y, 5 + Math.floor(state.level / 10));
-      }
+      dropEnemyCredits(e);
     }
   });
   enemies = enemies.filter((e) => !e.dead);
