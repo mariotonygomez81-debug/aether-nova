@@ -470,6 +470,8 @@ let enemies = [];
 let boss = null;
 let phenomena = [];
 let powerups = [];
+let campaignPickupKills = 0;
+let campaignPickupIndex = 0;
 let particles = [];
 let floatingTexts = [];
 let stars = [];
@@ -1623,7 +1625,7 @@ class EnemyShip {
     this.vx *= eventScale;
     this.vy *= eventScale;
     this.hp = Math.ceil(baseHp * scale * eventScale);
-    this.fireTimer = 92 + Math.floor(Math.random() * 65);
+    this.fireTimer = 145 + Math.floor(Math.random() * 75);
     this.dashTimer = 90 + Math.floor(Math.random() * 90);
     this.dead = false;
   }
@@ -1658,7 +1660,7 @@ class EnemyShip {
     this.fireTimer--;
     if (this.fireTimer <= 0 && this.y > 40 && this.y < H * .72) {
       this.shoot();
-      this.fireTimer = this.variant === "interceptor" || this.variant === "lancer" ? 96 : this.variant === "carrier" ? 124 : 138;
+      this.fireTimer = this.variant === "interceptor" || this.variant === "lancer" ? 145 : this.variant === "carrier" ? 175 : 190;
     }
   }
 
@@ -1947,9 +1949,22 @@ const POWERUP_POOL = [
 ];
 
 function spawnPowerup(x, y) {
-  if (Math.random() > 0.24) return;
-  const item = POWERUP_POOL[Math.floor(Math.random() * POWERUP_POOL.length)];
-  powerups.push({ x, y, vy: 2.2, ...item });
+  // Dos objetos como máximo en pantalla: los recursos se pueden recoger sin saturar.
+  if (powerups.filter(item => !item.dead).length >= 2) return;
+  campaignPickupKills++;
+  const earlySequence = ["shield", "triple", "bomb", "rapid", "life", "missiles", "shield", "wingmen"];
+  let item;
+  if (state.runMode === "campaign" && state.level <= 8 && campaignPickupIndex < earlySequence.length) {
+    // Recompensa garantizada cada dos bajas durante la fase de preparación.
+    if (campaignPickupKills % 2 !== 0) return;
+    const id = earlySequence[campaignPickupIndex++];
+    item = POWERUP_POOL.find(power => power.id === id);
+  } else {
+    const chance = state.level <= 15 ? 0.12 : 0.16;
+    if (Math.random() > chance) return;
+    item = POWERUP_POOL[Math.floor(Math.random() * POWERUP_POOL.length)];
+  }
+  if (item) powerups.push({ x, y, vy: 1.75, ...item });
 }
 
 function applyPowerup(p) {
@@ -2039,7 +2054,7 @@ let spawnClock = 0;
 
 function updateSpawner() {
   spawnClock++;
-  const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
+  const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(1.05, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
   // Curva de campaña: el ritmo aumenta gradualmente, sin multiplicarse de forma abrupta.
   const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
   const diff = (0.82 + Math.pow(progress, 1.35) * 0.68) * (DIFFICULTY[state.difficulty]?.spawn || 1) * Math.min(1.18, eventDifficulty);
@@ -2050,39 +2065,39 @@ function updateSpawner() {
     return;
   }
 
-  const rockInterval = Math.max(25, Math.round(62 / diff));
-  const rockCap = Math.min(18, 7 + Math.floor(state.level / 9));
+  const rockInterval = Math.max(48, Math.round(112 / diff));
+  const rockCap = Math.min(12, 3 + Math.floor(state.level / 12));
   if (spawnClock % rockInterval === 0 && !boss && asteroids.length < rockCap) {
     const r = Math.random();
     let kind = "normal";
-    if (state.level >= 2 && r < 0.16) kind = "explosive";
-    else if (state.level >= 3 && r < 0.30) kind = "shooting_star";
-    else if (state.level >= 4 && r < 0.44) kind = "magnetic";
-    else if (state.level >= 6 && r < 0.56) kind = "crystal";
+    if (state.level >= 8 && r < 0.12) kind = "explosive";
+    else if (state.level >= 12 && r < 0.24) kind = "shooting_star";
+    else if (state.level >= 18 && r < 0.36) kind = "magnetic";
+    else if (state.level >= 24 && r < 0.48) kind = "crystal";
 
     const radius = kind === "shooting_star" ? 12 : 18 + Math.random() * 20;
     asteroids.push(new Asteroid(null, null, radius, kind));
   }
 
-  const enemyInterval = Math.max(58, Math.round(218 / (diff * (1 + progress * 0.28))));
-  const enemyCap = Math.min(IS_LOW_POWER ? 8 : 11, 3 + Math.floor(state.level / 12));
+  const enemyInterval = Math.max(105, Math.round(330 / (diff * (1 + progress * 0.22))));
+  const enemyCap = Math.min(IS_LOW_POWER ? 7 : 9, 2 + Math.floor(state.level / 18));
   if (state.level >= 1 && spawnClock % enemyInterval === 0 && !boss && enemies.length < enemyCap) {
     const roll = Math.random();
     let variant = activeGalacticEvent?.enemy_variant || "scout";
     if (!activeGalacticEvent) {
-      if (state.level >= 30 && roll < .13) variant = "carrier";
-      else if (state.level >= 16 && roll < .31) variant = "lancer";
-      else if (state.level >= 9 && roll < .49) variant = "weaver";
-      else if (state.level >= 18 && roll < .68) variant = "bomber";
-      else if (state.level >= 6 && roll < .84) variant = "interceptor";
+      if (state.level >= 35 && roll < .12) variant = "carrier";
+      else if (state.level >= 25 && roll < .25) variant = "lancer";
+      else if (state.level >= 18 && roll < .38) variant = "weaver";
+      else if (state.level >= 30 && roll < .52) variant = "bomber";
+      else if (state.level >= 12 && roll < .72) variant = "interceptor";
     }
     enemies.push(new EnemyShip(variant));
 
     // Oleadas coordinadas: desde los sectores medios aparecen formaciones,
     // no solamente enemigos aislados.
-    const waveChance = Math.min(.34, .035 + progress * .30);
-    if (state.level >= 15 && Math.random() < waveChance) {
-      const waveSize = state.level >= 55 ? 2 : 1;
+    const waveChance = Math.min(.20, progress * .20);
+    if (state.level >= 30 && Math.random() < waveChance) {
+      const waveSize = state.level >= 70 ? 2 : 1;
       const formation = activeGalacticEvent
         ? [activeGalacticEvent.enemy_variant || "scout"]
         : state.level >= 30
@@ -2095,13 +2110,13 @@ function updateSpawner() {
     }
   }
 
-  const phenomenonInterval = Math.max(690, Math.round(1050 - progress * 360));
-  if (spawnClock % phenomenonInterval === 0 && phenomena.length === 0 && state.level >= 15) {
+  const phenomenonInterval = Math.max(900, Math.round(1450 - progress * 450));
+  if (spawnClock % phenomenonInterval === 0 && phenomena.length === 0 && state.level >= 25) {
     const pool = ["blackhole", "supernova"];
-    if (state.level >= 4) pool.push("magnetar");
-    if (state.level >= 6) pool.push("pulsar");
-    if (state.level >= 5) pool.push("ionstorm");
-    if (state.level >= 8) pool.push("debrisfield");
+    if (state.level >= 35) pool.push("magnetar");
+    if (state.level >= 45) pool.push("pulsar");
+    if (state.level >= 40) pool.push("ionstorm");
+    if (state.level >= 50) pool.push("debrisfield");
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     phenomena.push(new CosmicPhenomenon(chosen));
     // Un solo fenómeno activo: evita saturar la pantalla.
@@ -2679,6 +2694,8 @@ function startNewGame(savedData = null) {
   bullets = [];
   enemyBullets = [];
   spawnClock = 0;
+  campaignPickupKills = 0;
+  campaignPickupIndex = 0;
   state.combo = 1;
   state.runRewardPaid = false;
   eventRunProgress = 0;
