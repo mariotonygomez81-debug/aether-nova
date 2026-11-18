@@ -4,7 +4,7 @@
  * Nunca colocar aquí service_role, claves privadas ni contraseñas administrativas.
  */
 window.AETHER_CLOUD_CONFIG = Object.freeze({
-  enabled: false,
-  supabaseUrl: "https://TU-PROYECTO.supabase.co",
-  anonKey: "TU_SUPABASE_ANON_PUBLIC_KEY"
+  enabled: true,
+  supabaseUrl: "https://gmwlcfprhsarxlbgwsvf.supabase.co",
+  anonKey: "sb_publishable_X42q42dH1evVZY4NDZi6BQ_6dMP_wbr"
 });
