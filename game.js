@@ -1949,24 +1949,27 @@ const POWERUP_POOL = [
   { id: "antigamma", label: "X", color: "#06d6a0", text: "BLINDAJE ANTI-GAMMA" }
 ];
 
-function spawnPowerup(x, y) {
-  // Hasta tres módulos simultáneos: más recompensas, sin saturar el campo.
+function spawnPowerup() {
+  // Los potenciadores llegan como cápsulas-meteorito, independientes de las bajas.
   if (powerups.filter(item => !item.dead).length >= 3) return;
   campaignPickupKills++;
   const earlySequence = ["shield", "triple", "bomb", "rapid", "life", "missiles", "shield", "wingmen"];
   let item;
   if (state.runMode === "campaign" && state.level <= 8 && campaignPickupIndex < earlySequence.length) {
-    // Recompensa garantizada cada dos bajas durante la fase de preparación.
-    if (campaignPickupKills % 2 !== 0) return;
-    const id = earlySequence[campaignPickupIndex++];
-    item = POWERUP_POOL.find(power => power.id === id);
+    item = POWERUP_POOL.find(power => power.id === earlySequence[campaignPickupIndex++]);
   } else {
-    // Aumenta el ritmo de recompensas a medida que avanza la campaña.
-    const chance = state.level <= 15 ? 0.32 : 0.38;
-    if (Math.random() > chance) return;
     item = POWERUP_POOL[Math.floor(Math.random() * POWERUP_POOL.length)];
   }
-  if (item) powerups.push({ x, y, vy: 1.95, ...item });
+  if (!item) return;
+  const x = 34 + Math.random() * Math.max(1, W - 68);
+  powerups.push({ x, y: -24, vy: 2.0 + Math.random() * 0.55, vx: (Math.random() - 0.5) * 0.8, meteor: true, ...item });
+}
+
+function awardCombatCredits(amount, x, y, label) {
+  const reward = Math.max(1, Math.floor(amount));
+  commercialData.credits = (Number(commercialData.credits) || 0) + reward;
+  saveCommercialData();
+  addFloatingText(x, y - 22, `+${reward} CR`, "#ffd166");
 }
 
 function applyPowerup(p) {
@@ -2053,9 +2056,16 @@ function triggerSuperBomb() {
 }
 
 let spawnClock = 0;
+let powerupSpawnClock = 0;
 
 function updateSpawner() {
   spawnClock++;
+  powerupSpawnClock++;
+  const powerupInterval = state.level <= 10 ? 300 : Math.max(220, 300 - Math.floor(state.level * 1.2));
+  if (powerupSpawnClock >= powerupInterval) {
+    spawnPowerup();
+    powerupSpawnClock = 0;
+  }
   const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(1.05, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
   // Curva de campaña: el ritmo aumenta gradualmente, sin multiplicarse de forma abrupta.
   const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
@@ -2454,7 +2464,7 @@ function updateAndDraw() {
           state.shake = Math.max(state.shake, a.radius > 28 ? 8 : 4);
           spawnExplosion(a.x, a.y, "#ffcc33", IS_LOW_POWER ? 10 : 20);
           spawnImpactBurst(a.x, a.y, "#fff0b0", IS_LOW_POWER ? 8 : 16);
-          spawnPowerup(a.x, a.y);
+          awardCombatCredits(2 + Math.floor(state.level / 15), a.x, a.y, "ASTEROIDE");
 
           if (a.kind === "explosive") {
             detonateAsteroidChain(a.x, a.y, a);
@@ -2503,7 +2513,7 @@ function updateAndDraw() {
           state.shake = Math.max(state.shake, e.radius > 24 ? 9 : 5);
           spawnExplosion(e.x, e.y, "#ff2a85", IS_LOW_POWER ? 12 : 24);
           spawnImpactBurst(e.x, e.y, "#ffd6ed", IS_LOW_POWER ? 8 : 17);
-          spawnPowerup(e.x, e.y);
+          awardCombatCredits(5 + Math.floor(state.level / 10), e.x, e.y, "NAVE");
           state.score += 120 * state.combo;
           recordMissionProgress("kills", 1);
           advanceProgress(2);
@@ -2571,6 +2581,7 @@ function updateAndDraw() {
   powerups.forEach((p) => {
     p.prevX = p.x; p.prevY = p.y;
     p.y += p.vy;
+    p.x += p.vx || 0;
     // Campo magnético de recogida más amplio: guía los módulos hacia la nave.
     const dx = player.x - p.x, dy = player.y - p.y;
     if (Math.abs(dx) < 185 && Math.abs(dy) < 260) {
@@ -2579,10 +2590,28 @@ function updateAndDraw() {
     }
     if (p.y > H + 30) p.dead = true;
 
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.meteor) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(-0.32);
+      const trail = ctx.createLinearGradient(0, -38, 0, 10);
+      trail.addColorStop(0, "rgba(255,255,255,0)");
+      trail.addColorStop(1, p.color + "bb");
+      ctx.fillStyle = trail;
+      ctx.fillRect(-4, -38, 8, 44);
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = p.color;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.moveTo(0, -13); ctx.lineTo(12, 0); ctx.lineTo(0, 13); ctx.lineTo(-12, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.fillStyle = "#050711";
     ctx.font = "bold 13px sans-serif";
     ctx.textAlign = "center";
@@ -2715,6 +2744,7 @@ function startNewGame(savedData = null) {
   bullets = [];
   enemyBullets = [];
   spawnClock = 0;
+  powerupSpawnClock = 0;
   campaignPickupKills = 0;
   campaignPickupIndex = 0;
   state.combo = 1;
