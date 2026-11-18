@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha23-swept-enemy-hit";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha23-swept-enemy-hit', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha24-enemy-hitbox-alignment";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha24-enemy-hitbox-alignment', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
