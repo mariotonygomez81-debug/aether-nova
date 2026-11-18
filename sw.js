@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha53-early-cosmic-phenomena";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=alpha53-early-cosmic-phenomena', './aether3d.js?v=alpha53-early-cosmic-phenomena', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha54-offensive-arsenal";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=alpha54-offensive-arsenal', './aether3d.js?v=alpha54-offensive-arsenal', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
