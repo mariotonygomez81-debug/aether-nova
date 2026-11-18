@@ -195,6 +195,65 @@ makeVariant("omega",({part,wing,nose,engine,mat})=>{
   part(new THREE.BoxGeometry(.28,.22,2.4),mat.violet,[0,.2,.25]);
 });
 
+// Alpha 36: alas esculpidas, blindaje facetado, cabina y propulsión con volumen.
+// Cada clase recibe una geometría de ala propia, además de su estructura específica.
+const wingProfiles = {
+  viper:[[.35,-1.65],[1.05,-.95],[3.45,.35],[2.55,.72],[1.25,.35],[.5,1.15]],
+  titan:[[.35,-1.35],[1.1,-1.1],[3.75,-.45],[3.25,.9],[1.2,1.25],[.4,1.05]],
+  wraith:[[.3,-1.7],[1.25,-1.1],[3.8,.85],[2.75,.55],[1.2,.25],[.45,1.2]],
+  bastion:[[.35,-1.45],[1.2,-1.2],[3.55,-.75],[3.75,.45],[1.45,1.15],[.45,1.0]],
+  phoenix:[[.35,-1.8],[1.0,-1.15],[3.55,-.2],[2.8,.6],[1.0,.2],[.35,1.25]],
+  singularity:[[.35,-1.4],[1.1,-1.0],[3.35,-.4],[2.7,.7],[1.3,.5],[.45,1.1]],
+  omega:[[.3,-1.8],[1.0,-1.1],[3.8,.4],[2.8,.65],[1.15,.2],[.4,1.2]]
+};
+const armorMats = {
+  viper:variantMats.green,titan:variantMats.amber,wraith:variantMats.stealth,
+  bastion:variantMats.ice,phoenix:variantMats.red,singularity:variantMats.lime,omega:variantMats.white
+};
+for(const [id,group] of Object.entries(shipVariants)){
+  const profile=wingProfiles[id]||wingProfiles.viper;
+  const mat=armorMats[id]||hullMat;
+  for(const side of [-1,1]){
+    const shape=new THREE.Shape();
+    profile.forEach(([x,z],i)=>i?shape.lineTo(side*x,z):shape.moveTo(side*x,z));
+    shape.closePath();
+    const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.075,bevelThickness:.055});
+    geo.rotateX(Math.PI/2);
+    const armor=new THREE.Mesh(geo,mat);
+    armor.position.y=-.17; armor.castShadow=false; group.add(armor);
+    // Líneas de borde luminosas y nervaduras metálicas.
+    const edge=new THREE.Mesh(new THREE.BoxGeometry(.055,.055,2.15),glowMat);
+    edge.position.set(side*1.62,.015,.05); edge.rotation.y=side*.22; group.add(edge);
+    for(let j=0;j<3;j++){
+      const rib=new THREE.Mesh(new THREE.BoxGeometry(.055,.045,1.05+j*.22),panelMat);
+      rib.position.set(side*(.95+j*.48),-.055,.28+j*.18);
+      rib.rotation.y=side*(.12+j*.055); group.add(rib);
+    }
+    // Cañones dobles con bocas metálicas y emisores.
+    const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.075,.11,1.35,16),goldMat);
+    barrel.rotation.x=Math.PI/2; barrel.position.set(side*1.28,-.06,-1.05); group.add(barrel);
+    const muzzle=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.13,16),glowMat);
+    muzzle.rotation.x=Math.PI/2; muzzle.position.set(side*1.28,-.06,-1.76); group.add(muzzle);
+    // Motor independiente: carcasa, anillo de tobera y núcleo de plasma.
+    const engineX=side*(id==="bastion"||id==="titan"?1.35:.72);
+    const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.34,.48,.72,24,1,true),darkMat);
+    nozzle.rotation.x=Math.PI/2; nozzle.position.set(engineX,-.08,1.95); group.add(nozzle);
+    const rimRing=new THREE.Mesh(new THREE.TorusGeometry(.36,.075,10,28),goldMat);
+    rimRing.position.set(engineX,-.08,2.32); group.add(rimRing);
+    const core=new THREE.Mesh(new THREE.CylinderGeometry(.19,.25,.12,20),glowMat);
+    core.rotation.x=Math.PI/2; core.position.set(engineX,-.08,2.34); group.add(core);
+  }
+  // Placas dorsales escalonadas, escotillas y sensores de navegación.
+  for(let i=0;i<4;i++){
+    const plate=new THREE.Mesh(new THREE.BoxGeometry(.34,.075,.38),panelMat);
+    plate.position.set(0,.24,.05+i*.48); group.add(plate);
+  }
+  const dorsal=new THREE.Mesh(new THREE.BoxGeometry(.22,.12,2.45),mat);
+  dorsal.position.set(0,.22,.05); group.add(dorsal);
+  const sensor=new THREE.Mesh(new THREE.SphereGeometry(.12,16,12),glowMat);
+  sensor.position.set(0,.34,-1.35); group.add(sensor);
+}
+
 const shield = new THREE.Mesh(new THREE.SphereGeometry(2.65, 24, 16), new THREE.MeshBasicMaterial({ color: 0x37dcff, wireframe: true, transparent: true, opacity: .13 }));
 shield.visible = false; ship.add(shield);
 
