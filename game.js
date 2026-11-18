@@ -1018,13 +1018,9 @@ class Player {
       addFloatingText(this.x, this.y - 34, "ESCUDO DE ENERGÍA ABSORBIÓ LA AMENAZA", "#00f0ff");
       return true;
     }
-    state.shake = 34;
-    state.flash = 0.9;
-    spawnExplosion(this.x, this.y, "#ffffff", IS_LOW_POWER ? 22 : 38);
-    addFloatingText(this.x, this.y - 40, reason, "#ff4d6d");
-    this.lives = 0;
-    endGame(false);
-    return false;
+    // Las amenazas cósmicas descuentan una vida y respetan la invulnerabilidad.
+    this.takeDamage(reason);
+    return state.mode === "PLAYING";
   }
 
   takeDamage(reason = "IMPACTO") {
@@ -1619,8 +1615,9 @@ class EnemyShip {
     this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" || variant === "lancer" ? 2.8 : 1.6);
     this.vy = variant === "bomber" || variant === "carrier" ? 0.9 : variant === "lancer" ? 2.2 : 1.4;
     this.radius = (variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16) * 1.35;
-    const sectorTier = Math.max(0, Math.floor((state.level - 1) / 10));
-    const scale = 1 + Math.floor(state.level / 5) * 0.22 + sectorTier * 0.08;
+    // Resistencia enemiga con crecimiento suave durante los 100 sectores.
+    const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
+    const scale = 1 + Math.pow(progress, 1.25) * 0.85;
     const baseHp = variant === "carrier" ? 22 : variant === "bomber" ? 14 : variant === "interceptor" || variant === "lancer" ? 8 : variant === "weaver" ? 6 : 4;
     const eventScale = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
     this.vx *= eventScale;
@@ -1727,10 +1724,10 @@ class BossShip {
     const names = ["LEVIATÁN","DESTRUCTOR","ANOMALÍA","REINA DEL VACÍO","ECLIPSE SUPREMO","COLOSOS DE OBSIDIANA","DEVORADOR DE ESTRELLAS","ARCA INFERNAL","SERAFÍN ABISMAL","NÚCLEO OMEGA"];
     this.name = names[this.variant];
     this.radius = [48,54,46,62,58,66,60,70,64,74][this.variant];
-    const sectorRamp = 1 + Math.max(0, state.level - 1) * 0.012;
-    const bossDifficulty = state.difficulty === "hard" ? 1.24 : state.difficulty === "easy" ? 0.84 : 1;
-    const milestoneRamp = 1 + this.bossIndex * 0.20;
-    this.maxHp = Math.round((210 + state.level * 29) * sectorRamp * milestoneRamp * bossDifficulty);
+    const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
+    const bossDifficulty = state.difficulty === "hard" ? 1.16 : state.difficulty === "easy" ? 0.88 : 1;
+    const milestoneRamp = 1 + this.bossIndex * 0.14;
+    this.maxHp = Math.round((190 + state.level * 17) * (1 + progress * 0.28) * milestoneRamp * bossDifficulty);
     this.hp = this.maxHp;
     this.timer = 0;
     this.phase = 1;
@@ -1804,10 +1801,10 @@ class BossShip {
     if (this.variant === 7 && this.specialClock % (this.phase===3?155:225)===0) {for(const side of [-1,1])for(let i=0;i<3;i++)enemyBullets.push({x:this.x+side*48,y:this.y+20,vx:side*(1.5+i*.65),vy:3.4+i*.25,color:"#ff874a"});}
     if (this.variant === 8 && this.specialClock % (this.phase===3?125:195)===0) {const lanes=this.phase===3?7:5;for(let i=0;i<lanes;i++){const x=(i+1)*W/(lanes+1);enemyBullets.push({x,y:this.y+22,vx:(player?Math.sign(player.x-x):0)*.65,vy:4.4,color:"#b9a0ff"});}}
     if (this.variant === 9 && this.phase===3 && this.specialClock%145===0) {for(let i=0;i<18;i++){const q=i*Math.PI*2/18;enemyBullets.push({x:this.x,y:this.y,vx:Math.cos(q)*4.4,vy:Math.sin(q)*4.4,color:"#ff3d8d"});}state.flash=Math.max(state.flash,.14);}
-    const cadence = Math.max(22, (this.phase === 1 ? 68 : this.phase === 2 ? 48 : 32) - Math.floor(state.level / 4));
-    if (player && this.attackClock % cadence === 0 && enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
+    const cadence = Math.max(34, (this.phase === 1 ? 88 : this.phase === 2 ? 66 : 48) - Math.floor(state.level / 18));
+    if (player && this.attackClock % cadence === 0 && enemyBullets.length < (IS_LOW_POWER ? 55 : 85)) {
       const aim = Math.atan2(player.y - this.y, player.x - this.x);
-      const speed = 4.1 + Math.min(3.1, state.level * .04) + (this.phase - 1) * .55;
+      const speed = 3.6 + Math.min(1.6, state.level * .016) + (this.phase - 1) * .35;
       const addShot = (angle, velocity = speed, color = "#ff3864") => {
         if (enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
           enemyBullets.push({ x: this.x, y: this.y + 18, vx: Math.cos(angle) * velocity, vy: Math.sin(angle) * velocity, color });
@@ -2043,7 +2040,9 @@ let spawnClock = 0;
 function updateSpawner() {
   spawnClock++;
   const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
-  const diff = (1 + (state.level - 1) * 0.038 + Math.floor((state.level - 1) / 10) * 0.08) * (DIFFICULTY[state.difficulty]?.spawn || 1) * eventDifficulty;
+  // Curva de campaña: el ritmo aumenta gradualmente, sin multiplicarse de forma abrupta.
+  const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
+  const diff = (0.82 + Math.pow(progress, 1.35) * 0.68) * (DIFFICULTY[state.difficulty]?.spawn || 1) * Math.min(1.18, eventDifficulty);
 
   const isBossSector = state.level % 10 === 0;
   if (isBossSector && !boss && state.levelProgress >= state.levelTarget - 1) {
@@ -2051,8 +2050,9 @@ function updateSpawner() {
     return;
   }
 
-  const rockInterval = Math.max(10, Math.round(43 / diff));
-  if (spawnClock % rockInterval === 0 && !boss && asteroids.length < Math.min(34, 16 + Math.floor(state.level / 2))) {
+  const rockInterval = Math.max(25, Math.round(62 / diff));
+  const rockCap = Math.min(18, 7 + Math.floor(state.level / 9));
+  if (spawnClock % rockInterval === 0 && !boss && asteroids.length < rockCap) {
     const r = Math.random();
     let kind = "normal";
     if (state.level >= 2 && r < 0.16) kind = "explosive";
@@ -2064,8 +2064,8 @@ function updateSpawner() {
     asteroids.push(new Asteroid(null, null, radius, kind));
   }
 
-  const enemyInterval = Math.max(27, Math.round(178 / (diff * (1 + state.level * .016))));
-  const enemyCap = Math.min(IS_LOW_POWER ? 10 : 16, 4 + Math.floor(state.level / 2));
+  const enemyInterval = Math.max(58, Math.round(218 / (diff * (1 + progress * 0.28))));
+  const enemyCap = Math.min(IS_LOW_POWER ? 8 : 11, 3 + Math.floor(state.level / 12));
   if (state.level >= 1 && spawnClock % enemyInterval === 0 && !boss && enemies.length < enemyCap) {
     const roll = Math.random();
     let variant = activeGalacticEvent?.enemy_variant || "scout";
@@ -2080,9 +2080,9 @@ function updateSpawner() {
 
     // Oleadas coordinadas: desde los sectores medios aparecen formaciones,
     // no solamente enemigos aislados.
-    const waveChance = Math.min(.72, .16 + state.level * .012);
-    if (state.level >= 8 && Math.random() < waveChance) {
-      const waveSize = state.level >= 45 ? 3 : state.level >= 20 ? 2 : 1;
+    const waveChance = Math.min(.34, .035 + progress * .30);
+    if (state.level >= 15 && Math.random() < waveChance) {
+      const waveSize = state.level >= 55 ? 2 : 1;
       const formation = activeGalacticEvent
         ? [activeGalacticEvent.enemy_variant || "scout"]
         : state.level >= 30
@@ -2095,7 +2095,8 @@ function updateSpawner() {
     }
   }
 
-  if (spawnClock % Math.max(190, 390 - state.level * 2) === 0 && phenomena.length === 0 && state.level >= 2) {
+  const phenomenonInterval = Math.max(430, Math.round(760 - progress * 300));
+  if (spawnClock % phenomenonInterval === 0 && phenomena.length === 0 && state.level >= 8) {
     const pool = ["blackhole", "supernova"];
     if (state.level >= 4) pool.push("magnetar");
     if (state.level >= 6) pool.push("pulsar");
@@ -2103,16 +2104,7 @@ function updateSpawner() {
     if (state.level >= 8) pool.push("debrisfield");
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     phenomena.push(new CosmicPhenomenon(chosen));
-    // En sectores avanzados pueden superponerse dos amenazas, con un límite estricto.
-    const comboChance = IS_LOW_POWER ? 0.10 : 0.22;
-    if (state.level >= 30 && Math.random() < comboChance && phenomena.length < 2) {
-      const secondaryPool = pool.filter(kind => kind !== chosen && kind !== "supernova");
-      if (secondaryPool.length) {
-        const secondary = secondaryPool[Math.floor(Math.random() * secondaryPool.length)];
-        phenomena.push(new CosmicPhenomenon(secondary));
-        addFloatingText(W / 2, H * 0.31, "¡EVENTO CÓSMICO COMBINADO!", "#ff8cf4");
-      }
-    }
+    // Un solo fenómeno activo: evita saturar la pantalla.
     const names = {
       blackhole: "⚠ ANOMALÍA: AGUJERO NEGRO",
       supernova: "⚠ ALERTA: ESTRELLA EN SUPERNOVA",
