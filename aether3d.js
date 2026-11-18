@@ -439,15 +439,32 @@ function animate(now) {
   if (data && data.playing) {
     const impact=window.__AETHER3D_IMPACT;
     if(impact && impact.serial!==lastImpactSerial){lastImpactSerial=impact.serial;spawn3DBurst(worldPos(impact.x,impact.y,data.width,data.height,-8),impact.color==="#55eaff"?0x55eaff:0xff684d,1.35);}
-    const viewH=2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*16;
-    const viewW=viewH*camera.aspect;
-    targetX=((data.x/data.width)-.5)*viewW;
-    targetY=(.5-(data.y/data.height))*viewH;
-    ship.position.x=THREE.MathUtils.damp(ship.position.x,targetX,12,dt);
-    ship.position.y=THREE.MathUtils.damp(ship.position.y,targetY,12,dt);
+    // Usar la misma proyección perspectiva que asteroides, enemigos y proyectiles.
+    // La fórmula anterior trataba la cámara como ortográfica y desplazaba la nave.
+    const shipTarget = worldPos(data.x, data.y, data.width, data.height, -10);
+    ship.position.x=THREE.MathUtils.damp(ship.position.x,shipTarget.x,16,dt);
+    ship.position.y=THREE.MathUtils.damp(ship.position.y,shipTarget.y,16,dt);
+    ship.position.z=THREE.MathUtils.damp(ship.position.z,-10,16,dt);
     ship.rotation.z=THREE.MathUtils.damp(ship.rotation.z,-(data.x-data.width/2)/(data.width/2)*.22,7,dt);
     ship.rotation.x=THREE.MathUtils.damp(ship.rotation.x,Math.sin(now*.002)*.018,3,dt);
-    ship.visible=!data.invulnerable; shield.visible=!!data.shield;
+    // Durante la invulnerabilidad la nave parpadea, pero nunca desaparece del todo.
+    ship.visible=true;
+    ship.traverse((part)=>{
+      if(!part.isMesh || !part.material) return;
+      const materials=Array.isArray(part.material)?part.material:[part.material];
+      for(const mat of materials){
+        if(mat.userData.baseOpacity===undefined) mat.userData.baseOpacity=mat.opacity;
+        if(data.invulnerable){
+          mat.transparent=true;
+          mat.opacity=Math.min(mat.userData.baseOpacity,.58);
+          mat.depthWrite=false;
+        } else {
+          mat.opacity=mat.userData.baseOpacity;
+          mat.depthWrite=true;
+        }
+      }
+    });
+    shield.visible=!!data.shield;
     glowMat.emissiveIntensity=2.4+Math.sin(now*.012)*.45;
     rim.position.x=ship.position.x; rim.position.y=ship.position.y;
     camera.position.x=THREE.MathUtils.damp(camera.position.x,ship.position.x*.18,2.4,dt);
