@@ -58,7 +58,7 @@
 
   <section id="screen-menu" class="overlay">
     <div class="card main-card">
-      <div class="badge">EDICIÓN GALÁCTICA • 100 SECTORES</div>
+      <div class="badge">EDICIÓN COMERCIAL 7.4 • 100 SECTORES</div>
       <h1 class="game-title">AETHER NOVA<span>ECLIPSE</span></h1>
       <p class="lore-intro">
         Año 3142. La Singularidad oscura avanza devorando sistemas estelares. Atravesarás 100 sectores hostiles para sellar el núcleo del Eclipse.
@@ -100,7 +100,7 @@
               <button type="button" id="btn-cloud-signup" class="mini-btn">Crear cuenta online</button>
               <button type="button" id="btn-cloud-login" class="mini-btn">Iniciar sesión</button>
             </div>
-            <small id="cloud-auth-status" class="local-note">La cuenta online requiere configurar el servidor. El juego local funciona sin ella.</small>
+            <small id="cloud-auth-status" class="local-note">Acceso online opcional por correo y contraseña. El perfil local funciona sin conexión.</small>
           </div>
       </div>
 
@@ -141,6 +141,21 @@
           <strong>TITÁN</strong>
           <small>4 Vidas • Daño pesado</small>
         </button>
+        <button type="button" class="ship-opt locked" data-ship="wraith" disabled>
+          <strong>WRAITH</strong><small>Se desbloquea en sector 10</small>
+        </button>
+        <button type="button" class="ship-opt locked" data-ship="bastion" disabled>
+          <strong>BASTIÓN</strong><small>Se desbloquea en sector 20</small>
+        </button>
+        <button type="button" class="ship-opt locked" data-ship="phoenix" disabled>
+          <strong>FÉNIX</strong><small>Se desbloquea en sector 35</small>
+        </button>
+        <button type="button" class="ship-opt locked" data-ship="singularity" disabled>
+          <strong>SINGULARIDAD</strong><small>Se desbloquea en sector 50</small>
+        </button>
+        <button type="button" class="ship-opt locked" data-ship="omega" disabled>
+          <strong>OMEGA</strong><small>Se desbloquea en sector 75</small>
+        </button>
       </div>
 
       <div class="menu-actions">
@@ -155,6 +170,11 @@
         <button type="button" id="btn-share" class="tool-btn">↗ COMPARTIR</button>
         <button type="button" id="btn-daily" class="tool-btn">✦ BONO DIARIO</button>
       </div>
+
+      <section class="mission-board-panel">
+        <div class="rank-header"><strong>🎯 CENTRO DE OPERACIONES</strong><span class="local-note">Misiones locales</span></div>
+        <div id="mission-board" class="mission-board" aria-live="polite"></div>
+      </section>
 
       <div class="ranking-box">
         <div class="rank-header">
@@ -182,8 +202,8 @@
   <section id="screen-hangar" class="overlay hidden">
     <div class="card feature-card">
       <div class="badge">ARSENAL • PROGRESIÓN PERMANENTE</div>
-      <h2>HANGAR NOVA</h2>
-      <p class="panel-intro">Desarrolla tres ramas de tecnología, ofensiva y defensa. Cada nodo mejora de forma permanente tu nave y se conserva en este dispositivo.</p>
+      <h2>HANGAR NOVA • FLOTA</h2>
+      <p class="panel-intro">Desarrolla tu flota, desbloquea cazas de élite y mejora tres ramas tecnológicas. Las misiones y el progreso se conservan en este dispositivo y pueden respaldarse en tu cuenta online.</p>
       <div class="skill-tree-note"><strong>ÁRBOL DE EVOLUCIÓN NOVA</strong><span>Invierte créditos para desbloquear sistemas avanzados. Las mejoras antiguas se conservan.</span></div>
       <div class="hangar-balance">✦ <strong id="hangar-credits">0</strong> <span>CRÉDITOS DISPONIBLES</span></div>
       <div id="upgrade-grid" class="upgrade-grid"></div>

@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "AETHER NOVA: ECLIPSE — Commercial Edition",
+  "name": "AETHER NOVA: ECLIPSE — Commercial Edition 7.4",
   "short_name": "AETHER NOVA",
-  "description": "Edición comercial de AETHER NOVA: ECLIPSE. Campaña de 100 sectores, supervivencia infinita, desafíos diarios, jefes y progresión offline.",
+  "description": "Edición comercial 7.4: campaña de 100 sectores, cinco naves desbloqueables, misiones diarias y semanales, jefes y progresión local con respaldo online opcional.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

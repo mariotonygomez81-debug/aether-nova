@@ -136,7 +136,12 @@ const ERAS = [
 const SHIP_TYPES = {
   valkyrie: { name: "VALKYRIE", speed: 6.6, fireRate: 11, lives: 3, color: "#00f0ff", accent: "#0066ff" },
   viper:    { name: "VIPER-X",  speed: 8.4, fireRate: 8,  lives: 3, color: "#00ff9d", accent: "#059669" },
-  titan:    { name: "TITÁN",    speed: 5.6, fireRate: 13, lives: 4, color: "#ffcc33", accent: "#ea580c" }
+  titan:    { name: "TITÁN",    speed: 5.6, fireRate: 13, lives: 4, color: "#ffcc33", accent: "#ea580c", damage: 1.10 },
+  wraith:   { name: "WRAITH",   speed: 8.0, fireRate: 9,  lives: 2, color: "#c084fc", accent: "#6d28d9", damage: 1.04, unlock: 10 },
+  bastion:  { name: "BASTIÓN",  speed: 5.0, fireRate: 12, lives: 5, color: "#60a5fa", accent: "#1d4ed8", damage: 1.06, unlock: 20 },
+  phoenix:  { name: "FÉNIX",    speed: 7.2, fireRate: 10, lives: 3, color: "#fb7185", accent: "#be123c", damage: 1.16, unlock: 35 },
+  singularity:{ name: "SINGULARIDAD", speed: 6.2, fireRate: 10, lives: 4, color: "#a3e635", accent: "#4d7c0f", damage: 1.22, unlock: 50 },
+  omega:    { name: "OMEGA",    speed: 7.4, fireRate: 8,  lives: 4, color: "#f8fafc", accent: "#7c3aed", damage: 1.28, unlock: 75 }
 };
 
 const canvas = document.getElementById("gameCanvas");
@@ -464,7 +469,9 @@ function loadCommercialData() {
       survivalBestSector: Math.max(1, Number(raw.survivalBestSector) || 1),
       survivalBestScore: Math.max(0, Number(raw.survivalBestScore) || 0),
       bossDefeats: Math.max(0, Number(raw.bossDefeats) || 0),
-      bossTrophies: Array.isArray(raw.bossTrophies) ? raw.bossTrophies.filter(x => typeof x === "string").slice(-20) : []
+      bossTrophies: Array.isArray(raw.bossTrophies) ? raw.bossTrophies.filter(x => typeof x === "string").slice(-20) : [],
+      selectedShip: Object.prototype.hasOwnProperty.call(SHIP_TYPES, raw.selectedShip) ? raw.selectedShip : "valkyrie",
+      missions: raw.missions && typeof raw.missions === "object" && !Array.isArray(raw.missions) ? raw.missions : {}
     };
   } catch (error) {
     console.warn("Se reiniciaron los datos comerciales locales.", error);
@@ -473,10 +480,14 @@ function loadCommercialData() {
 }
 let commercialData = loadCommercialData();
 state.difficulty = commercialData.difficulty;
+state.selectedShip = commercialData.selectedShip || "valkyrie";
 function saveCommercialData() {
   try { localStorage.setItem(COMMERCIAL_KEY, JSON.stringify(commercialData)); }
   catch (error) { console.warn("No se pudo guardar la progresión local.", error); }
   updateCommercialUI();
+  if (typeof renderMissionBoard === "function") renderMissionBoard();
+  if (typeof syncUnlockedShips === "function") syncUnlockedShips();
+  if (typeof scheduleCloudProgressSync === "function") scheduleCloudProgressSync();
 }
 function updateCommercialUI() {
   const credits = Math.floor(commercialData.credits).toLocaleString("es-AR");
@@ -585,7 +596,8 @@ function renderHangarLoadout() {
   const values = [
     ["VELOCIDAD", `${speed}`, `Base ${ship.speed.toFixed(1)} · Reactor +${reactor * 5}%`],
     ["INTERVALO DE DISPARO", `${fireRate}`, "Menor intervalo = dispara más rápido"],
-    ["DAÑO DEL CAÑÓN", `x${(1 + cannon * 0.12).toFixed(2)}`, `Bonificación de daño +${cannon * 12}%`],
+    ["DAÑO DEL CAÑÓN", `x${(1 + cannon * 0.12).toFixed(2)}`, `Bonificación de mejora +${cannon * 12}%`],
+    ["BONIFICACIÓN DE NAVE", `x${(Number(ship.damage) || 1).toFixed(2)}`, "Multiplicador propio del casco seleccionado"],
     ["CASCO", `${Math.min(6, ship.lives + hull)}`, `${ship.lives} base · +${hull} blindaje`],
     ["SUPER BOMBAS", `${Math.min(5, 1 + bombs)}`, `Bodega táctica nivel ${bombs}`],
     ["ESCUDO AEGIS", `${Math.min(3, aegis)}`, "Cargas protectoras iniciales"],
@@ -634,6 +646,7 @@ function awardRunCredits(victory) {
   commercialData.totalRuns++;
   commercialData.totalScore += state.score;
   commercialData.bestSector = Math.max(commercialData.bestSector, state.level);
+  commercialData.selectedShip = state.selectedShip;
   commercialData.bestScore = Math.max(commercialData.bestScore, state.score);
   evaluateAchievements();
   saveCommercialData();
@@ -645,6 +658,119 @@ function awardRunCredits(victory) {
 function localDateKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function localWeekKey(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - day + 1);
+  return d.toISOString().slice(0, 10);
+}
+const MISSION_DEFS = {
+  daily: [
+    { id: "kills", title: "LIMPIEZA TÁCTICA", desc: "Destruye naves enemigas", target: 20, reward: 250, unit: "naves" },
+    { id: "bosses", title: "CAZADOR DE COMANDANTES", desc: "Derrota un jefe", target: 1, reward: 400, unit: "jefes" },
+    { id: "sectors", title: "AVANCE DE FRONTERA", desc: "Completa sectores", target: 3, reward: 350, unit: "sectores" }
+  ],
+  weekly: [
+    { id: "kills", title: "SUPREMACÍA DE FLOTA", desc: "Destruye naves enemigas", target: 120, reward: 900, unit: "naves" },
+    { id: "bosses", title: "ROMPECORONAS", desc: "Derrota comandantes", target: 5, reward: 1500, unit: "jefes" },
+    { id: "sectors", title: "EXPANSIÓN GALÁCTICA", desc: "Completa sectores", target: 20, reward: 1300, unit: "sectores" }
+  ]
+};
+function ensureMissionState() {
+  if (!commercialData.missions || typeof commercialData.missions !== "object") commercialData.missions = {};
+  const dailyKey = localDateKey();
+  const weeklyKey = localWeekKey();
+  if (commercialData.missions.daily?.key !== dailyKey) commercialData.missions.daily = { key: dailyKey, progress: { kills: 0, bosses: 0, sectors: 0 }, claimed: [] };
+  if (commercialData.missions.weekly?.key !== weeklyKey) commercialData.missions.weekly = { key: weeklyKey, progress: { kills: 0, bosses: 0, sectors: 0 }, claimed: [] };
+  for (const period of ["daily", "weekly"]) {
+    const bucket = commercialData.missions[period];
+    if (!bucket.progress || typeof bucket.progress !== "object") bucket.progress = { kills: 0, bosses: 0, sectors: 0 };
+    if (!Array.isArray(bucket.claimed)) bucket.claimed = [];
+    for (const id of ["kills", "bosses", "sectors"]) bucket.progress[id] = Math.max(0, Number(bucket.progress[id]) || 0);
+  }
+}
+let missionDirtyCount = 0;
+function recordMissionProgress(kind, amount = 1) {
+  ensureMissionState();
+  let objectiveCompleted = false;
+  for (const period of ["daily", "weekly"]) {
+    const bucket = commercialData.missions[period];
+    const defs = MISSION_DEFS[period].filter(m => m.id === kind);
+    const max = Math.max(...defs.map(m => m.target), 0);
+    if (max) {
+      const before = bucket.progress[kind] || 0;
+      bucket.progress[kind] = Math.min(max, before + Math.max(0, amount));
+      if (before < max && bucket.progress[kind] >= max) objectiveCompleted = true;
+    }
+  }
+  missionDirtyCount += Math.max(0, amount);
+  if (objectiveCompleted || missionDirtyCount >= 5 || kind !== "kills") {
+    missionDirtyCount = 0;
+    saveCommercialData();
+  } else {
+    renderMissionBoard();
+  }
+}
+function claimMissionReward(period, missionId) {
+  ensureMissionState();
+  const def = MISSION_DEFS[period]?.find(m => m.id === missionId);
+  const bucket = commercialData.missions[period];
+  if (!def || !bucket || bucket.claimed.includes(missionId) || bucket.progress[missionId] < def.target) return;
+  bucket.claimed.push(missionId);
+  commercialData.credits += def.reward;
+  saveCommercialData();
+  SoundFX.play("powerup");
+  renderMissionBoard();
+  addFloatingText(W / 2, H * .35, `MISIÓN COMPLETADA • +${def.reward} CR`, "#75f0c4");
+}
+function renderMissionBoard() {
+  const board = document.getElementById("mission-board");
+  if (!board) return;
+  ensureMissionState();
+  board.replaceChildren();
+  for (const period of ["daily", "weekly"]) {
+    const section = document.createElement("section");
+    section.className = "mission-period";
+    const heading = document.createElement("h3");
+    heading.textContent = period === "daily" ? "PROTOCOLOS DIARIOS" : "OPERACIONES SEMANALES";
+    section.append(heading);
+    for (const def of MISSION_DEFS[period]) {
+      const bucket = commercialData.missions[period];
+      const progress = Math.min(def.target, bucket.progress[def.id] || 0);
+      const claimed = bucket.claimed.includes(def.id);
+      const card = document.createElement("article");
+      card.className = "mission-card";
+      const title = document.createElement("strong"); title.textContent = def.title;
+      const desc = document.createElement("small"); desc.textContent = `${def.desc}: ${progress}/${def.target} ${def.unit}`;
+      const track = document.createElement("div"); track.className = "mission-track";
+      const fill = document.createElement("span"); fill.style.width = `${Math.round(progress / def.target * 100)}%`; track.append(fill);
+      const action = document.createElement("button"); action.type = "button"; action.className = "mini-btn";
+      action.textContent = claimed ? "RECOMPENSA COBRADA" : progress >= def.target ? `COBRAR +${def.reward} CR` : `RECOMPENSA ✦ ${def.reward}`;
+      action.disabled = claimed || progress < def.target;
+      action.addEventListener("click", () => claimMissionReward(period, def.id));
+      card.append(title, desc, track, action); section.append(card);
+    }
+    board.append(section);
+  }
+}
+function syncUnlockedShips() {
+  const best = Math.max(1, Number(commercialData.bestSector) || 1);
+  document.querySelectorAll(".ship-opt").forEach(btn => {
+    const key = btn.dataset.ship;
+    const spec = SHIP_TYPES[key];
+    if (!spec) return;
+    const unlocked = !spec.unlock || best >= spec.unlock;
+    btn.disabled = !unlocked;
+    btn.classList.toggle("locked", !unlocked);
+    const small = btn.querySelector("small");
+    if (small && spec.unlock) small.textContent = unlocked ? `Desbloqueada • Sector ${spec.unlock}` : `Se desbloquea en sector ${spec.unlock}`;
+    btn.classList.toggle("active", key === state.selectedShip);
+  });
+  if (SHIP_TYPES[state.selectedShip]?.unlock && best < SHIP_TYPES[state.selectedShip].unlock) {
+    state.selectedShip = "valkyrie";
+    commercialData.selectedShip = "valkyrie";
+  }
 }
 function getDailyChallenge() {
   const date = localDateKey();
@@ -696,7 +822,7 @@ class Player {
     this.speed = spec.speed * (1 + (upgrades.reactor || 0) * 0.05);
     const shipFireBonus = typeKey === "valkyrie" ? 0.06 : 0;
     this.baseFireRate = Math.max(4, spec.fireRate * (1 - (upgrades.cannon || 0) * 0.045) * (1 - shipFireBonus));
-    this.shipDamageBonus = typeKey === "titan" ? 1.10 : 1;
+    this.shipDamageBonus = Number(spec.damage) || 1;
     this.color = spec.color;
     this.accent = spec.accent;
     this.lives = Math.min(6, spec.lives + (upgrades.hull || 0));
@@ -1318,7 +1444,8 @@ class EnemyShip {
     this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" || variant === "lancer" ? 2.8 : 1.6);
     this.vy = variant === "bomber" || variant === "carrier" ? 0.9 : variant === "lancer" ? 2.2 : 1.4;
     this.radius = variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16;
-    const scale = 1 + Math.floor(state.level / 5) * 0.35;
+    const sectorTier = Math.max(0, Math.floor((state.level - 1) / 10));
+    const scale = 1 + Math.floor(state.level / 5) * 0.22 + sectorTier * 0.08;
     const baseHp = variant === "carrier" ? 22 : variant === "bomber" ? 14 : variant === "interceptor" || variant === "lancer" ? 8 : variant === "weaver" ? 6 : 4;
     const eventScale = activeGalacticEvent ? Math.max(1, Math.min(3, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
     this.vx *= eventScale;
@@ -1424,7 +1551,9 @@ class BossShip {
     const names = ["LEVIATÁN", "DESTRUCTOR", "ANOMALÍA", "REINA DEL VACÍO", "ECLIPSE SUPREMO"];
     this.name = names[this.variant];
     this.radius = [48,54,46,62,58][this.variant];
-    this.maxHp = Math.round((190 + state.level * 31) * (DIFFICULTY[state.difficulty]?.spawn || 1));
+    const sectorRamp = 1 + Math.max(0, state.level - 1) * 0.012;
+    const bossDifficulty = state.difficulty === "hard" ? 1.24 : state.difficulty === "easy" ? 0.84 : 1;
+    this.maxHp = Math.round((210 + state.level * 29) * sectorRamp * bossDifficulty);
     this.hp = this.maxHp;
     this.timer = 0;
     this.phase = 1;
@@ -1466,7 +1595,8 @@ class BossShip {
       }
     }
 
-    this.x += this.vx * (this.phase === 3 ? 1.18 : 1);
+    const lateralWave = this.variant === 2 ? Math.sin(this.timer * .035) * (this.phase === 3 ? 2.2 : 1.1) : 0;
+    this.x += this.vx * (this.phase === 3 ? 1.18 : 1) + lateralWave;
     if (this.x < 68 || this.x > W - 68) this.vx *= -1;
     this.y = 112 + Math.sin(this.timer * (this.phase === 3 ? .045 : .025)) * (this.phase === 3 ? 48 : 34);
     this.weakAngle += this.phase === 3 ? .055 : .025;
@@ -1817,6 +1947,7 @@ function defeatBoss() {
   state.score += 1000 * state.level;
   commercialData.credits += rewardCredits;
   commercialData.bossDefeats = (commercialData.bossDefeats || 0) + 1;
+  recordMissionProgress("bosses", 1);
   commercialData.bossTrophies = Array.isArray(commercialData.bossTrophies) ? commercialData.bossTrophies : [];
   if (!commercialData.bossTrophies.includes(defeated)) commercialData.bossTrophies.push(defeated);
   saveCommercialData();
@@ -1836,6 +1967,7 @@ function completeSector() {
     }
 
     const completed = state.level;
+    recordMissionProgress("sectors", 1);
     state.level++;
     void trackGalacticEventProgress('reach_sector', 1);
     state.levelProgress = 0;
@@ -2072,6 +2204,7 @@ function updateAndDraw() {
           spawnExplosion(e.x, e.y, "#ff2a85", 16);
           spawnPowerup(e.x, e.y);
           state.score += 120 * state.combo;
+          recordMissionProgress("kills", 1);
           advanceProgress(2);
         }
       }
@@ -2405,6 +2538,7 @@ async function saveProgress(options = {}) {
   catch (error) { console.warn("No se pudo guardar la partida en este dispositivo.", error); alert("No hay espacio disponible para guardar el progreso."); return; }
   if (!options.quiet) addFloatingText(W / 2, H * 0.45, "PROGRESO GUARDADO", "#00ff88");
   checkSavedRun();
+  if (typeof scheduleCloudProgressSync === "function") scheduleCloudProgressSync();
 }
 
 function checkSavedRun() {
@@ -2506,7 +2640,18 @@ function readCloudSession() {
 }
 let cloudSession = readCloudSession();
 let cloudBusy = false;
+let cloudSyncTimer = null;
+let cloudSyncArmed = (() => { try { return sessionStorage.getItem("aether_cloud_sync_armed") === "1"; } catch (_) { return false; } })();
 const CLOUD_REQUEST_TIMEOUT_MS = 12000;
+function scheduleCloudProgressSync() {
+  if (!cloudSyncArmed || !cloudConfigured() || !cloudSession?.access_token) return;
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(() => { void uploadCloudSave(); }, 1800);
+}
+function armCloudProgressSync() {
+  cloudSyncArmed = true;
+  try { sessionStorage.setItem("aether_cloud_sync_armed", "1"); } catch (_) {}
+}
 
 function cloudConfigured() {
   return !!(CLOUD_CFG.enabled && /^https:\/\//.test(CLOUD_CFG.supabaseUrl || "") &&
@@ -2525,7 +2670,11 @@ function cloudSetSession(session) {
   cloudSession = session || null;
   try {
     if (cloudSession?.access_token && cloudSession?.refresh_token) sessionStorage.setItem(CLOUD_SESSION_KEY, JSON.stringify(cloudSession));
-    else sessionStorage.removeItem(CLOUD_SESSION_KEY);
+    else {
+      sessionStorage.removeItem(CLOUD_SESSION_KEY);
+      cloudSyncArmed = false;
+      sessionStorage.removeItem("aether_cloud_sync_armed");
+    }
     localStorage.removeItem(CLOUD_SESSION_KEY);
   } catch (error) { console.warn("No se pudo guardar la sesión temporal online.", error); }
   renderCloudAccount();
@@ -2653,7 +2802,8 @@ async function uploadCloudSave() {
       method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
       body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: activeProfile?.name || "Comandante", save_data: buildCloudSave(), updated_at: new Date().toISOString() })
     });
-    cloudSetStatus("Progreso subido a la nube correctamente.");
+    armCloudProgressSync();
+    cloudSetStatus("Progreso subido a la nube correctamente. La sincronización automática quedó activada para esta sesión.");
   } catch (error) { cloudSetStatus(error.message, true); }
 }
 async function restoreCloudSave() {
@@ -2674,7 +2824,12 @@ async function restoreCloudSave() {
       commercialData = { ...commercialData, ...incoming,
         credits: Math.max(0, Number(incoming.credits) || 0),
         upgrades: { ...commercialData.upgrades, ...(incoming.upgrades || {}) },
-        achievements: Array.isArray(incoming.achievements) ? incoming.achievements : commercialData.achievements };
+        achievements: Array.isArray(incoming.achievements) ? incoming.achievements : commercialData.achievements,
+        missions: incoming.missions && typeof incoming.missions === "object" && !Array.isArray(incoming.missions) ? incoming.missions : commercialData.missions
+      };
+      state.selectedShip = Object.prototype.hasOwnProperty.call(SHIP_TYPES, commercialData.selectedShip) ? commercialData.selectedShip : "valkyrie";
+      state.difficulty = ["easy", "normal", "hard"].includes(commercialData.difficulty) ? commercialData.difficulty : "normal";
+      ensureMissionState();
       saveCommercialData();
     }
     if (cloud.runSave) {
@@ -2682,6 +2837,7 @@ async function restoreCloudSave() {
       localStorage.setItem(`aether_save_${key}`, JSON.stringify(cloud.runSave));
     }
     checkSavedRun(); renderHangar();
+    armCloudProgressSync();
     cloudSetStatus(`Progreso recuperado. Copia del ${new Date(rows[0].updated_at).toLocaleString("es-AR")}.`);
   } catch (error) { cloudSetStatus(error.message, true); }
 }
@@ -2718,10 +2874,13 @@ async function submitCloudScore(entry, runId) {
   if (button) { button.disabled = true; button.textContent = "ENVIANDO…"; }
   updateCloudScoreStatus("Enviando resultado a la clasificación galáctica…");
   try {
-    await cloudFetch("leaderboard", {
-      method: "POST", headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: String(entry.name || "Comandante").slice(0, 16), score: Math.max(0, Math.floor(entry.score)), sector: Math.max(1, Math.floor(entry.level)), mode: ["campaign", "survival", "daily"].includes(entry.mode) ? entry.mode : "campaign" })
+    const scoreResponse = await cloudRequest(`${CLOUD_CFG.supabaseUrl}/functions/v1/submit-score`, {
+      method: "POST",
+      headers: cloudHeaders(cloudSession.access_token),
+      body: JSON.stringify({ pilot_name: String(entry.name || "Comandante").slice(0, 16), score: Math.max(0, Math.floor(entry.score)), sector: Math.max(1, Math.floor(entry.level)), mode: ["campaign", "survival", "daily"].includes(entry.mode) ? entry.mode : "campaign" })
     });
+    const scorePayload = await scoreResponse.json().catch(() => ({}));
+    if (!scoreResponse.ok) throw new Error(scorePayload.error || scorePayload.message || `Error de validación (${scoreResponse.status})`);
     const nextSubmitted = Array.isArray(submitted) ? submitted : [];
     nextSubmitted.push(runId);
     try { localStorage.setItem(markerKey, JSON.stringify(nextSubmitted.slice(-100))); } catch (_) {}
@@ -3051,8 +3210,13 @@ document.querySelectorAll(".ship-opt").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".ship-opt").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
+    const spec = SHIP_TYPES[btn.dataset.ship];
+    if (!spec || (spec.unlock && commercialData.bestSector < spec.unlock)) return;
     state.selectedShip = btn.dataset.ship;
+    commercialData.selectedShip = state.selectedShip;
+    saveCommercialData();
     if (typeof renderHangarLoadout === "function") renderHangarLoadout();
+    syncUnlockedShips();
   });
 });
 
@@ -3151,6 +3315,9 @@ renderRanking();
 updateCommercialUI();
 refreshDailyButton();
 refreshRunModeUI();
+ensureMissionState();
+renderMissionBoard();
+syncUnlockedShips();
 renderCloudAccount();
 renderCosmetics();
 if (cloudSession?.refresh_token && cloudConfigured()) { void restoreCloudSession(); }

@@ -1,28 +1,42 @@
-# AETHER NOVA: ECLIPSE — Comercial 3.0 Alpha 6.2
+# AETHER NOVA: ECLIPSE — Edición Comercial 7.4
 
-PWA arcade espacial híbrida con campaña de 100 sectores, supervivencia infinita, desafíos diarios, progresión local, perfiles online opcionales, copia de nube y clasificación semanal.
+PWA arcade espacial con campaña de 100 sectores, supervivencia, desafío diario, jefes de cinco familias, hangar tecnológico, cinco naves desbloqueables, misiones diarias/semanales, ranking online y copia de progreso en Supabase.
 
-## Ejecutar
-Servir esta carpeta desde un servidor HTTP o publicarla en GitHub Pages. Abrir una vez con conexión para instalar la caché offline.
+## Publicación
+1. Extraer el contenido de esta carpeta.
+2. Publicar todos sus archivos y carpetas en la raíz del repositorio de GitHub Pages, reemplazando la versión anterior.
+3. Esperar el despliegue y abrir el sitio con HTTPS.
+4. Recargar la PWA. El Service Worker utiliza una caché nueva `aether-nova-eclipse-commercial-7-4`.
 
-## Archivos principales
-- `index.html`: interfaz y selector de modos.
-- `style.css`: diseño adaptable.
-- `game.js`: motor, campaña, supervivencia, desafíos y progresión.
-- `manifest.json`: configuración PWA.
-- `sw.js`: caché offline Alpha 6.
-- `cloud-config.js`: configuración pública opcional de Supabase (desactivada por defecto).
-- `SUPABASE_SCHEMA_ALPHA6.sql`: tablas, índices y políticas RLS del backend.
-- `ETAPA_6_ONLINE_HIBRIDA.md`: instrucciones y límites de la etapa.
-- `ETAPA_5_MODOS_Y_DESAFIOS.md`: registro de cambios.
+## Funciones nuevas de 7.4
+- Se eliminó el acceso social Google/Facebook. Se conserva el perfil local y el acceso online existente por correo/contraseña.
+- Centro de Operaciones con misiones diarias y semanales, progreso y recompensas.
+- Cinco cazas desbloqueables por progreso de campaña: Wraith (sector 10), Bastión (20), Fénix (35), Singularidad (50) y Omega (75).
+- Selección de nave persistente y aplicación de sus estadísticas diferenciadas.
+- Escalado de resistencia de enemigos y jefes ajustado por avance de sectores.
+- Sincronización automática del progreso online después de que el jugador realiza por primera vez una copia manual o restaura una copia en esa sesión.
+- Envío del ranking mediante Edge Function con autenticación, validación de formato y límite básico de frecuencia.
 
-Los datos siguen siendo locales en el dispositivo; esta entrega no incorpora servidores ni clasificación online.
+## Configuración Supabase
+Consultar `CONFIGURACION_ALPHA_7_4.md`.
+- Si Alpha 6 ya está configurada, ejecutar solamente `SUPABASE_MIGRATION_ALPHA_7_4.sql`.
+- Desplegar `supabase/functions/submit-score`.
+- El esquema base sigue siendo `SUPABASE_SCHEMA_ALPHA6.sql`; la migración Alpha 6.4 sigue siendo necesaria para eventos especiales si ya se utiliza ese módulo.
+- No colocar `service_role` ni secretos en `cloud-config.js` ni en el navegador.
 
+## Límites importantes
+- Las misiones locales se respaldan junto con `commercialData` al subir/recuperar una copia.
+- La Edge Function autentica al usuario, valida rangos y limita la frecuencia de envíos. Esto no demuestra que una partida sea legítima ni constituye un sistema antitrampas completo: un cliente modificado aún podría enviar puntuaciones plausibles. No usar para premios con valor económico.
+- La copia de progreso continúa siendo una copia iniciada por el jugador; la sincronización automática se activa después de una primera subida/restauración manual en la sesión.
+- La funcionalidad local funciona sin Supabase. El ranking y las copias online requieren configurar el proyecto.
+- La integración real con Supabase, publicación de Edge Function y pruebas en dispositivos deben verificarse en el proyecto del usuario.
 
-## Activar funciones online
-Consulta `ETAPA_6_ONLINE_HIBRIDA.md`. La experiencia local funciona sin backend. No coloques claves privadas ni `service_role` en el cliente.
-
-
-## Alpha 6.1 — Seguridad online
-Sesiones temporales, renovación y revocación de sesión, timeout de red, validación previa de restauración y límite de tamaño para copias. Ver `ETAPA_6_1_SEGURIDAD_SINCRONIZACION.md`. La conexión Supabase sigue desactivada hasta configurar credenciales públicas del proyecto.
-\n\n## Alpha 6.2 — Ranking visible\nLa pantalla de resultado informa el envío online de puntuaciones y permite reintentar si falla. El ranking semanal conserva su actualización manual. Consulta `ETAPA_6_2_RANKING_VISIBLE.md` para publicar y probar.\n
+## Archivos clave
+- `index.html`, `style.css`, `game.js`: aplicación.
+- `cloud-config.js`: URL y publishable key pública.
+- `sw.js`: caché PWA.
+- `SUPABASE_SCHEMA_ALPHA6.sql`: esquema base.
+- `SUPABASE_MIGRATION_ALPHA_6_4.sql`: eventos especiales.
+- `SUPABASE_MIGRATION_ALPHA_7_4.sql`: protección y rate limit del ranking.
+- `supabase/functions/submit-score/index.ts`: Edge Function de envío de puntuaciones.
+- `CONFIGURACION_ALPHA_7_4.md`: configuración posterior a la publicación.
