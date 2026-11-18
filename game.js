@@ -2233,6 +2233,8 @@ function updateAndDraw() {
         if (speed > maxSpeed) { b.vx = b.vx / speed * maxSpeed; b.vy = b.vy / speed * maxSpeed; }
       }
     }
+    b.prevX = b.x;
+    b.prevY = b.y;
     b.x += b.vx;
     b.y += b.vy;
     if (b.y < -30 || b.x < -30 || b.x > W + 30) b.dead = true;
@@ -2289,18 +2291,26 @@ function updateAndDraw() {
   });
 
   enemies.forEach((e) => {
+    e.prevX = e.x;
+    e.prevY = e.y;
     e.update();
     if (!window.__AETHER3D_ACTIVE) e.draw();
 
-    if (Math.hypot(e.x - player.x, e.y - player.y) < e.radius + player.radius) {
-      e.dead = true;
-      spawnImpactBurst((e.x + player.x) * .5, (e.y + player.y) * .5, "#ff6688", IS_LOW_POWER ? 7 : 13);
-      spawnExplosion(e.x, e.y, "#ff6688", IS_LOW_POWER ? 6 : 12);
-      player.takeDamage("CHOQUE CON NAVE ENEMIGA");
-    }
-
+    // Impacto por barrido: comprueba el recorrido completo del disparo
+    // y el desplazamiento del caza durante este fotograma.
     bullets.forEach((b) => {
-      if (!b.dead && !e.dead && Math.hypot(b.x - e.x, b.y - e.y) < e.radius + 6) {
+      if (b.dead || e.dead) return;
+      const bx0 = Number.isFinite(b.prevX) ? b.prevX : b.x;
+      const by0 = Number.isFinite(b.prevY) ? b.prevY : b.y;
+      const ex0 = Number.isFinite(e.prevX) ? e.prevX : e.x;
+      const ey0 = Number.isFinite(e.prevY) ? e.prevY : e.y;
+      const rx = (b.x - bx0) - (e.x - ex0);
+      const ry = (b.y - by0) - (e.y - ey0);
+      const sx = bx0 - ex0, sy = by0 - ey0;
+      const denom = rx * rx + ry * ry;
+      const t = denom > 0 ? Math.max(0, Math.min(1, -(sx * rx + sy * ry) / denom)) : 0;
+      const distance = Math.hypot(sx + rx * t, sy + ry * t);
+      if (distance < e.radius + (b.missile ? 13 : 11)) {
         b.dead = true;
         e.hp -= b.dmg;
         spawnImpactBurst(b.x, b.y, "#ff8bc8", IS_LOW_POWER ? 3 : 6);
@@ -2318,6 +2328,17 @@ function updateAndDraw() {
         }
       }
     });
+
+    // Solo si sobrevivió a los disparos puede chocar con el jugador.
+    if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < e.radius + player.radius) {
+      e.dead = true;
+      const impactX = (e.x + player.x) * 0.5;
+      const impactY = (e.y + player.y) * 0.5;
+      spawnImpactBurst(impactX, impactY, "#ff6688", IS_LOW_POWER ? 9 : 17);
+      spawnExplosion(e.x, e.y, "#ff6688", IS_LOW_POWER ? 8 : 15);
+      SoundFX.play("boom");
+      player.takeDamage("CHOQUE CON NAVE ENEMIGA");
+    }
   });
 
   if (boss) {
