@@ -1950,8 +1950,8 @@ const POWERUP_POOL = [
 ];
 
 function spawnPowerup(x, y) {
-  // Dos objetos como máximo en pantalla: los recursos se pueden recoger sin saturar.
-  if (powerups.filter(item => !item.dead).length >= 2) return;
+  // Hasta tres módulos simultáneos: más recompensas, sin saturar el campo.
+  if (powerups.filter(item => !item.dead).length >= 3) return;
   campaignPickupKills++;
   const earlySequence = ["shield", "triple", "bomb", "rapid", "life", "missiles", "shield", "wingmen"];
   let item;
@@ -1961,11 +1961,12 @@ function spawnPowerup(x, y) {
     const id = earlySequence[campaignPickupIndex++];
     item = POWERUP_POOL.find(power => power.id === id);
   } else {
-    const chance = state.level <= 15 ? 0.12 : 0.16;
+    // Aumenta el ritmo de recompensas a medida que avanza la campaña.
+    const chance = state.level <= 15 ? 0.32 : 0.38;
     if (Math.random() > chance) return;
     item = POWERUP_POOL[Math.floor(Math.random() * POWERUP_POOL.length)];
   }
-  if (item) powerups.push({ x, y, vy: 1.75, ...item });
+  if (item) powerups.push({ x, y, vy: 1.95, ...item });
 }
 
 function applyPowerup(p) {
@@ -2570,10 +2571,11 @@ function updateAndDraw() {
   powerups.forEach((p) => {
     p.prevX = p.x; p.prevY = p.y;
     p.y += p.vy;
-    // Los módulos cercanos corrigen su trayectoria hacia la nave para evitar que se escapen por los laterales.
+    // Campo magnético de recogida más amplio: guía los módulos hacia la nave.
     const dx = player.x - p.x, dy = player.y - p.y;
-    if (Math.abs(dx) < 125 && Math.abs(dy) < 190) {
-      p.x += dx * 0.055;
+    if (Math.abs(dx) < 185 && Math.abs(dy) < 260) {
+      p.x += dx * 0.09;
+      p.y += dy * 0.035;
     }
     if (p.y > H + 30) p.dead = true;
 
@@ -2596,7 +2598,7 @@ function updateAndDraw() {
       const lengthSq = vx * vx + vy * vy;
       const t = lengthSq > 0 ? Math.max(0, Math.min(1, -(sx * vx + sy * vy) / lengthSq)) : 0;
       const closest = Math.hypot(sx + vx * t, sy + vy * t);
-      if (closest < player.radius + 28) {
+      if (closest < player.radius + 46) {
         p.dead = true;
         applyPowerup(p);
       }
