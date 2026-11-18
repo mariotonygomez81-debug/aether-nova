@@ -2436,7 +2436,7 @@ async function startPhonepadPairing(){
   try{
     if(!cloudConfigured())throw new Error("La conexión online no está configurada.");
     if(phonepadState.channel&&phonepadState.client)await phonepadState.client.removeChannel(phonepadState.channel);
-    const bytes=new Uint8Array(4);crypto.getRandomValues(bytes);
+    const bytes=new Uint8Array(6);crypto.getRandomValues(bytes);
     const code=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
     const sdk=await import("https://esm.sh/@supabase/supabase-js@2");
     const client=sdk.createClient(CLOUD_CFG.supabaseUrl,CLOUD_CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:25}}});
