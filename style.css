@@ -1027,3 +1027,66 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 @media(max-width:850px){.showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.main-card{width:100%}.hero-ship{width:76%;left:-5%}.hero-planet{right:8%}}
 @media(max-width:560px){.overlay:has(.main-card){padding:7px}.main-card{padding:12px;border-radius:16px}.menu-cinematic-hero{height:205px;margin-bottom:14px}.hero-ship{width:92%;left:-12%;top:0}.hero-planet{width:95px;right:5%;top:10%}.hero-planet-ring{width:150px;height:38px;right:0;top:37%}.hero-caption{left:12px;bottom:12px}.hero-caption strong{font-size:14px}.hero-coordinate{font-size:6px;right:10px;bottom:14px}.game-title{font-size:34px}.lore-intro{font-size:12px}.command-showcase{padding:11px}.showcase-grid{grid-template-columns:1fr 1fr;gap:7px}.showcase-card{min-height:130px;padding:10px 8px;gap:7px}.showcase-icon{width:26px;height:26px;flex-basis:26px;font-size:16px}.showcase-card p{font-size:9px}.showcase-heading{align-items:flex-start;flex-direction:column;gap:5px}.showcase-footer{font-size:6px;flex-wrap:wrap}.cloud-login{grid-template-columns:1fr}.cloud-login .section-kicker,.cloud-login #cloud-auth-status,.cloud-login .cloud-actions{grid-column:auto}.ship-selector{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.event-singularity,.signal-live{animation:none!important}}
+
+
+/* ALPHA 28 — rediseño de arquitectura visual del menú */
+#screen-menu{align-items:flex-start;padding:clamp(10px,2vw,24px);background:radial-gradient(ellipse at 50% -15%,rgba(0,176,255,.19),transparent 48%),radial-gradient(ellipse at 100% 70%,rgba(112,47,190,.13),transparent 42%),#02050d}
+#screen-menu .main-card{display:flex;flex-direction:column;gap:0;width:min(100%,1440px);max-width:1440px;max-height:none;overflow:visible;margin:0 auto;padding:clamp(14px,2vw,26px);border-radius:24px;background:linear-gradient(145deg,rgba(7,15,32,.97),rgba(5,8,21,.985) 55%,rgba(14,7,29,.97));border:1px solid rgba(0,211,255,.32);box-shadow:0 28px 100px rgba(0,0,0,.65),inset 0 1px rgba(190,240,255,.08);position:relative}
+#screen-menu .main-card:before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(115deg,transparent 20%,rgba(0,220,255,.035) 48%,transparent 70%);z-index:0}
+#screen-menu .main-card>*{position:relative;z-index:1}
+#screen-menu .menu-cinematic-hero{order:0;height:clamp(210px,25vw,310px);margin:0 0 14px;border-radius:18px;overflow:hidden}
+#screen-menu .hero-ship{width:min(60%,680px);left:5%;top:0}
+#screen-menu .hero-planet{width:clamp(120px,14vw,185px);right:14%;top:10%}
+#screen-menu .hero-planet-ring{width:clamp(210px,25vw,310px);right:8%;top:39%}
+#screen-menu>.badge{order:1;align-self:flex-start;margin:0 0 5px}
+#screen-menu .game-title{order:2;text-align:left;font-size:clamp(34px,4.4vw,54px);letter-spacing:.13em;margin:0}
+#screen-menu .game-title span{font-size:clamp(16px,2vw,22px);letter-spacing:.55em}
+#screen-menu .lore-intro{order:3;max-width:900px;margin:5px 0 15px;text-align:left;font-size:13px;line-height:1.55}
+#screen-menu .command-showcase{order:4;margin:0 0 14px;padding:13px 15px;background:linear-gradient(105deg,rgba(7,26,48,.88),rgba(14,13,38,.9));border-color:rgba(77,193,255,.22)}
+#screen-menu .showcase-heading{margin-bottom:10px}
+#screen-menu .showcase-heading strong{font-size:11px}
+#screen-menu .showcase-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#screen-menu .showcase-card{min-height:98px;padding:11px 10px;gap:9px;background:linear-gradient(145deg,rgba(16,38,67,.82),rgba(5,13,29,.92))}
+#screen-menu .showcase-card p{font-size:9px;line-height:1.35}
+#screen-menu .showcase-footer{margin-top:9px;padding-top:8px}
+#screen-menu .pilot-economy{order:5;margin:0 0 12px;padding:10px 14px}
+#screen-menu .run-mode-picker{order:6;padding:13px 14px;margin:0 0 10px;border:1px solid rgba(90,155,220,.2);border-radius:14px;background:rgba(10,20,42,.58)}
+#screen-menu .run-mode-options{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#screen-menu .run-mode-opt{min-height:70px;border-radius:11px}
+#screen-menu .run-mode-opt strong{font-size:11px}
+#screen-menu .run-mode-opt small{font-size:9px}
+#screen-menu .difficulty-picker{order:7;padding:0 2px;margin:0 0 10px}
+#screen-menu .difficulty-opt{min-height:37px}
+#screen-menu .ship-selector{order:8;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:0 0 12px}
+#screen-menu .ship-opt{position:relative;min-height:108px;overflow:hidden;text-align:left;padding:13px 12px 11px 76px;border-radius:12px;background:linear-gradient(135deg,rgba(17,35,63,.96),rgba(5,12,28,.96));transition:transform .2s,border-color .2s,box-shadow .2s}
+#screen-menu .ship-opt:before{content:"";position:absolute;left:12px;top:50%;width:50px;height:58px;transform:translateY(-50%);background:linear-gradient(155deg,#efffff 0%,#56d7f2 23%,#17618f 58%,#101c38 100%);clip-path:polygon(50% 0,64% 36%,100% 77%,62% 68%,50% 100%,38% 68%,0 77%,36% 36%);filter:drop-shadow(0 0 8px rgba(0,220,255,.55))}
+#screen-menu .ship-opt:nth-child(2):before{background:linear-gradient(155deg,#eafff6,#37e9ad 45%,#075b4b)}
+#screen-menu .ship-opt:nth-child(3):before{width:58px;height:54px;background:linear-gradient(155deg,#fff2ba,#f7b733 48%,#7a3612);clip-path:polygon(50% 0,75% 30%,100% 70%,63% 66%,50% 100%,37% 66%,0 70%,25% 30%)}
+#screen-menu .ship-opt:nth-child(4):before{background:linear-gradient(155deg,#f5eaff,#b87cff 48%,#3c1a70)}
+#screen-menu .ship-opt:nth-child(5):before{background:linear-gradient(155deg,#e4f0ff,#6aaaff 48%,#173a80)}
+#screen-menu .ship-opt:nth-child(6):before{background:linear-gradient(155deg,#fff0f2,#ff7791 48%,#711a3d)}
+#screen-menu .ship-opt:nth-child(7):before{background:linear-gradient(155deg,#f4ffd8,#b3ec45 48%,#426b13)}
+#screen-menu .ship-opt:nth-child(8):before{background:linear-gradient(155deg,#fff,#b8b6ff 48%,#5033a4)}
+#screen-menu .ship-opt strong{font-size:12px;letter-spacing:.04em}
+#screen-menu .ship-opt small{font-size:9px;line-height:1.35}
+#screen-menu .ship-opt.active{border-color:#3eeaff;background:linear-gradient(130deg,rgba(0,180,220,.23),rgba(38,23,87,.72));box-shadow:0 0 0 1px rgba(0,220,255,.14),0 0 24px rgba(0,200,255,.13)}
+#screen-menu .ship-opt:hover:not(:disabled){transform:translateY(-2px);border-color:rgba(92,224,255,.7)}
+#screen-menu .menu-actions{order:9;max-width:720px;width:100%;margin:0 auto 10px}
+#screen-menu .primary-btn{min-height:54px;font-size:15px;letter-spacing:.12em;background:linear-gradient(105deg,#00d9ed,#287dff 55%,#8756f5);box-shadow:0 8px 30px rgba(0,154,255,.25)}
+#screen-menu .secondary-btn{min-height:45px}
+#screen-menu .menu-tools{order:10;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 12px}
+#screen-menu .tool-btn{min-height:40px;font-size:9px;background:linear-gradient(135deg,rgba(38,27,83,.5),rgba(12,22,45,.8))}
+#screen-menu .mission-board-panel{order:11;margin:0 0 12px;padding:14px;background:linear-gradient(140deg,rgba(9,22,43,.94),rgba(10,11,29,.94));border-color:rgba(91,160,225,.25)}
+#screen-menu .mission-board{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#screen-menu .mission-card{min-height:116px;padding:13px;background:linear-gradient(135deg,rgba(18,34,61,.82),rgba(7,14,30,.92))}
+#screen-menu .ranking-box{order:12;display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px;background:rgba(5,10,23,.8);border-color:rgba(255,204,51,.22)}
+#screen-menu .ranking-box>.rank-header,#screen-menu .ranking-box>#ranking-list,#screen-menu .ranking-box>.local-note,#screen-menu .privacy-link{grid-column:1/-1}
+#screen-menu .online-rank-panel,#screen-menu .galactic-event-panel{min-width:0;margin:0;padding:13px;border:1px solid rgba(83,155,220,.2);border-radius:12px;background:rgba(8,18,38,.7)}
+#screen-menu .auth-panel{order:13;margin:12px 0 0;padding:13px;background:rgba(4,10,24,.76);border-color:rgba(90,165,220,.22)}
+#screen-menu .auth-panel:before{content:"IDENTIFICACIÓN DEL COMANDANTE · CONFIGURACIÓN DE CUENTA";display:block;margin:0 0 9px;text-align:left;font-size:9px;font-weight:900;letter-spacing:.14em;color:#809dbd}
+#screen-menu .user-profile{padding-bottom:9px}
+#screen-menu .cloud-login{margin-top:9px}
+#screen-menu .privacy-link{margin-top:6px}
+@media(max-width:1000px){#screen-menu .showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#screen-menu .ship-selector{grid-template-columns:repeat(2,minmax(0,1fr))}#screen-menu .ship-opt{min-height:90px}}
+@media(max-width:650px){#screen-menu{padding:7px}#screen-menu .main-card{padding:10px;border-radius:16px}#screen-menu .menu-cinematic-hero{height:190px}#screen-menu .hero-ship{width:88%;left:-8%}#screen-menu .hero-planet{width:92px;right:6%}#screen-menu .hero-planet-ring{width:155px;height:38px;right:0}#screen-menu .game-title{font-size:32px}#screen-menu .lore-intro{font-size:11px}#screen-menu .showcase-grid{grid-template-columns:1fr 1fr}#screen-menu .showcase-card{min-height:115px}#screen-menu .run-mode-picker{padding:10px}#screen-menu .run-mode-options{gap:5px}#screen-menu .run-mode-opt{min-height:62px}#screen-menu .ship-selector{grid-template-columns:1fr 1fr;gap:7px}#screen-menu .ship-opt{min-height:86px;padding:10px 7px 10px 58px}#screen-menu .ship-opt:before{left:8px;width:38px;height:45px}#screen-menu .ship-opt strong{font-size:10px}#screen-menu .ship-opt small{font-size:8px}#screen-menu .menu-tools{grid-template-columns:repeat(2,minmax(0,1fr))}#screen-menu .mission-board{grid-template-columns:1fr}#screen-menu .ranking-box{grid-template-columns:1fr}#screen-menu .ranking-box>.rank-header,#screen-menu .ranking-box>#ranking-list,#screen-menu .ranking-box>.local-note,#screen-menu .privacy-link{grid-column:auto}#screen-menu .online-rank-panel,#screen-menu .galactic-event-panel{grid-column:1}}
+@media(prefers-reduced-motion:reduce){#screen-menu .ship-opt{transition:none}}
