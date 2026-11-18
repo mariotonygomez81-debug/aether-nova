@@ -2082,6 +2082,8 @@ function triggerSuperBomb() {
 
 let spawnClock = 0;
 let powerupSpawnClock = 0;
+let phenomenonSpawnClock = 0;
+let phenomenonFirstSpawned = false;
 
 function updateSpawner() {
   spawnClock++;
@@ -2147,25 +2149,34 @@ function updateSpawner() {
     }
   }
 
-  const phenomenonInterval = Math.max(900, Math.round(1450 - progress * 450));
-  if (spawnClock % phenomenonInterval === 0 && phenomena.length === 0 && state.level >= 25) {
-    const pool = ["blackhole", "supernova"];
-    if (state.level >= 35) pool.push("magnetar");
-    if (state.level >= 45) pool.push("pulsar");
-    if (state.level >= 40) pool.push("ionstorm");
-    if (state.level >= 50) pool.push("debrisfield");
-    const chosen = pool[Math.floor(Math.random() * pool.length)];
-    phenomena.push(new CosmicPhenomenon(chosen));
-    // Un solo fenómeno activo: evita saturar la pantalla.
-    const names = {
-      blackhole: "⚠ ANOMALÍA: AGUJERO NEGRO",
-      supernova: "⚠ ALERTA: ESTRELLA EN SUPERNOVA",
-      magnetar: "⚠ CAMPO DE MAGNETAR DETECTADO",
-      pulsar: "⚠ PÚLSAR DE RAYOS GAMMA",
-      ionstorm: "⚠ TORMENTA IÓNICA: DESCARGAS INMINENTES",
-      debrisfield: "⚠ CAMPO DE ESCOMBROS: IMPACTOS MÚLTIPLES"
-    };
-    addFloatingText(W / 2, H * 0.25, names[chosen], "#ffcc33");
+  // Fenómenos cósmicos: debut temprano y frecuencia controlada.
+  // El primero aparece tras unos 6 segundos en sector 5; después hay pausas
+  // amplias y nunca se superponen dos fenómenos.
+  if (state.level >= 5 && !boss && phenomena.length === 0) {
+    phenomenonSpawnClock++;
+    const phenomenonInterval = phenomenonFirstSpawned
+      ? Math.max(900, Math.round(1120 - progress * 180))
+      : 360;
+    if (phenomenonSpawnClock >= phenomenonInterval) {
+      const pool = ["blackhole", "supernova"];
+      if (state.level >= 12) pool.push("magnetar");
+      if (state.level >= 18) pool.push("ionstorm");
+      if (state.level >= 24) pool.push("pulsar");
+      if (state.level >= 30) pool.push("debrisfield");
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      phenomena.push(new CosmicPhenomenon(chosen));
+      phenomenonSpawnClock = 0;
+      phenomenonFirstSpawned = true;
+      const names = {
+        blackhole: "⚠ ANOMALÍA: AGUJERO NEGRO",
+        supernova: "⚠ ALERTA: ESTRELLA EN SUPERNOVA",
+        magnetar: "⚠ CAMPO DE MAGNETAR DETECTADO",
+        pulsar: "⚠ PÚLSAR DE RAYOS GAMMA",
+        ionstorm: "⚠ TORMENTA IÓNICA: DESCARGAS INMINENTES",
+        debrisfield: "⚠ CAMPO DE ESCOMBROS: IMPACTOS MÚLTIPLES"
+      };
+      addFloatingText(W / 2, H * 0.25, names[chosen], "#ffcc33");
+    }
   }
 }
 
@@ -2813,6 +2824,8 @@ function startNewGame(savedData = null) {
   enemyBullets = [];
   spawnClock = 0;
   powerupSpawnClock = 0;
+  phenomenonSpawnClock = 0;
+  phenomenonFirstSpawned = false;
   creditCoins = [];
   campaignPickupKills = 0;
   campaignPickupIndex = 0;
