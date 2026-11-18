@@ -627,7 +627,7 @@ function makePhenomenon(kind){
    filamentPositions.push(dx*.42,dy*.42,dz*.42,dx*(1.15+(i%5)*.12),dy*(1.15+(i%5)*.12),dz*(1.15+(i%5)*.12));
   }
   const fg=new THREE.BufferGeometry();fg.setAttribute('position',new THREE.Float32BufferAttribute(filamentPositions,3));
-  const filaments=new THREE.LineSegments(fg,additive(0xffd18a,.9));filaments.userData.filaments=true;g.add(filaments);
+  const filaments=new THREE.LineSegments(fg,additive(0xffd18a,.9));filaments.userData.filaments=true;filaments.userData.initialPositions=filamentPositions.slice();g.add(filaments);
   const positions=[],colors=[],directions=[];
   for(let i=0;i<420;i++){
    const u=Math.random()*2-1,p=Math.random()*Math.PI*2,q=Math.sqrt(1-u*u);
@@ -698,13 +698,10 @@ function syncPhenomena(items,width,height,now){
     if(o.userData.corona){const k=o.userData.corona;o.scale.setScalar(k===1?1.05+Math.sin(phase*5)*.13:1.8+Math.sin(phase*2.2)*.2);o.material.opacity=k===1?.62:.22;}
     if(o.userData.hotHalo){o.rotation.z=phase*.35;o.scale.setScalar(1+progress*4.4);o.material.opacity=Math.max(0,.92*(1-progress*.82));}
     if(o.userData.filaments){
-     const attr=o.geometry.attributes.position;
+     const attr=o.geometry.attributes.position,initial=o.userData.initialPositions,len=1+progress*5.2;
      for(let j=0;j<attr.count;j++){
-      const x=attr.getX(j),y=attr.getY(j),z=attr.getZ(j),r=j%2===0?.42:1.15+((j/2|0)%5)*.12;
-      const len=1+progress*5.2;
-      const k=r===.42?.42:r;
-      const factor=r===.42?1:len;
-      attr.setXYZ(j,x*k*factor,y*k*factor,z*k*factor);
+      const factor=j%2===0?1:len;
+      attr.setXYZ(j,initial[j*3]*factor,initial[j*3+1]*factor,initial[j*3+2]*factor);
      }
      attr.needsUpdate=true;o.material.opacity=Math.max(0,.9*(1-progress));
     }
