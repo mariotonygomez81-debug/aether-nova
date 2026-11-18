@@ -88,13 +88,14 @@ for(let layer=0;layer<3;layer++){
 
 // Alpha 4: sin planetas ni estación orbital. Fondo profundo y limpio.
 const ship = new THREE.Group(); scene.add(ship);
+const shipModel = new THREE.Group(); ship.add(shipModel);
 const hullMat = new THREE.MeshPhysicalMaterial({ color: 0x9eb7c9, metalness: .94, roughness: .22, clearcoat: .8, clearcoatRoughness: .2 });
 const darkMat = new THREE.MeshStandardMaterial({ color: 0x101c2c, metalness: .88, roughness: .3 });
 const panelMat = new THREE.MeshStandardMaterial({ color: 0x31485d, metalness: .9, roughness: .34 });
 const canopyMat = new THREE.MeshPhysicalMaterial({ color: 0x087ca5, metalness: .52, roughness: .09, transparent: true, opacity: .94, clearcoat: 1, emissive: 0x032c48 });
 const glowMat = new THREE.MeshStandardMaterial({ color: 0x38efff, emissive: 0x00bde9, emissiveIntensity: 3.1, metalness: .3, roughness: .18 });
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xc78c45, metalness: .86, roughness: .28 });
-function add(geometry, material, position, rotation=[0,0,0], parent=ship, scale=null) {
+function add(geometry, material, position, rotation=[0,0,0], parent=shipModel, scale=null) {
   const m = new THREE.Mesh(geometry, material); m.position.set(...position); m.rotation.set(...rotation);
   if(scale)m.scale.set(...scale); m.castShadow = false; m.receiveShadow = false; parent.add(m); return m;
 }
@@ -128,6 +129,72 @@ for(const side of [-1,1]){
   add(new THREE.SphereGeometry(.075,12,8), glowMat, [side*2.42,.16,.0]);
   add(new THREE.BoxGeometry(.12,.05,.58), glowMat, [side*.35,-.32,1.3]);
 }
+// Modelos de silueta diferenciada para cada clase de caza.
+const shipVariants = Object.create(null);
+const variantMats = {
+  hull: hullMat, dark: darkMat, panel: panelMat, canopy: canopyMat,
+  cyan: glowMat, gold: goldMat,
+  stealth: new THREE.MeshPhysicalMaterial({color:0x302b50,metalness:.96,roughness:.2,clearcoat:.8}),
+  green: new THREE.MeshStandardMaterial({color:0x42e6ad,metalness:.82,roughness:.24,emissive:0x064b36,emissiveIntensity:.55}),
+  amber: new THREE.MeshStandardMaterial({color:0xf0a83a,metalness:.88,roughness:.26,emissive:0x5a2600,emissiveIntensity:.3}),
+  violet: new THREE.MeshStandardMaterial({color:0x8b68cf,metalness:.9,roughness:.22,emissive:0x35106d,emissiveIntensity:.6}),
+  ice: new THREE.MeshStandardMaterial({color:0xb8dfff,metalness:.94,roughness:.18,emissive:0x164b8a,emissiveIntensity:.45}),
+  red: new THREE.MeshStandardMaterial({color:0xe45c72,metalness:.86,roughness:.24,emissive:0x641024,emissiveIntensity:.6}),
+  lime: new THREE.MeshStandardMaterial({color:0xb4e65a,metalness:.88,roughness:.2,emissive:0x456d08,emissiveIntensity:.55}),
+  white: new THREE.MeshStandardMaterial({color:0xe8eaff,metalness:.96,roughness:.16,emissive:0x443a9a,emissiveIntensity:.45})
+};
+function makeVariant(id, build) {
+  const group=new THREE.Group(); group.visible=false; ship.add(group);
+  const part=(geo,mat,pos,rot=[0,0,0],scale=null)=>{const m=new THREE.Mesh(geo,mat);m.position.set(...pos);m.rotation.set(...rot);if(scale)m.scale.set(...scale);group.add(m);return m;};
+  const wing=(side,x,z,w,d,mat,angle=0)=>part(new THREE.BoxGeometry(w,.16,d),mat,[side*x,-.08,z],[0,side*angle,side*-.08]);
+  const nose=(mat=variantMats.hull,len=4.2,r=.55)=>part(new THREE.ConeGeometry(r,len,10),mat,[0,0,-.55],[Math.PI/2,0,0]);
+  const engine=(side,mat=variantMats.cyan,size=1.7)=>part(new THREE.ConeGeometry(.24,size,16),mat,[side*.72,-.08,2.65],[Math.PI/2,0,0]);
+  build({part,wing,nose,engine,mat:variantMats});
+  shipVariants[id]=group;
+}
+makeVariant("viper",({part,wing,nose,engine,mat})=>{
+  nose(mat.green,4.9,.42);
+  part(new THREE.SphereGeometry(.36,24,16),mat.canopy,[0,.34,-.62],[0,0,0],[.8,.62,1.6]);
+  for(const s of [-1,1]){wing(s,1.55,.2,3.4,2.9,mat.green,.3);part(new THREE.ConeGeometry(.13,1.25,8),mat.gold,[s*2.9,.04,-.5],[Math.PI/2,0,s*.12]);engine(s,mat.green,2.25);}
+  part(new THREE.BoxGeometry(.18,.18,2.3),mat.cyan,[0,.12,.3]);
+});
+makeVariant("titan",({part,wing,nose,engine,mat})=>{
+  nose(mat.amber,3.8,.82);
+  part(new THREE.BoxGeometry(1.18,.62,2.6),mat.hull,[0,-.02,.6]);
+  part(new THREE.SphereGeometry(.48,24,16),mat.canopy,[0,.42,-.5],[0,0,0],[1.2,.7,1.1]);
+  for(const s of [-1,1]){wing(s,1.8,.55,3.5,3.4,mat.amber,.08);part(new THREE.BoxGeometry(.65,.55,2.2),mat.dark,[s*2.35,-.02,1]);part(new THREE.CylinderGeometry(.32,.42,1.35,16),mat.gold,[s*1.2,-.1,2],[Math.PI/2,0,0]);engine(s,mat.amber,1.65);}
+});
+makeVariant("wraith",({part,wing,nose,engine,mat})=>{
+  nose(mat.stealth,5.1,.48);
+  part(new THREE.SphereGeometry(.38,24,16),mat.violet,[0,.28,-.75],[0,0,0],[.85,.5,1.6]);
+  for(const s of [-1,1]){wing(s,1.8,.25,4.1,3.5,mat.stealth,.42);part(new THREE.ConeGeometry(.16,2.5,6),mat.violet,[s*2.65,.02,.35],[Math.PI/2,0,s*.18]);engine(s,mat.violet,2.1);}
+  part(new THREE.TorusGeometry(.48,.07,8,24),mat.violet,[0,.15,1.55],[Math.PI/2,0,0]);
+});
+makeVariant("bastion",({part,wing,nose,engine,mat})=>{
+  nose(mat.ice,3.9,.72);
+  part(new THREE.BoxGeometry(1.35,.72,3.1),mat.ice,[0,0,.55]);
+  part(new THREE.SphereGeometry(.44,24,16),mat.canopy,[0,.48,-.6],[0,0,0],[1.15,.55,1.2]);
+  for(const s of [-1,1]){wing(s,2.05,.65,3.7,2.8,mat.dark,.04);part(new THREE.BoxGeometry(.78,.62,2.7),mat.ice,[s*2.35,-.02,.8]);part(new THREE.CylinderGeometry(.3,.42,1.2,16),mat.gold,[s*2.2,-.1,2.1],[Math.PI/2,0,0]);engine(s,mat.ice,1.55);}
+});
+makeVariant("phoenix",({part,wing,nose,engine,mat})=>{
+  nose(mat.red,4.8,.52);
+  part(new THREE.SphereGeometry(.4,24,16),mat.canopy,[0,.34,-.68],[0,0,0],[.9,.62,1.5]);
+  for(const s of [-1,1]){wing(s,1.7,.1,3.2,4.1,mat.red,.28);part(new THREE.ConeGeometry(.32,2.6,8),mat.amber,[s*2.35,.02,1.05],[Math.PI/2,0,s*.22]);engine(s,mat.red,2.8);}
+  part(new THREE.ConeGeometry(.18,1.4,8),mat.amber,[0,.1,1.6],[Math.PI/2,0,0]);
+});
+makeVariant("singularity",({part,wing,nose,engine,mat})=>{
+  nose(mat.lime,4.3,.56);
+  part(new THREE.SphereGeometry(.5,28,18),mat.stealth,[0,.36,-.55],[0,0,0],[1,.62,1.45]);
+  for(const s of [-1,1]){wing(s,1.7,.35,3.1,2.5,mat.lime,.2);part(new THREE.TorusGeometry(1.0,.09,8,32),mat.cyan,[s*1.55,.02,.65],[Math.PI/2,0,s*.2]);engine(s,mat.lime,2.1);}
+  part(new THREE.TorusGeometry(1.15,.1,10,48),mat.lime,[0,.05,.55],[Math.PI/2,0,0]);
+});
+makeVariant("omega",({part,wing,nose,engine,mat})=>{
+  nose(mat.white,5.1,.5);
+  part(new THREE.SphereGeometry(.42,28,18),mat.canopy,[0,.4,-.72],[0,0,0],[.95,.58,1.55]);
+  for(const s of [-1,1]){wing(s,1.55,-.05,3.9,3.5,mat.white,.34);part(new THREE.ConeGeometry(.23,3.0,7),mat.violet,[s*2.5,.02,.45],[Math.PI/2,0,s*.2]);engine(s,mat.white,2.6);}
+  part(new THREE.BoxGeometry(.28,.22,2.4),mat.violet,[0,.2,.25]);
+});
+
 const shield = new THREE.Mesh(new THREE.SphereGeometry(2.65, 24, 16), new THREE.MeshBasicMaterial({ color: 0x37dcff, wireframe: true, transparent: true, opacity: .13 }));
 shield.visible = false; ship.add(shield);
 
@@ -553,6 +620,9 @@ function animate(now) {
     // Usar la misma proyección perspectiva que asteroides, enemigos y proyectiles.
     // La fórmula anterior trataba la cámara como ortográfica y desplazaba la nave.
     const shipTarget = worldPos(data.x, data.y, data.width, data.height, -10);
+    const selectedModel = data.selectedShip && shipVariants[data.selectedShip] ? shipVariants[data.selectedShip] : shipModel;
+    shipModel.visible = selectedModel === shipModel;
+    for (const [id, model] of Object.entries(shipVariants)) model.visible = model === selectedModel;
     ship.position.x=THREE.MathUtils.damp(ship.position.x,shipTarget.x,16,dt);
     ship.position.y=THREE.MathUtils.damp(ship.position.y,shipTarget.y,16,dt);
     ship.position.z=THREE.MathUtils.damp(ship.position.z,-10,16,dt);
