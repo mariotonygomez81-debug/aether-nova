@@ -1225,3 +1225,16 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
  #screen-hangar .upgrade-grid{grid-template-columns:1fr}
  #screen-hangar .career-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* ALPHA COOP — lobby cooperativo */
+.coop-panel{margin:22px 0;padding:clamp(16px,2.5vw,24px);border:1px solid rgba(75,210,255,.28);border-radius:18px;background:linear-gradient(135deg,rgba(5,23,45,.94),rgba(9,10,29,.96));box-shadow:0 18px 55px rgba(0,0,0,.28),inset 0 0 36px rgba(0,175,255,.045);color:#eafaff}
+.coop-heading,.coop-room-top,.coop-room-actions,.coop-pilot{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.coop-heading h3{margin:5px 0;font-size:clamp(20px,3vw,28px);letter-spacing:.14em;color:#e9fbff}.coop-heading p{margin:0;color:#9cb7c9;font-size:13px}
+.coop-live{font-size:10px;letter-spacing:.16em;color:#7df7ce;white-space:nowrap}.coop-live i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4dffc1;box-shadow:0 0 12px #4dffc1;margin-right:6px}
+.coop-note{margin:14px 0;padding:10px 12px;border-radius:9px;background:rgba(18,46,69,.6);color:#b6d4e5;font-size:12px}.coop-note.error{color:#ff9eaa}
+.coop-actions{display:grid;grid-template-columns:1fr 1.2fr;gap:12px}.coop-join{display:flex;gap:8px;min-width:0}.coop-join input{width:100%;min-width:0;border:1px solid rgba(110,190,230,.35);border-radius:9px;background:#071525;color:#fff;padding:0 12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.coop-join button{white-space:nowrap}
+.coop-room{margin-top:16px}.coop-room-top{padding:12px 14px;border:1px solid rgba(75,210,255,.22);border-radius:10px;background:rgba(0,0,0,.2)}.coop-room-top small{display:block;color:#8caebf;font-size:9px;letter-spacing:.16em}.coop-room-top strong{display:block;margin-top:3px;font-size:24px;letter-spacing:.28em;color:#7deaff}
+.coop-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.coop-pilot{justify-content:flex-start;min-width:0;padding:10px;border:1px solid rgba(104,169,202,.2);border-radius:10px;background:rgba(10,28,46,.7)}.coop-pilot-icon{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:9px;background:rgba(0,199,255,.12);color:#69eaff;font-size:19px}.coop-pilot-info{display:flex;flex-direction:column;min-width:0;flex:1}.coop-pilot-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#eefaff}.coop-pilot-info small{font-size:9px;color:#8eacbf}.coop-ready-state{font-size:8px;letter-spacing:.08em;color:#a6b6c3;white-space:nowrap}.coop-ready-state.ready{color:#75ffc9;text-shadow:0 0 9px rgba(80,255,190,.5)}.coop-empty{opacity:.45;border-style:dashed}
+.coop-room-actions{flex-wrap:wrap;margin-top:12px}.coop-room-actions button{flex:1;min-width:130px}.coop-room-actions .mini-btn{flex:0 0 auto}
+@media(max-width:650px){.coop-actions{grid-template-columns:1fr}.coop-join{min-height:42px}.coop-roster{grid-template-columns:1fr}.coop-pilot{padding:8px}.coop-ready-state{font-size:7px}.coop-room-actions{align-items:stretch}.coop-room-actions button{min-width:100%;}}
