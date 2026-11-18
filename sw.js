@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha42-early-sector-loadout-progression";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha42-early-sector-loadout-progression', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha43-supernova-3d-expanding-blast";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha43-supernova-3d-expanding-blast', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
