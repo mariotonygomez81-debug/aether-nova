@@ -2390,7 +2390,8 @@ function updateAndDraw() {
 
   phenomena.forEach((ph) => {
     ph.update();
-    if (!window.__AETHER3D_ACTIVE) ph.draw();
+    // La supernova conserva su destello 2D original como capa de respaldo bajo las ondas 3D.
+    if (!window.__AETHER3D_ACTIVE || ph.kind === "supernova") ph.draw();
   });
   phenomena = phenomena.filter((ph) => !ph.dead);
 
