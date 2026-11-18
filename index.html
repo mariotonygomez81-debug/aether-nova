@@ -59,6 +59,29 @@
 
   <section id="screen-menu" class="overlay">
     <div class="card main-card">
+      <div class="menu-cinematic-hero" aria-label="Vista cinematográfica del universo Aether Nova">
+        <div class="hero-starfield"></div>
+        <div class="hero-nebula hero-nebula-a"></div><div class="hero-nebula hero-nebula-b"></div>
+        <div class="hero-planet"></div><div class="hero-planet-ring"></div>
+        <div class="hero-scanline"></div>
+        <svg class="hero-ship" viewBox="0 0 520 210" role="img" aria-label="Nave de combate Valkyrie">
+          <defs>
+            <linearGradient id="hull" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5fdff"/><stop offset=".38" stop-color="#6f9dbd"/><stop offset=".72" stop-color="#233b59"/><stop offset="1" stop-color="#0a1428"/></linearGradient>
+            <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9befff"/><stop offset=".55" stop-color="#285c88"/><stop offset="1" stop-color="#101a34"/></linearGradient>
+            <radialGradient id="engine"><stop stop-color="#fff"/><stop offset=".25" stop-color="#9ffaff"/><stop offset="1" stop-color="#00aaff" stop-opacity="0"/></radialGradient>
+            <filter id="shipGlow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <g class="hero-engine-glow" filter="url(#shipGlow)"><ellipse cx="260" cy="164" rx="19" ry="36" fill="url(#engine)"/><ellipse cx="195" cy="145" rx="13" ry="27" fill="url(#engine)"/><ellipse cx="325" cy="145" rx="13" ry="27" fill="url(#engine)"/></g>
+          <path d="M260 18 L294 112 390 164 318 154 280 137 260 190 240 137 202 154 130 164 226 112Z" fill="url(#wing)" stroke="#9ceeff" stroke-width="2"/>
+          <path d="M260 24 L280 119 260 168 240 119Z" fill="url(#hull)" stroke="#e5fbff" stroke-width="2"/>
+          <path d="M260 50 L272 112 260 129 248 112Z" fill="#b8f7ff" opacity=".9"/>
+          <path d="M222 126 L166 151 218 142Z M298 126 L354 151 302 142Z" fill="#00dfff" opacity=".8"/>
+          <path d="M260 28 L260 8" stroke="#eaffff" stroke-width="2" stroke-linecap="round"/>
+          <path d="M246 145 L260 178 274 145" fill="none" stroke="#45dfff" stroke-width="3"/>
+        </svg>
+        <div class="hero-caption"><span>VISTA TÁCTICA // CLASE VALKYRIE</span><strong>EL ECLIPSE TE ESTÁ ESPERANDO</strong></div>
+        <span class="hero-coordinate">SECTOR 01 · BORDE DE EXODUS</span>
+      </div>
       <div class="badge">EDICIÓN COMERCIAL 7.4 • 100 SECTORES</div>
       <h1 class="game-title">AETHER NOVA<span>ECLIPSE</span></h1>
       <p class="lore-intro">
