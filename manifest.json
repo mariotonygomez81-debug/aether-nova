@@ -2,7 +2,7 @@
   "id": "./",
   "name": "AETHER NOVA: ECLIPSE — Commercial Edition",
   "short_name": "AETHER NOVA",
-  "description": "Edición comercial de AETHER NOVA: ECLIPSE. Shooter arcade espacial con 100 sectores, jefes, progresión permanente y modo offline.",
+  "description": "Edición comercial de AETHER NOVA: ECLIPSE. Campaña de 100 sectores, supervivencia infinita, desafíos diarios, jefes y progresión offline.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

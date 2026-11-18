@@ -145,6 +145,7 @@ const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
 let eraBackgroundCache = null;
 let lastEraBackgroundKey = "";
 let sectorBannerTimer = 0;
+let bossIntroTimer = 0;
 // Debe declararse antes de resizeCanvas(): esa función consulta player.
 // Si se declara más abajo, la llamada inicial provoca un ReferenceError (TDZ)
 // y detiene toda la inicialización del juego y de los botones.
@@ -394,6 +395,9 @@ const state = {
   gyroEnabled: false,
   gyroTilt: 0,
   difficulty: "normal",
+  runMode: "campaign",
+  dailyChallengeWon: false,
+  alternateEnding: false,
   runRewardPaid: false
 };
 
@@ -431,10 +435,16 @@ const DIFFICULTY = {
   hard: { label: "PESADILLA", spawn: 1.28, reward: 1.5 }
 };
 const UPGRADE_DEFS = [
-  { id: "reactor", name: "REACTOR NOVA", desc: "+5% de velocidad por nivel. Maniobra con mayor precisión.", base: 120, max: 5 },
-  { id: "cannon", name: "CAÑÓN DE PLASMA", desc: "+12% de daño por nivel. Destruye amenazas más rápido.", base: 160, max: 5 },
-  { id: "hull", name: "BLINDAJE TITÁN", desc: "+1 punto de casco inicial por nivel.", base: 220, max: 3 },
-  { id: "bombBay", name: "BODEGA TÁCTICA", desc: "+1 super bomba al iniciar por nivel.", base: 180, max: 3 }
+  // Nodos originales: se conservan sus identificadores para migrar partidas 2.x/3.0.
+  { id: "reactor", branch: "TECNOLOGÍA", name: "REACTOR NOVA", desc: "+5% de velocidad por nivel. Maniobra con mayor precisión.", base: 120, max: 5 },
+  { id: "bombBay", branch: "TECNOLOGÍA", name: "BODEGA TÁCTICA", desc: "+1 super bomba al iniciar por nivel.", base: 180, max: 3 },
+  { id: "salvage", branch: "TECNOLOGÍA", name: "PROTOCOLO DE SALVAMENTO", desc: "+8% de créditos obtenidos por misión y victoria.", base: 210, max: 5 },
+  { id: "cannon", branch: "OFENSIVA", name: "CAÑÓN DE PLASMA", desc: "+12% de daño por nivel. Destruye amenazas más rápido.", base: 160, max: 5 },
+  { id: "seeker", branch: "OFENSIVA", name: "MISILES CAZADORES", desc: "Desbloquea misiles guiados periódicos; cada nivel mejora su frecuencia y daño.", base: 260, max: 3 },
+  { id: "droneBay", branch: "OFENSIVA", name: "DRONES DE ESCOLTA", desc: "Drones laterales disparan junto a tu nave. Cada nivel aumenta su potencia.", base: 300, max: 3 },
+  { id: "hull", branch: "DEFENSA", name: "BLINDAJE TITÁN", desc: "+1 punto de casco inicial por nivel.", base: 220, max: 3 },
+  { id: "aegis", branch: "DEFENSA", name: "ESCUDO AEGIS", desc: "Comienza cada expedición con una carga de escudo por nivel; absorbe impactos.", base: 340, max: 3 },
+  { id: "capacitor", branch: "DEFENSA", name: "CAPACITOR DE NOVA", desc: "Aumenta el daño de la super bomba contra los jefes.", base: 280, max: 3 }
 ];
 function loadCommercialData() {
   try {
@@ -449,11 +459,14 @@ function loadCommercialData() {
       bestScore: Math.max(0, Number(raw.bestScore) || 0),
       sound: raw.sound !== false,
       difficulty: ["easy", "normal", "hard"].includes(raw.difficulty) ? raw.difficulty : "normal",
-      dailyClaimed: typeof raw.dailyClaimed === "string" ? raw.dailyClaimed : ""
+      dailyClaimed: typeof raw.dailyClaimed === "string" ? raw.dailyClaimed : "",
+      dailyChallengeClaimed: typeof raw.dailyChallengeClaimed === "string" ? raw.dailyChallengeClaimed : "",
+      survivalBestSector: Math.max(1, Number(raw.survivalBestSector) || 1),
+      survivalBestScore: Math.max(0, Number(raw.survivalBestScore) || 0)
     };
   } catch (error) {
     console.warn("Se reiniciaron los datos comerciales locales.", error);
-    return { credits: 0, upgrades: {}, achievements: [], totalRuns: 0, totalScore: 0, bestSector: 1, bestScore: 0, sound: true };
+    return { credits: 0, upgrades: {}, achievements: [], totalRuns: 0, totalScore: 0, bestSector: 1, bestScore: 0, sound: true, dailyClaimed: "", dailyChallengeClaimed: "", survivalBestSector: 1, survivalBestScore: 0 };
   }
 }
 let commercialData = loadCommercialData();
@@ -469,24 +482,29 @@ function updateCommercialUI() {
     const el = document.getElementById(id); if (el) el.textContent = credits;
   });
   const status = document.getElementById("network-status");
-  if (status) { status.textContent = navigator.onLine ? "● DATOS LOCALES" : "● SIN CONEXIÓN"; status.classList.toggle("offline", !navigator.onLine); }
+  if (status) { status.textContent = !navigator.onLine ? "● SIN CONEXIÓN" : cloudSession?.access_token ? "● ONLINE + LOCAL" : "● MODO LOCAL"; status.classList.toggle("offline", !navigator.onLine); }
 }
 function unlockAchievement(id, title) {
   if (commercialData.achievements.includes(id)) return;
   commercialData.achievements.push(id);
   saveCommercialData();
+  if (typeof renderCosmetics === "function") renderCosmetics();
   if (typeof addFloatingText === "function" && player) addFloatingText(W / 2, H * .34, `LOGRO: ${title}`, "#ffdf87");
 }
 function evaluateAchievements() {
   const milestones = [[5,"PRIMERA BRECHA"],[10,"NUEVO HORIZONTE"],[25,"CAZADOR DEL VACÍO"],[50,"MITAD DE LA LEYENDA"],[75,"DOMINADOR ESTELAR"],[100,"SALVADOR DE LA GALAXIA"]];
   milestones.forEach(([sector, title]) => { if (state.level >= sector) unlockAchievement(`sector_${sector}`, title); });
   if (state.score >= 10000) unlockAchievement("score_10k", "DIEZ MIL Y MÁS");
+  if (state.runMode === "survival" && state.level >= 10) unlockAchievement("survival_10", "SUPERVIVIENTE ESTELAR");
+  if (state.runMode === "survival" && state.level >= 25) unlockAchievement("survival_25", "MÁS ALLÁ DEL INFINITO");
+  if (state.dailyChallengeWon) unlockAchievement("daily_first", "DESAFÍO COMPLETADO");
+  if (state.alternateEnding) unlockAchievement("alternate_ending", "VERDAD DEL ECLIPSE");
 }
 function renderHangar() {
   const stats = document.getElementById("career-stats");
   if (stats) {
     stats.replaceChildren();
-    [["PARTIDAS", commercialData.totalRuns], ["MEJOR SECTOR", commercialData.bestSector], ["RÉCORD", commercialData.bestScore.toLocaleString("es-AR")], ["CRÉDITOS", commercialData.credits.toLocaleString("es-AR")]].forEach(([label, value]) => {
+    [["PARTIDAS", commercialData.totalRuns], ["MEJOR SECTOR", commercialData.bestSector], ["RÉCORD", commercialData.bestScore.toLocaleString("es-AR")], ["CRÉDITOS", commercialData.credits.toLocaleString("es-AR")], ["MEJOR SUPERVIVENCIA", commercialData.survivalBestSector], ["RÉCORD SUPERVIVENCIA", commercialData.survivalBestScore.toLocaleString("es-AR")]].forEach(([label, value]) => {
       const item = document.createElement("div"); item.className = "career-stat";
       const strong = document.createElement("strong"); strong.textContent = value;
       const small = document.createElement("span"); small.textContent = label;
@@ -496,7 +514,7 @@ function renderHangar() {
   const achievementBox = document.getElementById("achievement-list");
   if (achievementBox) {
     achievementBox.replaceChildren();
-    const achievementNames = [["sector_5","Primera brecha"],["sector_10","Nuevo horizonte"],["sector_25","Cazador del vacío"],["sector_50","Mitad de la leyenda"],["sector_75","Dominador estelar"],["sector_100","Salvador de la galaxia"],["score_10k","Diez mil y más"]];
+    const achievementNames = [["sector_5","Primera brecha"],["sector_10","Nuevo horizonte"],["sector_25","Cazador del vacío"],["sector_50","Mitad de la leyenda"],["sector_75","Dominador estelar"],["sector_100","Salvador de la galaxia"],["score_10k","Diez mil y más"],["survival_10","Superviviente estelar"],["survival_25","Más allá del infinito"],["daily_first","Desafío completado"],["alternate_ending","Verdad del Eclipse"]];
     achievementNames.forEach(([id, name]) => {
       const tag = document.createElement("span");
       tag.className = `achievement-chip${commercialData.achievements.includes(id) ? " unlocked" : ""}`;
@@ -507,7 +525,15 @@ function renderHangar() {
   const grid = document.getElementById("upgrade-grid");
   if (!grid) return;
   grid.replaceChildren();
+  let activeBranch = "";
   UPGRADE_DEFS.forEach(def => {
+    if (def.branch !== activeBranch) {
+      activeBranch = def.branch;
+      const heading = document.createElement("h3");
+      heading.className = "skill-branch-title";
+      heading.textContent = `ÁRBOL ${activeBranch}`;
+      grid.append(heading);
+    }
     const level = commercialData.upgrades[def.id] || 0;
     const cost = Math.round(def.base * Math.pow(1.72, level));
     const card = document.createElement("article"); card.className = "upgrade-card";
@@ -530,7 +556,15 @@ function awardRunCredits(victory) {
   if (state.runRewardPaid) return 0;
   state.runRewardPaid = true;
   const multiplier = DIFFICULTY[state.difficulty]?.reward || 1;
-  const earned = Math.max(25, Math.floor((state.score / 120 + state.level * 4 + (victory ? 1500 : 0)) * multiplier));
+  const salvageBonus = 1 + (commercialData.upgrades?.salvage || 0) * 0.08;
+  const modeBonus = state.runMode === "survival" ? 1.25 : state.runMode === "daily" ? 1.15 : 1;
+  const challengeBonus = state.runMode === "daily" && victory && state.dailyChallengeWon && commercialData.dailyChallengeClaimed !== localDateKey() ? 500 : 0;
+  const earned = Math.max(25, Math.floor((state.score / 120 + state.level * 4 + (victory ? 1500 : 0)) * multiplier * salvageBonus * modeBonus)) + challengeBonus;
+  if (challengeBonus) commercialData.dailyChallengeClaimed = localDateKey();
+  if (state.runMode === "survival") {
+    commercialData.survivalBestSector = Math.max(commercialData.survivalBestSector, state.level);
+    commercialData.survivalBestScore = Math.max(commercialData.survivalBestScore, state.score);
+  }
   commercialData.credits += earned;
   commercialData.totalRuns++;
   commercialData.totalScore += state.score;
@@ -538,6 +572,7 @@ function awardRunCredits(victory) {
   commercialData.bestScore = Math.max(commercialData.bestScore, state.score);
   evaluateAchievements();
   saveCommercialData();
+  refreshRunModeUI();
   const reward = document.getElementById("run-reward");
   if (reward) reward.textContent = `✦ RECOMPENSA DE MISIÓN: +${earned.toLocaleString("es-AR")} CRÉDITOS`;
   return earned;
@@ -545,6 +580,24 @@ function awardRunCredits(victory) {
 function localDateKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function getDailyChallenge() {
+  const date = localDateKey();
+  const seed = Number(date.replaceAll("-", "")) || 20260101;
+  const targets = [6500, 8500, 10500];
+  const target = targets[seed % targets.length];
+  return { date, target, reward: 500, title: target === 6500 ? "PRUEBA DE PRECISIÓN" : target === 8500 ? "ASALTO DE LA FLOTA" : "LÍMITE DE SUPERVIVENCIA" };
+}
+function refreshRunModeUI() {
+  document.querySelectorAll(".run-mode-opt").forEach(btn => btn.classList.toggle("active", btn.dataset.runmode === state.runMode));
+  const challenge = getDailyChallenge();
+  const note = document.getElementById("daily-challenge-note");
+  const playButton = document.getElementById("btn-play");
+  if (playButton) playButton.textContent = state.runMode === "survival" ? "INICIAR SUPERVIVENCIA ↗" : state.runMode === "daily" ? "ACEPTAR DESAFÍO DIARIO ↗" : "INICIAR EXPEDICIÓN ↗";
+  if (note) {
+    const claimed = commercialData.dailyChallengeClaimed === challenge.date;
+    note.textContent = `✦ ${challenge.title}: alcanza ${challenge.target.toLocaleString("es-AR")} puntos en una sola partida. Recompensa: ${challenge.reward} créditos${claimed ? " • RECOMPENSA YA OBTENIDA HOY" : ""}.`;
+  }
 }
 function claimDailyReward() {
   const today = localDateKey();
@@ -576,11 +629,17 @@ class Player {
     this.radius = 20;
     const upgrades = commercialData.upgrades || {};
     this.speed = spec.speed * (1 + (upgrades.reactor || 0) * 0.05);
-    this.baseFireRate = spec.fireRate * (1 - (upgrades.cannon || 0) * 0.045);
+    const shipFireBonus = typeKey === "valkyrie" ? 0.06 : 0;
+    this.baseFireRate = Math.max(4, spec.fireRate * (1 - (upgrades.cannon || 0) * 0.045) * (1 - shipFireBonus));
+    this.shipDamageBonus = typeKey === "titan" ? 1.10 : 1;
     this.color = spec.color;
     this.accent = spec.accent;
     this.lives = Math.min(6, spec.lives + (upgrades.hull || 0));
     this.bombs = Math.min(5, 1 + (upgrades.bombBay || 0));
+    this.permanentShieldCharges = Math.min(3, upgrades.aegis || 0);
+    this.missileLevel = Math.max(0, upgrades.seeker || 0);
+    this.droneLevel = Math.max(0, upgrades.droneBay || 0);
+    this.shotCounter = 0;
     this.tilt = 0;
     this.fireTimer = 0;
     this.invuln = 120;
@@ -644,7 +703,9 @@ class Player {
 
   shoot() {
     const mk = this.getEvolutionTier();
-    const dmg = Math.max(1, Math.round((1 + Math.floor((mk - 1) * 0.5)) * (1 + (commercialData.upgrades?.cannon || 0) * 0.12)));
+    this.shotCounter++;
+    const baseDamage = (1 + Math.floor((mk - 1) * 0.5)) * (1 + (commercialData.upgrades?.cannon || 0) * 0.12) * this.shipDamageBonus;
+    const dmg = Math.max(1, Math.round(baseDamage));
     SoundFX.play("laser");
 
     bullets.push({ x: this.x, y: this.y - 24, vx: 0, vy: -13.5, dmg, color: this.color, missile: false });
@@ -671,10 +732,33 @@ class Player {
       bullets.push({ x: this.x - 18, y: this.y, vx: -2, vy: -9.5, dmg: dmg * 3, color: "#ff9e00", missile: true });
       bullets.push({ x: this.x + 18, y: this.y, vx: 2, vy: -9.5, dmg: dmg * 3, color: "#ff9e00", missile: true });
     }
+
+    // Misiles permanentes: la Viper-X tiene una cadencia de lanzamiento superior.
+    const missileInterval = Math.max(3, 7 - this.missileLevel - (this.type === "viper" ? 1 : 0));
+    if (this.missileLevel > 0 && this.shotCounter % missileInterval === 0) {
+      const missileDamage = Math.round(dmg * (1.7 + this.missileLevel * 0.35));
+      bullets.push({ x: this.x - 12, y: this.y - 4, vx: -1.2, vy: -8.5, dmg: missileDamage, color: "#ff9e42", missile: true });
+      bullets.push({ x: this.x + 12, y: this.y - 4, vx: 1.2, vy: -8.5, dmg: missileDamage, color: "#ff9e42", missile: true });
+      if (this.missileLevel >= 3) SoundFX.play("missile");
+    }
+
+    // Drones de escolta: disparos laterales acompasados con el arma principal.
+    if (this.droneLevel > 0 && this.shotCounter % 2 === 0) {
+      const droneDamage = Math.max(1, Math.round(dmg * (0.45 + this.droneLevel * 0.18)));
+      bullets.push({ x: this.x - 42, y: this.y - 5, vx: -0.35, vy: -12.5, dmg: droneDamage, color: "#72f7ff", missile: false });
+      bullets.push({ x: this.x + 42, y: this.y - 5, vx: 0.35, vy: -12.5, dmg: droneDamage, color: "#72f7ff", missile: false });
+    }
   }
 
   takeDamage(reason = "IMPACTO") {
     if (this.invuln > 0) return;
+    if (this.permanentShieldCharges > 0) {
+      this.permanentShieldCharges--;
+      this.invuln = 90;
+      SoundFX.play("hit");
+      addFloatingText(this.x, this.y - 30, `AEGIS BLOQUEÓ EL IMPACTO • ${this.permanentShieldCharges} RESTANTES`, "#72f7ff");
+      return;
+    }
     if (this.buffs.shield > 0) {
       this.buffs.shield = 0;
       this.invuln = 60;
@@ -784,13 +868,16 @@ class Player {
 class CosmicPhenomenon {
   constructor(kind) {
     this.kind = kind;
-    this.x = Math.random() * (W - 140) + 70;
+    this.x = (kind === "ionstorm" || kind === "debrisfield") ? 0 : Math.random() * (W - 140) + 70;
     this.y = kind === "supernova" ? H * 0.34 : -60;
     this.vy = kind === "supernova" ? 0.15 : 1.1;
     this.timer = 0;
-    this.maxTimer = kind === "supernova" ? 250 : 520;
+    this.maxTimer = kind === "supernova" ? 250 : kind === "ionstorm" ? 560 : kind === "debrisfield" ? 470 : 520;
     this.radius = kind === "supernova" ? 18 : 34;
     this.angle = 0;
+    this.strikeX = W * (0.2 + Math.random() * 0.6);
+    this.strikeFlash = 0;
+    this.lastStrike = -90;
     this.dead = false;
   }
 
@@ -885,6 +972,33 @@ class CosmicPhenomenon {
           player.takeDamage("RAYO GAMMA DEL PÚLSAR");
           state.shake = Math.max(state.shake, 10);
         }
+      }
+    } else if (this.kind === "ionstorm") {
+      // La tormenta anuncia cada descarga antes de atravesar una columna del escenario.
+      this.y = H * 0.5 + Math.sin(this.timer * 0.018) * H * 0.12;
+      if (this.timer - this.lastStrike >= 82) {
+        this.lastStrike = this.timer;
+        this.strikeX = W * (0.12 + Math.random() * 0.76);
+      }
+      const strikeAge = this.timer - this.lastStrike;
+      this.strikeFlash = strikeAge >= 18 && strikeAge <= 24 ? 1 : 0;
+      if (strikeAge === 21) {
+        const width = Math.max(34, W * 0.035);
+        asteroids.forEach(a => { if (Math.abs(a.x - this.strikeX) < width + a.radius) { a.hp -= 5; if (a.hp <= 0) a.dead = true; } });
+        enemies.forEach(e => { if (Math.abs(e.x - this.strikeX) < width + e.radius) { e.hp -= 8; if (e.hp <= 0) e.dead = true; } });
+        if (Math.abs(player.x - this.strikeX) < width + player.radius && player.buffs.antigamma <= 0) {
+          player.takeDamage("DESCARGA DE TORMENTA IÓNICA");
+          state.shake = Math.max(state.shake, 9);
+        }
+        spawnExplosion(this.strikeX, this.y, "#67e8f9", IS_LOW_POWER ? 7 : 13);
+      }
+    } else if (this.kind === "debrisfield") {
+      // Campo denso: fragmentos atraviesan el escenario y pueden encadenar explosiones.
+      if (this.timer % 29 === 0 && asteroids.length < (IS_LOW_POWER ? 24 : 38)) {
+        const rock = new Asteroid(Math.random() * W, -35, 10 + Math.random() * 16, Math.random() < 0.24 ? "explosive" : "normal");
+        rock.vx = (Math.random() - 0.5) * 3.8;
+        rock.vy = 2.8 + Math.random() * 2.2 + state.level * 0.025;
+        asteroids.push(rock);
       }
     }
 
@@ -982,9 +1096,65 @@ class CosmicPhenomenon {
       const pg=ctx.createRadialGradient(-4,-5,1,0,0,20); pg.addColorStop(0,"#fff"); pg.addColorStop(.45,"#a7fff0"); pg.addColorStop(1,"#00a6a6");
       ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(0,0,17,0,Math.PI*2); ctx.fill();
       ctx.fillStyle="#fff"; ctx.fillRect(-2,-46,4,92);
+    } else if (this.kind === "ionstorm") {
+      ctx.translate(0, -this.y);
+      const warning = 0.35 + Math.sin(this.timer * 0.22) * 0.18;
+      ctx.fillStyle = `rgba(34,211,238,${warning})`;
+      ctx.fillRect(this.strikeX - 3, -H, 6, H * 2);
+      ctx.strokeStyle = "rgba(103,232,249,.75)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([7, 9]);
+      ctx.beginPath(); ctx.moveTo(this.strikeX, 0); ctx.lineTo(this.strikeX, H); ctx.stroke(); ctx.setLineDash([]);
+      if (this.strikeFlash) {
+        ctx.strokeStyle = "#e0fbff"; ctx.lineWidth = 5; ctx.shadowBlur = IS_LOW_POWER ? 0 : 24; ctx.shadowColor = "#22d3ee";
+        ctx.beginPath(); ctx.moveTo(this.strikeX, 0);
+        let x = this.strikeX;
+        for (let y = 0; y < H; y += 34) { x += (Math.random() - 0.5) * 48; ctx.lineTo(x, y + 34); }
+        ctx.stroke(); ctx.shadowBlur = 0;
+      }
+      ctx.fillStyle = "rgba(34,211,238,.08)"; ctx.fillRect(0, 0, W, H);
+    } else if (this.kind === "debrisfield") {
+      ctx.translate(0, -this.y);
+      ctx.strokeStyle = "rgba(251,191,36,.2)"; ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        const x = (i * 0.23 * W + this.timer * (i % 2 ? 1.1 : -0.8) + W) % W;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 90, H); ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(251,146,60,.055)"; ctx.fillRect(0, 0, W, H);
     }
 
     ctx.restore();
+  }
+}
+
+function detonateAsteroidChain(x, y, source, depth = 0) {
+  const blastRadius = 142 + depth * 12;
+  spawnExplosion(x, y, depth ? "#ff9f43" : "#ffcc33", IS_LOW_POWER ? 9 : 16);
+  state.shake = Math.max(state.shake, Math.max(3, 11 - depth));
+  if (depth === 0) addFloatingText(x, y - 24, "¡REACCIÓN EN CADENA!", "#ffd166");
+
+  asteroids.forEach(other => {
+    if (other === source || other.dead) return;
+    const d = Math.hypot(other.x - x, other.y - y);
+    if (d < blastRadius) {
+      if (other.kind === "explosive" && depth < 4) {
+        other.dead = true;
+        detonateAsteroidChain(other.x, other.y, other, depth + 1);
+      } else {
+        other.hp -= Math.max(2, 6 - depth);
+        if (other.hp <= 0) other.dead = true;
+      }
+    }
+  });
+  enemies.forEach(enemy => {
+    if (!enemy.dead && Math.hypot(enemy.x - x, enemy.y - y) < blastRadius + enemy.radius) {
+      enemy.hp -= Math.max(5, 15 - depth * 2);
+      if (enemy.hp <= 0) enemy.dead = true;
+    }
+  });
+  if (boss && Math.hypot(boss.x - x, boss.y - y) < blastRadius + boss.radius) {
+    boss.hp -= Math.max(2, 7 - depth);
+    if (boss.hp <= 0) defeatBoss();
   }
 }
 
@@ -1078,60 +1248,103 @@ class EnemyShip {
     this.variant = variant;
     this.x = Math.random() * (W - 90) + 45;
     this.y = -45;
-    this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" ? 2.8 : 1.6);
-    this.vy = variant === "bomber" ? 0.9 : 1.4;
-    this.radius = variant === "bomber" ? 28 : variant === "interceptor" ? 20 : 16;
+    this.baseX = this.x;
+    this.age = Math.floor(Math.random() * 90);
+    this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" || variant === "lancer" ? 2.8 : 1.6);
+    this.vy = variant === "bomber" || variant === "carrier" ? 0.9 : variant === "lancer" ? 2.2 : 1.4;
+    this.radius = variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16;
     const scale = 1 + Math.floor(state.level / 5) * 0.35;
-    this.hp = Math.ceil((variant === "bomber" ? 14 : variant === "interceptor" ? 7 : 4) * scale);
-    this.fireTimer = 60 + Math.floor(Math.random() * 50);
+    const baseHp = variant === "carrier" ? 22 : variant === "bomber" ? 14 : variant === "interceptor" || variant === "lancer" ? 8 : variant === "weaver" ? 6 : 4;
+    this.hp = Math.ceil(baseHp * scale);
+    this.fireTimer = 48 + Math.floor(Math.random() * 48);
+    this.dashTimer = 90 + Math.floor(Math.random() * 90);
     this.dead = false;
   }
 
   update() {
-    this.x += this.vx;
-    this.y += this.vy;
+    this.age++;
+    if (this.variant === "weaver") {
+      this.x += Math.sin(this.age * .075) * 3.1;
+      this.y += this.vy * 1.18;
+    } else if (this.variant === "lancer") {
+      this.x += this.vx * .55;
+      this.y += this.vy;
+      this.dashTimer--;
+      if (this.dashTimer <= 0 && player) {
+        const angle = Math.atan2(player.y - this.y, player.x - this.x);
+        this.vx = Math.cos(angle) * 4.8;
+        this.vy = Math.sin(angle) * 4.8;
+        this.dashTimer = 150;
+      } else if (this.dashTimer === 125) {
+        this.vx *= .45; this.vy = 1.8;
+      }
+    } else if (this.variant === "carrier") {
+      this.x += Math.sin(this.age * .025) * 1.5;
+      this.y += this.vy * .72;
+    } else {
+      this.x += this.vx;
+      this.y += this.vy;
+    }
     if (this.x < 35 || this.x > W - 35) this.vx *= -1;
-    if (this.y > H + 60) this.dead = true;
+    if (this.y > H + 70) this.dead = true;
 
     this.fireTimer--;
-    if (this.fireTimer <= 0 && this.y > 40 && this.y < H * 0.65) {
+    if (this.fireTimer <= 0 && this.y > 40 && this.y < H * .72) {
       this.shoot();
-      this.fireTimer = this.variant === "interceptor" ? 75 : 105;
+      this.fireTimer = this.variant === "interceptor" || this.variant === "lancer" ? 58 : this.variant === "carrier" ? 72 : 92;
     }
   }
 
   shoot() {
-    if (!player) return;
+    if (!player || enemyBullets.length > (IS_LOW_POWER ? 100 : 170)) return;
     const ang = Math.atan2(player.y - this.y, player.x - this.x);
-    if (this.variant === "scout") {
-      enemyBullets.push({ x: this.x, y: this.y + 16, vx: Math.cos(ang) * 4.5, vy: Math.sin(ang) * 4.5, color: "#ff4d6d" });
+    const shot = (angle, speed, color) => enemyBullets.push({
+      x: this.x, y: this.y + 14, vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed, color
+    });
+    if (this.variant === "scout" || this.variant === "weaver") {
+      shot(ang, this.variant === "weaver" ? 4.8 : 4.2, this.variant === "weaver" ? "#4df5ff" : "#ff4d6d");
     } else if (this.variant === "interceptor") {
-      enemyBullets.push({ x: this.x - 10, y: this.y + 14, vx: 0, vy: 5.8, color: "#ff9e00" });
-      enemyBullets.push({ x: this.x + 10, y: this.y + 14, vx: 0, vy: 5.8, color: "#ff9e00" });
+      [-.13, .13].forEach(offset => shot(Math.PI / 2 + offset, 5.8, "#ff9e00"));
+    } else if (this.variant === "lancer") {
+      [-.08, 0, .08].forEach(offset => shot(ang + offset, 6.2, "#ff5e00"));
+    } else if (this.variant === "carrier") {
+      [-.34, -.17, 0, .17, .34].forEach(offset => shot(ang + offset, 4.4, "#c084fc"));
     } else {
-      [-0.28, 0, 0.28].forEach((offset) => {
-        enemyBullets.push({
-          x: this.x,
-          y: this.y + 20,
-          vx: Math.cos(ang + offset) * 4.2,
-          vy: Math.sin(ang + offset) * 4.2,
-          color: "#ff0055"
-        });
-      });
+      [-.28, 0, .28].forEach(offset => shot(ang + offset, 4.2, "#ff0055"));
     }
   }
 
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.fillStyle = this.variant === "bomber" ? "#ff0055" : this.variant === "interceptor" ? "#ff9e00" : "#e63946";
+    const colors = {
+      scout: "#e63946", interceptor: "#ff9e00", bomber: "#ff0055",
+      weaver: "#4df5ff", lancer: "#ff6b35", carrier: "#c084fc"
+    };
+    const color = colors[this.variant] || "#ff4d6d";
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 12;
+    ctx.shadowColor = color;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = "rgba(255,255,255,.7)";
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(0, this.radius);
-    ctx.lineTo(-this.radius, -this.radius * 0.7);
-    ctx.lineTo(0, -this.radius * 0.3);
-    ctx.lineTo(this.radius, -this.radius * 0.7);
-    ctx.closePath();
-    ctx.fill();
+    if (this.variant === "carrier") {
+      ctx.moveTo(-30, -8); ctx.lineTo(-18, -20); ctx.lineTo(18, -20);
+      ctx.lineTo(30, -8); ctx.lineTo(24, 15); ctx.lineTo(-24, 15);
+    } else if (this.variant === "weaver") {
+      ctx.moveTo(0, 22); ctx.lineTo(-20, -14); ctx.lineTo(-4, -8);
+      ctx.lineTo(0, -24); ctx.lineTo(4, -8); ctx.lineTo(20, -14);
+    } else if (this.variant === "lancer") {
+      ctx.moveTo(0, 25); ctx.lineTo(-14, -18); ctx.lineTo(0, -10); ctx.lineTo(14, -18);
+    } else {
+      ctx.moveTo(0, this.radius); ctx.lineTo(-this.radius, -this.radius * .7);
+      ctx.lineTo(0, -this.radius * .3); ctx.lineTo(this.radius, -this.radius * .7);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(-3, -5, 6, 8);
     ctx.restore();
   }
 }
@@ -1143,64 +1356,131 @@ class BossShip {
     const names = ["DEVORADOR DE ÓRBITAS", "LANZALANZAS MAGNÉTICO", "SENTINELA PULSAR", "COLOSUS DE OBSIDIANA", "NÉMESIS DEL ECLIPSE"];
     this.name = names[this.variant];
     this.radius = [48,54,46,62,58][this.variant];
-    this.maxHp = Math.round((150 + state.level * 27) * (DIFFICULTY[state.difficulty]?.spawn || 1));
-    this.hp = this.maxHp; this.timer = 0;
+    this.maxHp = Math.round((190 + state.level * 31) * (DIFFICULTY[state.difficulty]?.spawn || 1));
+    this.hp = this.maxHp;
+    this.timer = 0;
+    this.phase = 1;
+    this.weakAngle = -Math.PI / 2;
+    this.weakRadius = this.radius + 22;
+    this.attackClock = 0;
+    this.phaseTransitionLock = false;
     const bossWrap = document.getElementById("boss-bar-wrap");
     const bossName = document.getElementById("boss-name");
     if (bossWrap) bossWrap.classList.remove("hidden");
-    if (bossName) bossName.textContent = `${this.name} • SECTOR ${state.level}`;
-    addFloatingText(W/2, H*.28, `JEFE ${this.name}`, "#ff4bd8");
-    state.shake = Math.max(state.shake, 8);
+    if (bossName) bossName.textContent = `${this.name} • FASE 1/3`;
+    showBossCinematic(this.name, this.variant);
+    addFloatingText(W / 2, H * .28, `JEFE DE SECTOR • ${this.name}`, "#ff4bd8");
+    addFloatingText(W / 2, H * .34, "IDENTIFICÁ SU NÚCLEO EXPUESTO", "#ffe08a");
+    state.shake = Math.max(state.shake, 10);
   }
 
   update() {
     this.timer++;
-    this.x += this.vx;
-    if (this.x < 65 || this.x > W - 65) this.vx *= -1;
-
-    if (player && this.timer % Math.max(30, 66 - Math.floor(state.level/3)) === 0) {
-      const ang = Math.atan2(player.y - this.y, player.x - this.x);
-      const speed = 4.2 + Math.min(2.4, state.level * .035);
-      if (this.variant === 0) {
-        for(let i=0;i<12;i++){ const a=i*Math.PI/6+this.timer*.035; enemyBullets.push({x:this.x,y:this.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,color:"#a855f7"}); }
-      } else if (this.variant === 1) {
-        [-.42,-.28,-.14,0,.14,.28,.42].forEach(a=>enemyBullets.push({x:this.x,y:this.y+30,vx:Math.cos(ang+a)*speed,vy:Math.sin(ang+a)*speed,color:"#e879f9"}));
-      } else if (this.variant === 2) {
-        for(let i=-2;i<=2;i++) enemyBullets.push({x:this.x,y:this.y+25,vx:Math.cos(ang+i*.22)*speed*1.2,vy:Math.sin(ang+i*.22)*speed*1.2,color:"#22f0d0"});
-      } else if (this.variant === 3) {
-        for(let i=0;i<9;i++){ const a=i*Math.PI*2/9; enemyBullets.push({x:this.x,y:this.y,vx:Math.cos(a)*speed*.8,vy:Math.sin(a)*speed*.8,color:"#ff9f1c"}); }
+    this.attackClock++;
+    const ratio = this.hp / this.maxHp;
+    const nextPhase = ratio <= .30 ? 3 : ratio <= .66 ? 2 : 1;
+    if (nextPhase !== this.phase) {
+      this.phase = nextPhase;
+      this.vx *= this.phase === 3 ? 1.55 : 1.25;
+      this.vx = Math.max(-5.2, Math.min(5.2, this.vx));
+      this.attackClock = 0;
+      this.phaseTransitionLock = true;
+      state.shake = Math.max(state.shake, 14);
+      state.flash = Math.max(state.flash, .18);
+      const phaseNames = ["", "PROTOCOLO DE ASALTO", "SOBRECARGA CRÍTICA", "NÚCLEO EN FURIA"];
+      addFloatingText(W / 2, H * .25, `¡${phaseNames[this.phase]}! FASE ${this.phase}/3`, "#ffcc33");
+      if (this.phase === 2) {
+        for (let i = 0; i < 2; i++) enemies.push(new EnemyShip(i === 0 ? "interceptor" : "bomber"));
       } else {
-        for(let i=-3;i<=3;i++) enemyBullets.push({x:this.x,y:this.y+30,vx:Math.cos(ang+i*.12)*speed*1.35,vy:Math.sin(ang+i*.12)*speed*1.35,color:"#ff3864"});
+        for (let i = 0; i < 3; i++) enemies.push(new EnemyShip(["weaver", "lancer", "scout"][i]));
       }
     }
-    // Movimiento con barridos y cambios de altura para que no sea un blanco fijo.
-    this.y = 112 + Math.sin(this.timer * .025) * 34;
-    if (this.timer % 180 === 0) { this.vx *= -1.35; this.vx = Math.max(-4.2, Math.min(4.2, this.vx)); }
+
+    this.x += this.vx * (this.phase === 3 ? 1.18 : 1);
+    if (this.x < 68 || this.x > W - 68) this.vx *= -1;
+    this.y = 112 + Math.sin(this.timer * (this.phase === 3 ? .045 : .025)) * (this.phase === 3 ? 48 : 34);
+    this.weakAngle += this.phase === 3 ? .055 : .025;
+
+    const cadence = Math.max(22, (this.phase === 1 ? 68 : this.phase === 2 ? 48 : 32) - Math.floor(state.level / 4));
+    if (player && this.attackClock % cadence === 0 && enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
+      const aim = Math.atan2(player.y - this.y, player.x - this.x);
+      const speed = 4.1 + Math.min(3.1, state.level * .04) + (this.phase - 1) * .55;
+      const addShot = (angle, velocity = speed, color = "#ff3864") => {
+        if (enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
+          enemyBullets.push({ x: this.x, y: this.y + 18, vx: Math.cos(angle) * velocity, vy: Math.sin(angle) * velocity, color });
+        }
+      };
+
+      if (this.phase === 1) {
+        if (this.variant === 0 || this.variant === 3) {
+          const count = this.variant === 0 ? 10 : 8;
+          for (let i = 0; i < count; i++) addShot(i * Math.PI * 2 / count + this.timer * .035, speed * .82, "#a855f7");
+        } else {
+          [-.42, -.28, -.14, 0, .14, .28, .42].forEach(offset => addShot(aim + offset, speed, "#e879f9"));
+        }
+      } else if (this.phase === 2) {
+        for (let i = -2; i <= 2; i++) addShot(aim + i * .19, speed * 1.08, "#ff9e00");
+        for (let i = 0; i < 8; i++) addShot(i * Math.PI / 4 + this.timer * .045, speed * .68, "#a855f7");
+      } else {
+        // Espiral doble y ráfaga dirigida: el jugador debe moverse, no quedarse quieto.
+        for (let i = 0; i < 12; i++) addShot(i * Math.PI / 6 + this.timer * .12, speed * .78, "#ff3864");
+        [-.24, -.12, 0, .12, .24].forEach(offset => addShot(aim + offset, speed * 1.18, "#fff06a"));
+      }
+    }
+  }
+
+  getWeakPoint() {
+    return {
+      x: this.x + Math.cos(this.weakAngle) * this.weakRadius,
+      y: this.y + Math.sin(this.weakAngle) * this.weakRadius
+    };
   }
 
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.shadowBlur = IS_LOW_POWER ? 0 : 22;
-    ctx.shadowColor = ["#a855f7","#e879f9","#22f0d0","#ff9f1c","#ff3864"][this.variant];
-    ctx.fillStyle = "#2b0918";
-    ctx.strokeStyle = ["#a855f7","#e879f9","#22f0d0","#ff9f1c","#ff3864"][this.variant];
-    ctx.lineWidth = 3;
+    const glow = ["#a855f7", "#e879f9", "#22f0d0", "#ff9f1c", "#ff3864"][this.variant];
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 24;
+    ctx.shadowColor = glow;
+    ctx.fillStyle = this.phase === 3 ? "#4a071c" : "#2b0918";
+    ctx.strokeStyle = glow;
+    ctx.lineWidth = this.phase === 3 ? 4 : 3;
 
     ctx.beginPath();
-    ctx.moveTo(0, 48);
-    ctx.lineTo(-56, 10);
-    ctx.lineTo(-42, -36);
-    ctx.lineTo(42, -36);
-    ctx.lineTo(56, 10);
+    ctx.moveTo(0, 52);
+    ctx.lineTo(-62, 12);
+    ctx.lineTo(-48, -38);
+    ctx.lineTo(-22, -48);
+    ctx.lineTo(22, -48);
+    ctx.lineTo(48, -38);
+    ctx.lineTo(62, 12);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = "#ff0055";
-    ctx.beginPath();
-    ctx.arc(0, 4, 14, 0, Math.PI * 2);
-    ctx.fill();
+    // Blindaje exterior y núcleo central.
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255,255,255,.32)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 2, 25, 0, Math.PI * 2); ctx.stroke();
+    const core = ctx.createRadialGradient(-4, -4, 2, 0, 2, 18);
+    core.addColorStop(0, "#ffffff"); core.addColorStop(.35, glow); core.addColorStop(1, "#39051a");
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(0, 2, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    const weak = this.getWeakPoint();
+    const pulse = 1 + Math.sin(this.timer * .16) * .16;
+    ctx.save();
+    ctx.translate(weak.x, weak.y);
+    ctx.rotate(this.weakAngle);
+    ctx.strokeStyle = "#fff4a3";
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = IS_LOW_POWER ? 0 : 18;
+    ctx.shadowColor = "#ffe66d";
+    ctx.beginPath(); ctx.arc(0, 0, 11 * pulse, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "#fff7c2";
+    ctx.beginPath(); ctx.moveTo(0, -7 * pulse); ctx.lineTo(7 * pulse, 0); ctx.lineTo(0, 7 * pulse); ctx.lineTo(-7 * pulse, 0); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
 }
@@ -1287,7 +1567,8 @@ function triggerSuperBomb() {
   enemyBullets = [];
 
   if (boss) {
-    boss.hp -= Math.ceil(boss.maxHp * 0.35);
+    const bombBonus = (commercialData.upgrades?.capacitor || 0) * 0.04;
+    boss.hp -= Math.ceil(boss.maxHp * Math.min(0.47, 0.35 + bombBonus));
     addFloatingText(boss.x, boss.y, "¡IMPACTO TERMONUCLEAR!", "#ffcc33");
     if (boss.hp <= 0) defeatBoss();
   }
@@ -1300,7 +1581,7 @@ let spawnClock = 0;
 
 function updateSpawner() {
   spawnClock++;
-  const diff = (1 + (state.level - 1) * 0.03) * (DIFFICULTY[state.difficulty]?.spawn || 1);
+  const diff = (1 + (state.level - 1) * 0.038 + Math.floor((state.level - 1) / 10) * 0.08) * (DIFFICULTY[state.difficulty]?.spawn || 1);
 
   if (!boss && state.levelProgress >= state.levelTarget - 1) {
     boss = new BossShip();
@@ -1320,24 +1601,58 @@ function updateSpawner() {
     asteroids.push(new Asteroid(null, null, radius, kind));
   }
 
-  const enemyInterval = Math.max(32, Math.round(170 / (diff * (1 + state.level * .012))));
-  if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss && enemies.length < Math.min(12, 4 + Math.floor(state.level / 3))) {
+  const enemyInterval = Math.max(27, Math.round(178 / (diff * (1 + state.level * .016))));
+  const enemyCap = Math.min(IS_LOW_POWER ? 10 : 16, 4 + Math.floor(state.level / 2));
+  if (state.level >= 3 && spawnClock % enemyInterval === 0 && !boss && enemies.length < enemyCap) {
     const roll = Math.random();
-    const variant = state.level >= 18 && roll < 0.38 ? "bomber" : state.level >= 8 && roll < 0.72 ? "interceptor" : "scout";
+    let variant = "scout";
+    if (state.level >= 30 && roll < .13) variant = "carrier";
+    else if (state.level >= 16 && roll < .31) variant = "lancer";
+    else if (state.level >= 9 && roll < .49) variant = "weaver";
+    else if (state.level >= 18 && roll < .68) variant = "bomber";
+    else if (state.level >= 6 && roll < .84) variant = "interceptor";
     enemies.push(new EnemyShip(variant));
+
+    // Oleadas coordinadas: desde los sectores medios aparecen formaciones,
+    // no solamente enemigos aislados.
+    const waveChance = Math.min(.72, .16 + state.level * .012);
+    if (state.level >= 8 && Math.random() < waveChance) {
+      const waveSize = state.level >= 45 ? 3 : state.level >= 20 ? 2 : 1;
+      const formation = state.level >= 30
+        ? ["weaver", "lancer", "bomber"]
+        : state.level >= 12 ? ["scout", "interceptor", "weaver"] : ["scout", "interceptor"];
+      for (let i = 0; i < waveSize && enemies.length < enemyCap; i++) {
+        enemies.push(new EnemyShip(formation[(i + Math.floor(Math.random() * formation.length)) % formation.length]));
+      }
+      if (waveSize > 1) addFloatingText(W / 2, H * .19, "¡FORMACIÓN HOSTIL DETECTADA!", "#ff9e00");
+    }
   }
 
   if (spawnClock % Math.max(190, 390 - state.level * 2) === 0 && phenomena.length === 0 && state.level >= 2) {
     const pool = ["blackhole", "supernova"];
     if (state.level >= 4) pool.push("magnetar");
     if (state.level >= 6) pool.push("pulsar");
+    if (state.level >= 5) pool.push("ionstorm");
+    if (state.level >= 8) pool.push("debrisfield");
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     phenomena.push(new CosmicPhenomenon(chosen));
+    // En sectores avanzados pueden superponerse dos amenazas, con un límite estricto.
+    const comboChance = IS_LOW_POWER ? 0.10 : 0.22;
+    if (state.level >= 30 && Math.random() < comboChance && phenomena.length < 2) {
+      const secondaryPool = pool.filter(kind => kind !== chosen && kind !== "supernova");
+      if (secondaryPool.length) {
+        const secondary = secondaryPool[Math.floor(Math.random() * secondaryPool.length)];
+        phenomena.push(new CosmicPhenomenon(secondary));
+        addFloatingText(W / 2, H * 0.31, "¡EVENTO CÓSMICO COMBINADO!", "#ff8cf4");
+      }
+    }
     const names = {
       blackhole: "⚠ ANOMALÍA: AGUJERO NEGRO",
       supernova: "⚠ ALERTA: ESTRELLA EN SUPERNOVA",
       magnetar: "⚠ CAMPO DE MAGNETAR DETECTADO",
-      pulsar: "⚠ PÚLSAR DE RAYOS GAMMA"
+      pulsar: "⚠ PÚLSAR DE RAYOS GAMMA",
+      ionstorm: "⚠ TORMENTA IÓNICA: DESCARGAS INMINENTES",
+      debrisfield: "⚠ CAMPO DE ESCOMBROS: IMPACTOS MÚLTIPLES"
     };
     addFloatingText(W / 2, H * 0.25, names[chosen], "#ffcc33");
   }
@@ -1384,7 +1699,7 @@ function defeatBoss() {
 
 function completeSector() {
   try {
-    if (state.level >= state.maxLevels) {
+    if (state.runMode === "campaign" && state.level >= state.maxLevels) {
       showStoryChronicle(9);
       return;
     }
@@ -1403,7 +1718,11 @@ function completeSector() {
     if (completed % 10 === 0) {
       for (const k in RockCache) delete RockCache[k];
       const eraIndex = Math.min(9, Math.floor(completed / 10) - 1);
-      showStoryChronicle(eraIndex);
+      if (state.runMode === "campaign") showStoryChronicle(eraIndex);
+      else {
+        addFloatingText(W / 2, H * 0.35, state.runMode === "survival" ? `OLEADA ${state.level}` : `OBJETIVO: ${getDailyChallenge().target.toLocaleString("es-AR")} PTS`, "#00f0ff");
+        showSectorBanner(state.level);
+      }
     } else {
       addFloatingText(W / 2, H * 0.35, `SECTOR ${state.level} INICIADO`, "#00f0ff");
       showSectorBanner(state.level);
@@ -1415,21 +1734,57 @@ function completeSector() {
   }
 }
 
+function showBossCinematic(name, variant) {
+  const panel = document.getElementById("boss-intro-cinematic");
+  if (!panel) return;
+  const subtitles = [
+    "FIRMA GRAVITACIONAL: DEVORA-ÓRBITAS. EVITÁ SU ANILLO DE IMPACTO.",
+    "CAMPO MAGNÉTICO HOSTIL. PREPARATE PARA EMBESTIDAS Y DESCARGAS.",
+    "EMISIÓN GAMMA DETECTADA. NO CRUCES SU HAZ FRONTAL.",
+    "BLINDAJE DE OBSIDIANA. CONCENTRÁ EL FUEGO EN EL NÚCLEO.",
+    "NÉMESIS DEL ECLIPSE. TODAS LAS ARMAS AUTORIZADAS."
+  ];
+  document.getElementById("boss-intro-title").textContent = name;
+  document.getElementById("boss-intro-subtitle").textContent = subtitles[variant] || "IDENTIFICÁ EL NÚCLEO EXPUESTO Y SOBREVIVÍ.";
+  panel.classList.remove("hidden", "boss-intro-out");
+  void panel.offsetWidth;
+  panel.classList.add("boss-intro-show");
+  clearTimeout(bossIntroTimer);
+  bossIntroTimer = setTimeout(() => {
+    panel.classList.remove("boss-intro-show");
+    panel.classList.add("boss-intro-out");
+    setTimeout(() => panel.classList.add("hidden"), 520);
+  }, 2450);
+}
+
 function showStoryChronicle(eraIndex) {
   state.mode = "STORY";
   const safeIdx = Math.max(0, Math.min(ERAS.length - 1, eraIndex));
   const era = ERAS[safeIdx];
   const mk = player.getEvolutionTier();
-
+  const card = document.getElementById("story-cinematic-card");
+  const regionNumber = String(safeIdx + 1).padStart(2, "0");
+  if (card) {
+    card.style.setProperty("--story-top", era.bgTop);
+    card.style.setProperty("--story-bottom", era.bgBot);
+    card.style.setProperty("--story-glow", era.nebula1);
+    card.style.setProperty("--story-accent", era.rockMain);
+  }
+  document.getElementById("story-region-index").textContent = `REGIÓN ${regionNumber} / ${String(ERAS.length).padStart(2, "0")}`;
   document.getElementById("story-chapter").textContent = era.chapter;
   document.getElementById("story-title").textContent = era.title;
   document.getElementById("story-text").textContent = era.story;
+  const directive = safeIdx === 9 ? "SELLAR LA SINGULARIDAD" : safeIdx >= 7 ? "PREPARAR EL ASALTO FINAL" : safeIdx >= 4 ? "ROMPER LA LÍNEA DE DEFENSA" : "EXPLORAR EL SECTOR Y ELIMINAR LA AMENAZA";
+  document.getElementById("story-intel").innerHTML = `<span>DIRECTIVA DE MISIÓN</span><strong>${directive}</strong>`;
   document.getElementById("story-upgrade").textContent =
     state.level >= 100
       ? "¡CAMPAÑA GALÁCTICA COMPLETADA AL 100%!"
       : `¡NAVE EVOLUCIONADA A FASE MK-${mk}! ARMAMENTO MEJORADO`;
 
-  document.getElementById("screen-story").classList.remove("hidden");
+  const screen = document.getElementById("screen-story");
+  screen.classList.remove("hidden", "story-cinematic-enter");
+  void screen.offsetWidth;
+  screen.classList.add("story-cinematic-enter");
   setTimeout(() => saveProgress(), 100);
 }
 /* ============================================================================
@@ -1551,12 +1906,7 @@ function updateAndDraw() {
           spawnPowerup(a.x, a.y);
 
           if (a.kind === "explosive") {
-            asteroids.forEach((other) => {
-              if (other !== a && Math.hypot(other.x - a.x, other.y - a.y) < 135) {
-                other.hp -= 4;
-                if (other.hp <= 0) other.dead = true;
-              }
-            });
+            detonateAsteroidChain(a.x, a.y, a);
           } else if (a.radius > 28 && asteroids.length < 22) {
             asteroids.push(new Asteroid(a.x - 10, a.y, a.radius * 0.55, a.kind));
             asteroids.push(new Asteroid(a.x + 10, a.y, a.radius * 0.55, a.kind));
@@ -1601,12 +1951,24 @@ function updateAndDraw() {
     boss.draw();
     const hpBar = document.getElementById("boss-hp");
     if (hpBar) hpBar.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+    const bossName = document.getElementById("boss-name");
+    if (bossName) bossName.textContent = `${boss.name} • FASE ${boss.phase}/3`;
 
     bullets.forEach((b) => {
-      if (!b.dead && boss && Math.hypot(b.x - boss.x, b.y - boss.y) < boss.radius) {
-        b.dead = true;
-        boss.hp -= b.dmg;
-        if (boss.hp <= 0) defeatBoss();
+      if (!b.dead && boss) {
+        const weak = boss.getWeakPoint();
+        const weakHit = Math.hypot(b.x - weak.x, b.y - weak.y) < 15;
+        const bodyHit = Math.hypot(b.x - boss.x, b.y - boss.y) < boss.radius;
+        if (weakHit || bodyHit) {
+          b.dead = true;
+          const damage = Math.round(b.dmg * (weakHit ? 2.35 : 1));
+          boss.hp -= damage;
+          if (weakHit) {
+            addFloatingText(weak.x, weak.y - 12, `NÚCLEO -${damage}`, "#fff29a");
+            state.score += 18;
+          }
+          if (boss.hp <= 0) defeatBoss();
+        }
       }
     });
   }
@@ -1692,6 +2054,10 @@ function updateAndDraw() {
 
   ctx.restore();
   renderBuffTags();
+  if (state.mode === "PLAYING" && state.runMode === "daily" && state.score >= getDailyChallenge().target) {
+    state.dailyChallengeWon = true;
+    endGame(true);
+  }
 }
 /* ============================================================================
    AETHER NOVA: ECLIPSE - MOTOR AUDITADO (PARTE 5B)
@@ -1702,7 +2068,7 @@ function updateHUD() {
   const era = ERAS[Math.min(9, Math.floor((state.level - 1) / 10))];
   document.getElementById("ui-score").textContent = state.score.toLocaleString("es-AR");
   updateCommercialUI();
-  document.getElementById("ui-level").textContent = `${state.level}/100`;
+  document.getElementById("ui-level").textContent = state.runMode === "survival" ? `${state.level}/∞` : `${state.level}/100`;
   document.getElementById("ui-lives").textContent = player.lives;
   document.getElementById("ui-bombs").textContent = player.bombs;
   document.getElementById("ui-sector-name").textContent = `${era.name} (MK-${player.getEvolutionTier()})`;
@@ -1753,6 +2119,12 @@ function startNewGame(savedData = null) {
   spawnClock = 0;
   state.combo = 1;
   state.runRewardPaid = false;
+  state.dailyChallengeWon = false;
+  state.alternateEnding = false;
+  state.runMode = savedData ? (["campaign", "survival"].includes(savedData.runMode) ? savedData.runMode : "campaign") : (state.runMode || "campaign");
+  if (!savedData && state.runMode === "daily" && commercialData.dailyChallengeClaimed === getDailyChallenge().date) {
+    // Se permite repetir el desafío, pero no volver a cobrar su premio diario.
+  }
   state.comboTimer = 0;
   state.shake = 0;
   state.flash = 0;
@@ -1765,17 +2137,19 @@ function startNewGame(savedData = null) {
   document.getElementById("boss-bar-wrap").classList.add("hidden");
 
   if (savedData) {
-    state.level = Math.max(1, Math.min(100, Number(savedData.level) || 1));
+    state.level = Math.max(1, Math.min(state.runMode === "survival" ? 9999 : 100, Number(savedData.level) || 1));
     state.score = Math.max(0, Number(savedData.score) || 0);
     state.selectedShip = SHIP_TYPES[savedData.ship] ? savedData.ship : (state.selectedShip || "valkyrie");
     state.difficulty = DIFFICULTY[savedData.difficulty] ? savedData.difficulty : state.difficulty;
     player = new Player(state.selectedShip);
     player.lives = Math.max(1, Math.min(6, Number(savedData.lives) || player.lives));
     player.bombs = Math.max(0, Math.min(5, Number(savedData.bombs ?? 1)));
+    player.permanentShieldCharges = Math.max(0, Math.min(3, Number(savedData.aegisCharges ?? player.permanentShieldCharges)));
   } else {
     state.level = 1;
     state.score = 0;
     player = new Player(state.selectedShip);
+    if (state.runMode === "daily") { player.lives = 2; player.bombs = 0; }
   }
 
   state.levelProgress = savedData ? Math.max(0, Math.min(Number(savedData.progress) || 0, 14 + Math.floor(state.level * 1.4) - 1)) : 0;
@@ -1789,12 +2163,15 @@ function startNewGame(savedData = null) {
   document.getElementById("touch-controls").classList.remove("hidden");
   updateHUD();
   updateCommercialUI();
+  if (player.permanentShieldCharges > 0) {
+    addFloatingText(W / 2, H * 0.28, `ESCUDO AEGIS • ${player.permanentShieldCharges} CARGAS`, "#72f7ff");
+  }
 }
 
 function togglePause() {
   if (state.mode === "PLAYING") {
     state.mode = "PAUSED";
-    document.getElementById("pause-stats").textContent = `Sector ${state.level}/100 • Puntos: ${state.score}`;
+    document.getElementById("pause-stats").textContent = `Sector ${state.level}${state.runMode === "survival" ? "/∞" : "/100"} • Puntos: ${state.score.toLocaleString("es-AR")}`;
     document.getElementById("screen-pause").classList.remove("hidden");
   } else if (state.mode === "PAUSED") {
     state.mode = "PLAYING";
@@ -1807,9 +2184,12 @@ function endGame(victory) {
   document.getElementById("hud").classList.add("hidden");
   document.getElementById("touch-controls").classList.add("hidden");
   document.getElementById("screen-story").classList.add("hidden");
-  document.getElementById("end-badge").textContent = victory ? "MISIÓN CUMPLIDA" : "TRANSMISIÓN FINALIZADA";
-  document.getElementById("end-title").textContent = victory ? "¡GALAXIA SALVADA!" : "NAVE DESTRUIDA";
-  document.getElementById("end-summary").textContent = `Alcanzaste el Sector ${state.level}/100 con ${state.score} puntos.`;
+  state.alternateEnding = !!(victory && state.runMode === "campaign" && state.difficulty === "hard" && player && player.lives >= 2 && state.score >= 25000);
+  document.getElementById("end-badge").textContent = state.alternateEnding ? "FINAL ALTERNATIVO DESBLOQUEADO" : victory ? "MISIÓN CUMPLIDA" : "TRANSMISIÓN FINALIZADA";
+  document.getElementById("end-title").textContent = state.alternateEnding ? "LA VERDAD DEL ECLIPSE" : victory ? "¡GALAXIA SALVADA!" : "NAVE DESTRUIDA";
+  document.getElementById("end-summary").textContent = `Alcanzaste el Sector ${state.level}${state.runMode === "survival" ? " (supervivencia)" : "/100"} con ${state.score.toLocaleString("es-AR")} puntos.`;
+  const modeSummary = document.getElementById("end-mode-summary");
+  if (modeSummary) modeSummary.textContent = state.runMode === "daily" ? (victory ? "DESAFÍO DIARIO SUPERADO • Recompensa especial acreditada si todavía no la reclamaste hoy." : `DESAFÍO DIARIO: objetivo ${getDailyChallenge().target.toLocaleString("es-AR")} puntos.`) : state.runMode === "survival" ? `RÉCORD DE SUPERVIVENCIA: sector ${commercialData.survivalBestSector} • ${commercialData.survivalBestScore.toLocaleString("es-AR")} puntos.` : state.alternateEnding ? "Sellaste la singularidad sin ceder ante la flota del Eclipse. La transmisión revela quién la creó." : "La campaña registra tu resultado en los récords locales.";
   document.getElementById("screen-gameover").classList.remove("hidden");
   awardRunCredits(victory);
   registerScore();
@@ -1836,12 +2216,13 @@ function refreshAuthUI() {
     formBox.classList.add("hidden");
     loggedBox.classList.remove("hidden");
     document.getElementById("user-display-name").textContent = activeProfile.name;
-    document.getElementById("user-cloud-status").textContent = "Perfil local activo";
+    document.getElementById("user-cloud-status").textContent = cloudSession?.access_token ? "Cuenta online conectada" : "Perfil local activo";
   } else {
     formBox.classList.remove("hidden");
     loggedBox.classList.add("hidden");
   }
   checkSavedRun();
+  renderCloudAccount();
 }
 
 async function loginWithPin() {
@@ -1868,7 +2249,7 @@ async function loginWithPin() {
    ============================================================================ */
 
 async function saveProgress(options = {}) {
-  if (!player) return;
+  if (!player || state.runMode === "daily") return;
   const key = activeProfile ? activeProfile.key : "guest";
   const pilotName = activeProfile ? activeProfile.name : "Comandante";
   const payload = {
@@ -1877,8 +2258,10 @@ async function saveProgress(options = {}) {
     score: state.score,
     ship: state.selectedShip,
     difficulty: state.difficulty,
+    runMode: state.runMode === "survival" ? "survival" : "campaign",
     lives: player.lives,
     bombs: player.bombs,
+    aegisCharges: player.permanentShieldCharges,
     progress: state.levelProgress,
     updatedAt: Date.now()
   };
@@ -1903,7 +2286,7 @@ function checkSavedRun() {
 
 async function registerScore() {
   const pilotName = activeProfile ? activeProfile.name : "Comandante";
-  const entry = { name: pilotName, score: state.score, level: state.level };
+  const entry = { name: pilotName, score: state.score, level: state.level, mode: state.runMode || "campaign" };
   const stored = readStoredJSON("aether_nova_rank", []);
   const list = Array.isArray(stored) ? stored.filter(r => r && typeof r === "object") : [];
   list.push(entry);
@@ -1913,6 +2296,7 @@ async function registerScore() {
 
 
   renderRanking();
+  void submitCloudScore(entry);
 }
 
 function renderRanking() {
@@ -1928,12 +2312,300 @@ function renderRanking() {
     const li = document.createElement("li");
     const name = document.createElement("span");
     const points = document.createElement("span");
-    name.textContent = `#${i + 1} ${String(r.name || "Piloto").slice(0, 20)} (S.${Number(r.level) || 1})`;
+    const modeLabel = r.mode === "survival" ? "SUP" : r.mode === "daily" ? "DÍA" : "CAM";
+    name.textContent = `#${i + 1} ${String(r.name || "Piloto").slice(0, 16)} [${modeLabel}] (S.${Number(r.level) || 1})`;
     points.className = "pts";
     points.textContent = `${Math.max(0, Number(r.score) || 0).toLocaleString("es-AR")} PTS`;
     li.append(name, points);
     ol.append(li);
   });
+}
+
+
+const PILOT_COSMETICS = [
+  { id: "nova", label: "✦ NOVA", unlock: null },
+  { id: "veteran", label: "⬡ VETERANO", unlock: "sector_25" },
+  { id: "survivor", label: "∞ SUPERVIVIENTE", unlock: "survival_25" },
+  { id: "legend", label: "✧ LEYENDA", unlock: "sector_100" }
+];
+function renderCosmetics() {
+  const select = document.getElementById("pilot-cosmetic");
+  if (!select) return;
+  const saved = localStorage.getItem("aether_pilot_cosmetic") || "nova";
+  const unlocked = PILOT_COSMETICS.filter(item => !item.unlock || commercialData.achievements.includes(item.unlock));
+  select.replaceChildren();
+  unlocked.forEach(item => { const option = document.createElement("option"); option.value = item.id; option.textContent = item.label; select.append(option); });
+  select.value = unlocked.some(item => item.id === saved) ? saved : "nova";
+  localStorage.setItem("aether_pilot_cosmetic", select.value);
+}
+function setPilotCosmetic(value) {
+  const item = PILOT_COSMETICS.find(c => c.id === value);
+  if (!item || (item.unlock && !commercialData.achievements.includes(item.unlock))) return;
+  localStorage.setItem("aether_pilot_cosmetic", item.id);
+  if (cloudSession?.access_token) void cloudPostProfile();
+}
+
+/* ============================================================================
+   AETHER NOVA — ALPHA 6: SERVICIOS ONLINE OPCIONALES (Supabase REST)
+   La campaña, guardados locales y modos offline no dependen de este módulo.
+   ============================================================================ */
+const CLOUD_CFG = window.AETHER_CLOUD_CONFIG || { enabled: false };
+const CLOUD_SESSION_KEY = "aether_cloud_session_v1";
+// La sesión vive en sessionStorage: no queda persistida indefinidamente en el perfil local.
+function readCloudSession() {
+  try {
+    const raw = sessionStorage.getItem(CLOUD_SESSION_KEY) || localStorage.getItem(CLOUD_SESSION_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && parsed.access_token && parsed.refresh_token) {
+      try { sessionStorage.setItem(CLOUD_SESSION_KEY, JSON.stringify(parsed)); localStorage.removeItem(CLOUD_SESSION_KEY); } catch (_) {}
+      return parsed;
+    }
+  } catch (error) { console.warn("Sesión online local inválida; se solicitará un nuevo inicio de sesión."); }
+  return null;
+}
+let cloudSession = readCloudSession();
+let cloudBusy = false;
+const CLOUD_REQUEST_TIMEOUT_MS = 12000;
+
+function cloudConfigured() {
+  return !!(CLOUD_CFG.enabled && /^https:\/\//.test(CLOUD_CFG.supabaseUrl || "") &&
+    CLOUD_CFG.anonKey && !String(CLOUD_CFG.anonKey).includes("TU_SUPABASE"));
+}
+function cloudSetStatus(message, isError = false) {
+  const status = document.getElementById("cloud-auth-status");
+  if (status) { status.textContent = message; status.style.color = isError ? "#ff9b9b" : ""; }
+  const label = document.getElementById("cloud-account-label");
+  if (label && cloudSession?.user?.email) label.textContent = `Conectado: ${cloudSession.user.email}`;
+  const profileStatus = document.getElementById("user-cloud-status");
+  if (profileStatus && activeProfile) profileStatus.textContent = cloudSession?.access_token ? "Cuenta online conectada" : "Perfil local activo";
+  updateCommercialUI();
+}
+function cloudSetSession(session) {
+  cloudSession = session || null;
+  try {
+    if (cloudSession?.access_token && cloudSession?.refresh_token) sessionStorage.setItem(CLOUD_SESSION_KEY, JSON.stringify(cloudSession));
+    else sessionStorage.removeItem(CLOUD_SESSION_KEY);
+    localStorage.removeItem(CLOUD_SESSION_KEY);
+  } catch (error) { console.warn("No se pudo guardar la sesión temporal online.", error); }
+  renderCloudAccount();
+}
+function cloudFetchOptions(options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CLOUD_REQUEST_TIMEOUT_MS);
+  return { ...options, signal: controller.signal, __timeout: timer };
+}
+async function cloudRequest(url, options = {}) {
+  const request = cloudFetchOptions(options);
+  try { return await fetch(url, request); }
+  catch (error) {
+    if (error?.name === "AbortError") throw new Error("El servidor tardó demasiado. Comprueba tu conexión e inténtalo nuevamente.");
+    throw error;
+  } finally { clearTimeout(request.__timeout); }
+}
+function renderCloudAccount() {
+  const label = document.getElementById("cloud-account-label");
+  const upload = document.getElementById("btn-cloud-upload");
+  const restore = document.getElementById("btn-cloud-restore");
+  const logout = document.getElementById("btn-cloud-logout");
+  const connected = !!cloudSession?.access_token;
+  if (label) label.textContent = connected ? `Cuenta online: ${cloudSession.user?.email || "Comandante"}` :
+    (cloudConfigured() ? "Cuenta online no conectada" : "Backend online pendiente de configuración");
+  [upload, restore, logout].forEach(el => { if (el) el.disabled = !connected; });
+  const signup = document.getElementById("btn-cloud-signup");
+  const login = document.getElementById("btn-cloud-login");
+  [signup, login].forEach(el => { if (el) el.disabled = !cloudConfigured() || cloudBusy; });
+  if (!cloudConfigured()) cloudSetStatus("Modo local disponible. Para habilitar perfiles, nube y torneos, configura Supabase en cloud-config.js.");
+}
+function cloudHeaders(token = cloudSession?.access_token) {
+  return { apikey: CLOUD_CFG.anonKey, Authorization: `Bearer ${token || CLOUD_CFG.anonKey}`, "Content-Type": "application/json" };
+}
+async function cloudAuthRequest(path, body) {
+  const response = await cloudRequest(`${CLOUD_CFG.supabaseUrl}/auth/v1/${path}`, {
+    method: "POST", headers: cloudHeaders(null), body: JSON.stringify(body)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.msg || data.message || data.error_description || data.error || `Error de autenticación (${response.status})`);
+  return data;
+}
+async function cloudRefreshSession() {
+  if (!cloudSession?.refresh_token) throw new Error("La sesión online venció. Inicia sesión nuevamente.");
+  const refreshed = await cloudAuthRequest("token?grant_type=refresh_token", { refresh_token: cloudSession.refresh_token });
+  cloudSetSession(refreshed);
+  return refreshed.access_token;
+}
+async function cloudFetch(tablePath, options = {}, retry = true) {
+  if (!cloudConfigured()) throw new Error("El servidor online todavía no está configurado.");
+  let token = cloudSession?.access_token;
+  if (!token) throw new Error("Inicia sesión con tu cuenta online.");
+  const response = await cloudRequest(`${CLOUD_CFG.supabaseUrl}/rest/v1/${tablePath}`, {
+    ...options, headers: { ...cloudHeaders(token), ...(options.headers || {}) }
+  });
+  if (response.status === 401 && retry && cloudSession?.refresh_token) {
+    try { await cloudRefreshSession(); }
+    catch (refreshError) { cloudSetSession(null); throw new Error("La sesión online venció. Inicia sesión nuevamente."); }
+    return cloudFetch(tablePath, options, false);
+  }
+  const raw = await response.text();
+  const data = raw ? (() => { try { return JSON.parse(raw); } catch { return raw; } })() : null;
+  if (!response.ok) throw new Error(data?.message || data?.hint || data?.details || `Error del servidor (${response.status})`);
+  return data;
+}
+async function cloudSignUp() {
+  if (!cloudConfigured() || cloudBusy) return;
+  const email = document.getElementById("cloud-email")?.value.trim();
+  const password = document.getElementById("cloud-password")?.value || "";
+  if (!email || password.length < 8) return cloudSetStatus("Ingresa un correo válido y una contraseña de al menos 8 caracteres.", true);
+  cloudBusy = true; renderCloudAccount();
+  try {
+    const data = await cloudAuthRequest("signup", { email, password, data: { pilot_name: activeProfile?.name || "Comandante" } });
+    if (data.access_token) {
+      cloudSetSession(data);
+      cloudSetStatus("Cuenta online creada y conectada. Ya puedes participar en la clasificación.");
+      await cloudPostProfile(); await refreshOnlineRanking(); await loadGalacticEvents();
+    } else cloudSetStatus("Cuenta creada. Revisa tu correo para confirmar la dirección y luego inicia sesión.");
+  } catch (error) { cloudSetStatus(error.message, true); }
+  finally { cloudBusy = false; renderCloudAccount(); }
+}
+async function cloudSignIn() {
+  if (!cloudConfigured() || cloudBusy) return;
+  const email = document.getElementById("cloud-email")?.value.trim();
+  const password = document.getElementById("cloud-password")?.value || "";
+  if (!email || !password) return cloudSetStatus("Completa correo y contraseña.", true);
+  cloudBusy = true; renderCloudAccount();
+  try {
+    const data = await cloudAuthRequest("token?grant_type=password", { email, password });
+    cloudSetSession(data);
+    cloudSetStatus("Sesión online iniciada. Tu progreso local permanece intacto.");
+    await cloudPostProfile(); await refreshOnlineRanking(); await loadGalacticEvents();
+  } catch (error) { cloudSetStatus(error.message, true); }
+  finally { cloudBusy = false; renderCloudAccount(); }
+}
+async function cloudPostProfile() {
+  if (!cloudSession?.user?.id) return;
+  const pilotName = activeProfile?.name || cloudSession.user.user_metadata?.pilot_name || "Comandante";
+  await cloudFetch("pilot_profiles?on_conflict=user_id", {
+    method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: pilotName, cosmetic_id: localStorage.getItem("aether_pilot_cosmetic") || "nova", updated_at: new Date().toISOString() })
+  });
+}
+function buildCloudSave() {
+  const key = activeProfile ? activeProfile.key : "guest";
+  return {
+    version: 1,
+    commercialData,
+    runSave: readStoredJSON(`aether_save_${key}`, null),
+    pilotName: activeProfile?.name || "Comandante",
+    exportedAt: new Date().toISOString()
+  };
+}
+async function uploadCloudSave() {
+  if (!cloudSession?.user?.id) return cloudSetStatus("Inicia sesión online para subir tu progreso.", true);
+  try {
+    await cloudFetch("pilot_saves?on_conflict=user_id", {
+      method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: activeProfile?.name || "Comandante", save_data: buildCloudSave(), updated_at: new Date().toISOString() })
+    });
+    cloudSetStatus("Progreso subido a la nube correctamente.");
+  } catch (error) { cloudSetStatus(error.message, true); }
+}
+async function restoreCloudSave() {
+  if (!cloudSession?.user?.id) return cloudSetStatus("Inicia sesión online para recuperar tu progreso.", true);
+  if (!confirm("¿Recuperar el progreso de la nube? Las mejoras y créditos locales actuales serán reemplazados por la copia online.")) return;
+  try {
+    const rows = await cloudFetch(`pilot_saves?select=save_data,updated_at&user_id=eq.${encodeURIComponent(cloudSession.user.id)}&limit=1`);
+    const cloud = rows?.[0]?.save_data;
+    if (!cloud) return cloudSetStatus("No hay una copia online para esta cuenta.", true);
+    if (cloud.version !== 1 || !cloud.commercialData || typeof cloud.commercialData !== "object" || Array.isArray(cloud.commercialData)) {
+      return cloudSetStatus("La copia online no tiene un formato compatible. No se modificó tu progreso local.", true);
+    }
+    if (cloud.runSave && (typeof cloud.runSave !== "object" || Array.isArray(cloud.runSave) || !Number.isFinite(Number(cloud.runSave.level)) || Number(cloud.runSave.level) < 1 || Number(cloud.runSave.level) > 9999)) {
+      return cloudSetStatus("La partida guardada en la nube está dañada o no es compatible. Tu progreso local permanece intacto.", true);
+    }
+    if (cloud.commercialData && typeof cloud.commercialData === "object") {
+      const incoming = cloud.commercialData;
+      commercialData = { ...commercialData, ...incoming,
+        credits: Math.max(0, Number(incoming.credits) || 0),
+        upgrades: { ...commercialData.upgrades, ...(incoming.upgrades || {}) },
+        achievements: Array.isArray(incoming.achievements) ? incoming.achievements : commercialData.achievements };
+      saveCommercialData();
+    }
+    if (cloud.runSave) {
+      const key = activeProfile ? activeProfile.key : "guest";
+      localStorage.setItem(`aether_save_${key}`, JSON.stringify(cloud.runSave));
+    }
+    checkSavedRun(); renderHangar();
+    cloudSetStatus(`Progreso recuperado. Copia del ${new Date(rows[0].updated_at).toLocaleString("es-AR")}.`);
+  } catch (error) { cloudSetStatus(error.message, true); }
+}
+async function submitCloudScore(entry) {
+  if (!cloudSession?.user?.id || !cloudConfigured()) return;
+  try {
+    await cloudFetch("leaderboard", {
+      method: "POST", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: String(entry.name || "Comandante").slice(0, 16), score: Math.max(0, Math.floor(entry.score)), sector: Math.max(1, Math.floor(entry.level)), mode: ["campaign", "survival", "daily"].includes(entry.mode) ? entry.mode : "campaign" })
+    });
+    await refreshOnlineRanking();
+  } catch (error) { console.warn("No se pudo enviar el récord online:", error); }
+}
+async function refreshOnlineRanking() {
+  const list = document.getElementById("online-ranking-list");
+  if (!list) return;
+  if (!cloudConfigured() || !cloudSession?.access_token) {
+    list.replaceChildren(); const li = document.createElement("li"); li.textContent = "Conecta una cuenta online para consultar el torneo semanal."; list.append(li); return;
+  }
+  try {
+    const weekStart = new Date();
+    const day = (weekStart.getUTCDay() + 6) % 7;
+    weekStart.setUTCDate(weekStart.getUTCDate() - day); weekStart.setUTCHours(0,0,0,0);
+    const query = `leaderboard?select=pilot_name,score,sector,mode,created_at&created_at=gte.${encodeURIComponent(weekStart.toISOString())}&order=score.desc&limit=10`;
+    const rows = await cloudFetch(query);
+    list.replaceChildren();
+    if (!rows?.length) { const li = document.createElement("li"); li.textContent = "Aún no hay puntuaciones esta semana."; list.append(li); return; }
+    rows.forEach((r, i) => {
+      const li = document.createElement("li"); const who = document.createElement("span"); const pts = document.createElement("strong");
+      const mode = r.mode === "survival" ? "SUP" : r.mode === "daily" ? "DÍA" : "CAM";
+      who.textContent = `#${i+1} ${String(r.pilot_name || "Piloto").slice(0,16)} · ${mode} · S.${r.sector}`;
+      pts.textContent = `${Number(r.score || 0).toLocaleString("es-AR")} PTS`; li.append(who, pts); list.append(li);
+    });
+  } catch (error) { list.replaceChildren(); const li = document.createElement("li"); li.textContent = `Clasificación no disponible: ${error.message}`; list.append(li); }
+}
+async function loadGalacticEvents() {
+  const box = document.getElementById("galactic-events");
+  if (!box) return;
+  if (!cloudConfigured() || !cloudSession?.access_token) return;
+  try {
+    const now = new Date().toISOString();
+    const events = await cloudFetch(`galactic_events?select=title,description,starts_at,ends_at&published=eq.true&ends_at=gt.${encodeURIComponent(now)}&order=starts_at.asc&limit=4`);
+    box.replaceChildren();
+    if (!events?.length) { const small = document.createElement("small"); small.textContent = "No hay eventos galácticos activos. Vuelve pronto, comandante."; box.append(small); return; }
+    events.forEach(event => { const article = document.createElement("article"); const title = document.createElement("strong"); const desc = document.createElement("p"); const dates = document.createElement("small");
+      title.textContent = event.title; desc.textContent = event.description || "Transmisión del alto mando.";
+      dates.textContent = `${new Date(event.starts_at).toLocaleDateString("es-AR")} – ${new Date(event.ends_at).toLocaleDateString("es-AR")}`;
+      article.append(title, desc, dates); box.append(article); });
+  } catch (error) { box.textContent = "No se pudieron cargar las transmisiones galácticas."; }
+}
+async function cloudLogout() {
+  const token = cloudSession?.access_token;
+  cloudSetSession(null);
+  cloudSetStatus("Sesión online cerrada. Tus partidas locales siguen disponibles.");
+  if (token && cloudConfigured()) {
+    try { await cloudRequest(`${CLOUD_CFG.supabaseUrl}/auth/v1/logout`, { method: "POST", headers: cloudHeaders(token) }); }
+    catch (error) { console.warn("No se pudo revocar la sesión en el servidor; se cerró localmente.", error); }
+  }
+  refreshOnlineRanking();
+}
+async function restoreCloudSession() {
+  if (!cloudConfigured() || !cloudSession?.refresh_token) return;
+  try {
+    await cloudRefreshSession();
+    cloudSetStatus("Sesión online restaurada de forma segura.");
+    try { await cloudPostProfile(); } catch (profileError) { console.warn("No se pudo actualizar el perfil online; la sesión sigue activa.", profileError); }
+    void refreshOnlineRanking();
+    void loadGalacticEvents();
+  } catch (error) {
+    cloudSetSession(null);
+    cloudSetStatus("La sesión online expiró. Puedes seguir jugando en modo local e iniciar sesión nuevamente.", true);
+  }
 }
 
 function bindTap(id, handler) {
@@ -2019,6 +2691,14 @@ document.querySelectorAll(".ship-opt").forEach((btn) => {
 });
 
 bindTap("btn-login", loginWithPin);
+document.getElementById("pilot-cosmetic")?.addEventListener("change", event => setPilotCosmetic(event.target.value));
+renderCosmetics();
+bindTap("btn-cloud-signup", cloudSignUp);
+bindTap("btn-cloud-login", cloudSignIn);
+bindTap("btn-cloud-upload", uploadCloudSave);
+bindTap("btn-cloud-restore", restoreCloudSave);
+bindTap("btn-cloud-logout", cloudLogout);
+bindTap("btn-refresh-online-rank", refreshOnlineRanking);
 bindTap("btn-logout", () => {
   activeProfile = null;
   localStorage.removeItem("aether_profile");
@@ -2027,6 +2707,11 @@ bindTap("btn-logout", () => {
 
 bindTap("btn-play", () => startNewGame(null));
 bindTap("btn-restart", () => startNewGame(null));
+document.querySelectorAll(".run-mode-opt").forEach(btn => btn.addEventListener("click", () => {
+  if (state.mode !== "MENU") return;
+  state.runMode = ["campaign", "survival", "daily"].includes(btn.dataset.runmode) ? btn.dataset.runmode : "campaign";
+  refreshRunModeUI();
+}));
 bindTap("btn-continue", () => {
   const key = activeProfile ? activeProfile.key : "guest";
   const saved = readStoredJSON(`aether_save_${key}`, null);
@@ -2097,6 +2782,10 @@ refreshAuthUI();
 renderRanking();
 updateCommercialUI();
 refreshDailyButton();
+refreshRunModeUI();
+renderCloudAccount();
+renderCosmetics();
+if (cloudSession?.refresh_token && cloudConfigured()) { void restoreCloudSession(); }
 document.querySelectorAll(".difficulty-opt").forEach(btn => btn.classList.toggle("active", btn.dataset.difficulty === state.difficulty));
 if (!SoundFX.enabled) { const audioButton = document.getElementById("btn-audio"); if (audioButton) audioButton.textContent = "🔇"; }
 requestAnimationFrame(updateAndDraw);

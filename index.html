@@ -82,12 +82,41 @@
             </div>
             <button type="button" id="btn-logout" class="mini-btn">Cambiar</button>
           </div>
+          <div class="cosmetic-profile-row"><label for="pilot-cosmetic">Insignia del comandante</label><select id="pilot-cosmetic"><option value="nova">✦ NOVA</option></select></div>
+          <div id="cloud-account-box" class="cloud-account-box">
+            <small id="cloud-account-label">Cuenta online no conectada</small>
+            <div class="cloud-actions">
+              <button type="button" id="btn-cloud-upload" class="mini-btn">Subir progreso</button>
+              <button type="button" id="btn-cloud-restore" class="mini-btn">Recuperar nube</button>
+              <button type="button" id="btn-cloud-logout" class="mini-btn">Salir online</button>
+            </div>
+          </div>
         </div>
+          <div class="cloud-login">
+            <span class="section-kicker">CUENTA ONLINE OPCIONAL</span>
+            <input type="email" id="cloud-email" maxlength="120" placeholder="Correo electrónico" autocomplete="email" />
+            <input type="password" id="cloud-password" maxlength="72" placeholder="Contraseña (mín. 8 caracteres)" autocomplete="current-password" />
+            <div class="cloud-actions">
+              <button type="button" id="btn-cloud-signup" class="mini-btn">Crear cuenta online</button>
+              <button type="button" id="btn-cloud-login" class="mini-btn">Iniciar sesión</button>
+            </div>
+            <small id="cloud-auth-status" class="local-note">La cuenta online requiere configurar el servidor. El juego local funciona sin ella.</small>
+          </div>
       </div>
 
       <div class="pilot-economy" aria-live="polite">
         <span>✦ <strong id="menu-credits">0</strong> CRÉDITOS</span>
         <span id="network-status" class="connection-state">● MODO LOCAL</span>
+      </div>
+
+      <div class="run-mode-picker" aria-label="Modo de juego">
+        <span class="section-kicker">MODO DE OPERACIÓN</span>
+        <div class="run-mode-options">
+          <button type="button" class="run-mode-opt active" data-runmode="campaign"><strong>CAMPAÑA</strong><small>100 sectores • historia</small></button>
+          <button type="button" class="run-mode-opt" data-runmode="survival"><strong>SUPERVIVENCIA</strong><small>Oleadas infinitas</small></button>
+          <button type="button" class="run-mode-opt" data-runmode="daily"><strong>DESAFÍO DIARIO</strong><small>Objetivo rotativo</small></button>
+        </div>
+        <p id="daily-challenge-note" class="daily-challenge-note">DESAFÍO DE HOY: consigue puntos para completar la misión especial.</p>
       </div>
 
       <div class="difficulty-picker" aria-label="Dificultad de la expedición">
@@ -102,15 +131,15 @@
       <div class="ship-selector">
         <button type="button" class="ship-opt active" data-ship="valkyrie">
           <strong>VALKYRIE</strong>
-          <small>Equilibrada • Láser Dual</small>
+          <small>Equilibrada • Cadencia mejorada</small>
         </button>
         <button type="button" class="ship-opt" data-ship="viper">
           <strong>VIPER-X</strong>
-          <small>Alta Velocidad • Cadencia+</small>
+          <small>Alta Velocidad • Misiles ágiles</small>
         </button>
         <button type="button" class="ship-opt" data-ship="titan">
           <strong>TITÁN</strong>
-          <small>4 Vidas • Blindaje Pesado</small>
+          <small>4 Vidas • Daño pesado</small>
         </button>
       </div>
 
@@ -133,7 +162,16 @@
           <button type="button" id="btn-clear-rank" class="mini-btn">Reiniciar</button>
         </div>
         <ol id="ranking-list"></ol>
-        <small class="local-note">Los récords se guardan en este dispositivo.</small>
+        <small class="local-note">Los récords locales se guardan en este dispositivo.</small>
+        <div class="online-rank-panel">
+          <div class="rank-header"><span>🌐 CLASIFICACIÓN GALÁCTICA</span><button type="button" id="btn-refresh-online-rank" class="mini-btn">Actualizar</button></div>
+          <ol id="online-ranking-list"><li>Conecta una cuenta online para participar.</li></ol>
+          <small class="local-note">Torneo semanal: mejores puntuaciones registradas durante la semana UTC.</small>
+        </div>
+        <div class="galactic-event-panel">
+          <strong>📡 TRANSMISIONES GALÁCTICAS</strong>
+          <div id="galactic-events"><small>Los eventos online aparecerán cuando el servidor esté configurado.</small></div>
+        </div>
         <a class="privacy-link" href="./privacy.html">Privacidad</a>
       </div>
     </div>
@@ -143,7 +181,8 @@
     <div class="card feature-card">
       <div class="badge">ARSENAL • PROGRESIÓN PERMANENTE</div>
       <h2>HANGAR NOVA</h2>
-      <p class="panel-intro">Invierte créditos obtenidos en combate para reforzar tu nave. Las mejoras se conservan en este dispositivo.</p>
+      <p class="panel-intro">Desarrolla tres ramas de tecnología, ofensiva y defensa. Cada nodo mejora de forma permanente tu nave y se conserva en este dispositivo.</p>
+      <div class="skill-tree-note"><strong>ÁRBOL DE EVOLUCIÓN NOVA</strong><span>Invierte créditos para desbloquear sistemas avanzados. Las mejoras antiguas se conservan.</span></div>
       <div class="hangar-balance">✦ <strong id="hangar-credits">0</strong> <span>CRÉDITOS DISPONIBLES</span></div>
       <div id="upgrade-grid" class="upgrade-grid"></div>
       <section class="career-panel">
@@ -164,6 +203,7 @@
         <article><b>▣ MÓVIL</b><p>Usa los controles táctiles inferiores. El giroscopio puede activarse desde el HUD si tu dispositivo lo admite.</p></article>
         <article><b>✦ COMBATE</b><p>Destruye asteroides y cazas, recoge módulos, encadena combos y derrota al acorazado cada cinco sectores.</p></article>
         <article><b>⬡ EVOLUCIÓN</b><p>Tu nave evoluciona cada diez sectores. Compra mejoras permanentes en el Hangar con créditos ganados al finalizar una partida.</p></article>
+        <article><b>∞ MODOS DE JUEGO</b><p>Campaña: 100 sectores narrativos. Supervivencia: oleadas sin límite. Desafío diario: consigue el puntaje objetivo con dos puntos de casco y sin super bombas.</p></article>
       </div>
       <p class="local-note">Consejo: guarda tu progreso desde el HUD o el menú de pausa. El progreso y los récords son locales.</p>
       <button type="button" id="btn-manual-close" class="primary-btn">ENTENDIDO, COMANDANTE</button>
@@ -171,14 +211,26 @@
   </section>
 
   <section id="screen-story" class="overlay hidden">
-    <div class="card story-card">
+    <div class="card story-card cinematic-story" id="story-cinematic-card">
+      <div class="story-visual" aria-hidden="true">
+        <div class="story-planet"></div><div class="story-orbit orbit-one"></div><div class="story-orbit orbit-two"></div>
+        <span class="story-sector-mark" id="story-region-index">REGIÓN 01 / 10</span>
+      </div>
       <div class="badge" id="story-chapter">BITÁCORA ESTELAR • SECTOR 10</div>
       <h2 id="story-title">EL DESPERTAR DEL ABISMO</h2>
       <p id="story-text"></p>
+      <div class="story-intel" id="story-intel"><span>DIRECTIVA DE MISIÓN</span><strong>AVANZAR Y SOBREVIVIR</strong></div>
       <div class="evolution-alert" id="story-upgrade">¡NAVE EVOLUCIONADA A MK-II! POTENCIA DE FUEGO AUMENTADA</div>
       <button type="button" id="btn-story-next" class="primary-btn">CONTINUAR MISIÓN</button>
     </div>
   </section>
+
+  <div id="boss-intro-cinematic" class="boss-intro-cinematic hidden" aria-live="assertive">
+    <div class="boss-intro-scan"></div>
+    <span>ALERTA DE AMENAZA // NIVEL CRÍTICO</span>
+    <strong id="boss-intro-title">ENTIDAD HOSTIL DETECTADA</strong>
+    <small id="boss-intro-subtitle">IDENTIFICANDO FIRMA ENERGÉTICA...</small>
+  </div>
 
   <section id="screen-pause" class="overlay hidden">
     <div class="card compact-card">
@@ -197,14 +249,16 @@
       <div class="badge" id="end-badge">TRANSMISIÓN FINALIZADA</div>
       <h2 id="end-title">NAVE DESTRUIDA</h2>
       <p id="end-summary">Alcanzaste el Sector 1 con 0 puntos.</p>
+      <p id="end-mode-summary" class="end-mode-summary"></p>
       <div class="run-reward" id="run-reward">✦ Recompensa: 0 créditos</div>
       <div class="menu-actions">
-        <button type="button" id="btn-restart" class="primary-btn">REINTENTAR DESDE SECTOR 1</button>
+        <button type="button" id="btn-restart" class="primary-btn">VOLVER A JUGAR</button>
         <button type="button" id="btn-to-menu" class="secondary-btn">VOLVER AL HANGAR</button>
       </div>
     </div>
   </section>
 
+  <script src="./cloud-config.js" defer></script>
   <script src="./game.js" defer></script>
 </body>
 </html>
