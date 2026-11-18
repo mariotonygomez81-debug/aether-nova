@@ -338,15 +338,26 @@ function getShotMaterial(color) {
 function createShotMesh(item){
   const group=new THREE.Group();
   const mats=getShotMaterial(item.color);
+  if(item.type==="laser"){
+    const beam=new THREE.Mesh(new THREE.CylinderGeometry(.075,.13,2.25,16),mats.core);
+    beam.position.y=-.58;
+    group.add(beam);
+    const aura=new THREE.Mesh(new THREE.CylinderGeometry(.19,.24,2.5,16),mats.glow);
+    aura.position.y=-.58;
+    group.add(aura);
+    const tip=new THREE.Mesh(new THREE.SphereGeometry(.18,20,16),mats.shell);
+    tip.position.y=.58;
+    group.add(tip);
+  } else {
   // Orbe de plasma compacto con tres capas luminosas concéntricas.
   const core=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.core);
-  core.scale.setScalar(item.missile?.24:.205);
+  core.scale.setScalar(item.type==="plasma"?.34:item.missile?.24:.205);
   group.add(core);
   const shell=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.shell);
-  shell.scale.setScalar(item.missile?.35:.30);
+  shell.scale.setScalar(item.type==="plasma"?.49:item.missile?.35:.30);
   group.add(shell);
   const halo=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),mats.glow);
-  halo.scale.setScalar(item.missile?.49:.43);
+  halo.scale.setScalar(item.type==="plasma"?.66:item.missile?.49:.43);
   group.add(halo);
   // Estela continua: esferas solapadas para eliminar el efecto de puntos separados.
   const trailSpecs=item.missile
@@ -367,6 +378,7 @@ function createShotMesh(item){
   bridge.scale.set(item.missile?.19:.16,item.missile?.53:.43,item.missile?.19:.16);
   bridge.position.y=item.missile?-.39:-.32;
   group.add(bridge);
+  }
   if(item.missile){
     const fins=new THREE.Group();
     for(const side of [-1,1]){
