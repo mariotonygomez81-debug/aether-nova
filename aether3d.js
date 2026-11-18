@@ -210,32 +210,36 @@ function getShotMaterial(color) {
 function createShotMesh(item){
   const group=new THREE.Group();
   const mats=getShotMaterial(item.color);
-  // Orbe de plasma redondeado con núcleo blanco/cromático y carcasa energética.
-  const core=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mats.core);
-  core.scale.set(.105,.30,.105);
+  // Orbe frontal realmente esférico: el núcleo ya no se estira en el eje de avance.
+  const core=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.core);
+  core.scale.setScalar(item.missile?.23:.19);
   group.add(core);
-  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mats.shell);
-  shell.scale.set(.19,.47,.19);
+  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.shell);
+  shell.scale.setScalar(item.missile?.34:.285);
   group.add(shell);
-  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,20,16),mats.glow);
-  halo.scale.set(.31,.72,.27);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),mats.glow);
+  halo.scale.setScalar(item.missile?.48:.40);
   group.add(halo);
-  // Estela compuesta por volúmenes elipsoidales solapados: evita el aspecto de aguja.
+  // Estela detrás del orbe: volúmenes redondeados decrecientes, no una cápsula larga.
   const trailSpecs=item.missile
-    ? [[.23,.62,.23,-.48],[.17,.48,.17,-.98],[.105,.34,.105,-1.43]]
-    : [[.17,.48,.17,-.62],[.125,.39,.125,-1.02],[.075,.27,.075,-1.36]];
+    ? [[.24,-.34],[.19,-.67],[.13,-1.02],[.075,-1.34]]
+    : [[.19,-.31],[.145,-.59],[.10,-.86],[.055,-1.10]];
   for(let i=0;i<trailSpecs.length;i++){
-    const [sx,sy,sz,py]=trailSpecs[i];
-    const volume=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),i===0?mats.shell:mats.tail);
-    volume.scale.set(sx,sy,sz);
-    volume.position.y=py;
+    const [radius,offset]=trailSpecs[i];
+    const material=i===0?mats.shell:mats.tail;
+    const volume=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),material);
+    volume.scale.setScalar(radius);
+    volume.position.y=offset;
     group.add(volume);
   }
   if(item.missile){
-    const nose=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),mats.core);
-    nose.scale.set(.13,.22,.13);
-    nose.position.y=.22;
-    group.add(nose);
+    const fins=new THREE.Group();
+    for(const side of [-1,1]){
+      const fin=new THREE.Mesh(new THREE.BoxGeometry(.12,.20,.035),mats.core);
+      fin.position.set(side*.22,-.02,0);
+      fins.add(fin);
+    }
+    group.add(fins);
   }
   scene.add(group);
   shotMeshes.set(item.id,group);
