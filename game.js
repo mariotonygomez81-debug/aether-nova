@@ -2085,7 +2085,7 @@ function triggerSuperBomb() {
     enemyBullets.forEach(b => { b.dead = true; });
     enemies.forEach(e => {
       if (e.dead) return;
-      e.hp -= Math.max(24, Math.ceil(e.maxHp * .62));
+      e.hp -= Math.max(2, Math.ceil(e.hp * .62));
       spawnImpactBurst(e.x, e.y, "#5eead4", IS_LOW_POWER ? 4 : 9);
       if (e.hp <= 0) {
         e.dead = true;
