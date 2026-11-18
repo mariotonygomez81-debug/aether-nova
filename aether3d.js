@@ -252,6 +252,62 @@ function createShotMesh(item){
   shotMeshes.set(item.id,group);
   return group;
 }
+// Disparos enemigos 3D: proyectiles energéticos con orientación según velocidad.
+const enemyShotMeshes = new Map();
+const enemyShotMaterials = new Map();
+function getEnemyShotMaterials(color){
+  const key=String(color||"#ff4d6d");
+  if(!enemyShotMaterials.has(key)){
+    const tint=new THREE.Color(key);
+    enemyShotMaterials.set(key,{
+      core:new THREE.MeshBasicMaterial({color:tint}),
+      shell:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}),
+      glow:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false}),
+      trail:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.48,blending:THREE.AdditiveBlending,depthWrite:false})
+    });
+  }
+  return enemyShotMaterials.get(key);
+}
+function createEnemyShot(item){
+  const group=new THREE.Group(),m=getEnemyShotMaterials(item.color);
+  const core=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),m.core);
+  core.scale.set(.15,.24,.15);group.add(core);
+  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),m.shell);
+  shell.scale.set(.23,.34,.23);group.add(shell);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,20,16),m.glow);
+  halo.scale.set(.34,.48,.34);group.add(halo);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.27,.035,8,24),m.shell);
+  ring.rotation.x=Math.PI/2;group.add(ring);
+  for(let i=0;i<4;i++){
+    const bead=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),m.trail);
+    const r=[.18,.145,.105,.065][i];
+    bead.scale.set(r,r*1.2,r);
+    bead.position.y=.28+i*.16;
+    group.add(bead);
+  }
+  scene.add(group);enemyShotMeshes.set(item.id,group);return group;
+}
+function syncEnemyShots(items,width,height){
+  const alive=new Set();
+  for(const item of items||[]){
+    if(item.id==null)continue;
+    alive.add(item.id);
+    const mesh=enemyShotMeshes.get(item.id)||createEnemyShot(item);
+    mesh.position.copy(worldPos(item.x,item.y,width,height,-7.2));
+    // El eje +Y apunta en la dirección de movimiento; la estela queda detrás.
+    const vx=Number(item.vx)||0, vy=Number(item.vy)||1;
+    mesh.rotation.z=Math.atan2(-vx,-vy);
+    mesh.visible=true;
+  }
+  for(const [id,mesh] of enemyShotMeshes){
+    if(!alive.has(id)){
+      scene.remove(mesh);
+      mesh.traverse(part=>{if(part.geometry)part.geometry.dispose();});
+      enemyShotMeshes.delete(id);
+    }
+  }
+}
+
 function syncShots(items, width, height) {
   const alive = new Set();
   for (const item of items || []) {
@@ -510,6 +566,7 @@ function animate(now) {
     camera.lookAt(camera.position.x*.25, camera.position.y*.18, -7);
     syncAsteroids(data.asteroids, data.width, data.height, dt);
     syncShots(data.shots, data.width, data.height);
+    syncEnemyShots(data.enemyShots, data.width, data.height);
     syncEnemies(data.enemies, data.width, data.height);
     syncBoss(data.boss, data.width, data.height, now);
     syncPhenomena(data.phenomena, data.width, data.height, now);
@@ -517,6 +574,7 @@ function animate(now) {
     ship.visible=false; shield.visible=false; bossGroup.visible=false;
     for (const mesh of asteroidMeshes.values()) mesh.visible=false;
     for (const mesh of shotMeshes.values()) mesh.visible=false;
+    for (const mesh of enemyShotMeshes.values()) mesh.visible=false;
     for (const mesh of enemyMeshes.values()) mesh.visible=false;
     for (const mesh of phenomenonMeshes.values()) mesh.visible=false;
   }
