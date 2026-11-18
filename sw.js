@@ -1,6 +1,6 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-directors-cut-13";
+const CACHE_NAME = "aether-nova-eclipse-syncshots-fix-20261118";
 const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
