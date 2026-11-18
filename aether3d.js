@@ -256,6 +256,23 @@ for(const [id,group] of [["valkyrie",shipModel],...Object.entries(shipVariants)]
   sensor.position.set(0,.34,-1.35); group.add(sensor);
 }
 
+// PROPULSIÓN CINEMÁTICA: toberas multicapa con plasma animado para cada caza.
+const engineFX=[];
+function attachEngineFX(group,id){
+  const xs=id==="titan"||id==="bastion"?[-1.35,1.35]:id==="valkyrie"?[-.62,.62]:[-.9,0,.9];
+  const tint=id==="phoenix"?0xff7a38:id==="wraith"||id==="omega"?0x9b7cff:id==="singularity"?0xb8ff62:id==="bastion"?0x8edfff:0x38eaff;
+  for(const x of xs){
+    const outer=new THREE.Mesh(new THREE.ConeGeometry(.34,2.15,18,1,true),new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+    outer.rotation.x=Math.PI/2;outer.position.set(x,-.08,3.35);group.add(outer);
+    const inner=new THREE.Mesh(new THREE.ConeGeometry(.15,1.42,16,1,true),new THREE.MeshBasicMaterial({color:0xeaffff,transparent:true,opacity:.72,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+    inner.rotation.x=Math.PI/2;inner.position.set(x,-.08,3.08);group.add(inner);
+    const core=new THREE.Mesh(new THREE.SphereGeometry(.19,18,12),new THREE.MeshBasicMaterial({color:0xc9fbff,transparent:true,opacity:.78,blending:THREE.AdditiveBlending,depthWrite:false}));
+    core.position.set(x,-.08,2.52);group.add(core);engineFX.push({outer,inner,core,seed:engineFX.length*.91});
+  }
+}
+attachEngineFX(shipModel,"valkyrie");
+for(const [id,group] of Object.entries(shipVariants))attachEngineFX(group,id);
+
 const shield = new THREE.Mesh(new THREE.SphereGeometry(2.65, 24, 16), new THREE.MeshBasicMaterial({ color: 0x37dcff, wireframe: true, transparent: true, opacity: .13 }));
 shield.visible = false; ship.add(shield);
 
@@ -471,21 +488,23 @@ function syncShots(items, width, height) {
 const fxBursts=[];
 let lastImpactSerial=0;
 function spawn3DBurst(position,color=0xff9a55,scale=1){
- const group=new THREE.Group();group.position.copy(position);scene.add(group);
- const material=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.95});
- const particles=[];
- for(let i=0;i<14;i++){
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.055+Math.random()*.07,7,6),material.clone());
-  const a=Math.random()*Math.PI*2, v=.7+Math.random()*2.3;
-  mesh.position.set(0,0,0);group.add(mesh);particles.push({mesh,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vz:(Math.random()-.5)*1.2});
+ const group=new THREE.Group();group.position.copy(position);scene.add(group);const particles=[];
+ for(let i=0;i<30;i++){
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.035+Math.random()*.085,8,6),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const u=Math.random()*2-1,angle=Math.random()*Math.PI*2,q=Math.sqrt(1-u*u),v=.85+Math.random()*3.2;
+  group.add(mesh);particles.push({mesh,vx:Math.cos(angle)*q*v,vy:u*v,vz:Math.sin(angle)*q*v});
  }
- const ring=new THREE.Mesh(new THREE.TorusGeometry(.28,.045,8,28),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9}));
- group.add(ring);ring.rotation.x=Math.PI/2;group.scale.setScalar(scale);fxBursts.push({group,particles,ring,life:24,maxLife:24});
+ const rings=[];
+ for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(.3+i*.12,.035-i*.006,8,40),new THREE.MeshBasicMaterial({color:i===1?0xffffff:color,transparent:true,opacity:.92-i*.16,blending:THREE.AdditiveBlending,depthWrite:false}));ring.rotation.set(i*.78,Math.PI/2.3+i*.52,i*.6);group.add(ring);rings.push(ring);}
+ const flash=new THREE.Mesh(new THREE.SphereGeometry(.32,20,14),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
+ group.add(flash);group.scale.setScalar(scale);fxBursts.push({group,particles,rings,flash,life:30,maxLife:30});
 }
 function update3DBursts(dt){
- for(let i=fxBursts.length-1;i>=0;i--){const fx=fxBursts[i];fx.life-=dt*60;const k=Math.max(0,fx.life/fx.maxLife);
+ for(let i=fxBursts.length-1;i>=0;i--){
+  const fx=fxBursts[i];fx.life-=dt*60;const k=Math.max(0,fx.life/fx.maxLife),progress=1-k;
   for(const p of fx.particles){p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;p.mesh.position.z+=p.vz*dt;p.mesh.material.opacity=k;}
-  fx.ring.scale.setScalar(1+(1-k)*4);fx.ring.material.opacity=k;fx.group.scale.setScalar(fx.group.scale.x*(1+dt*.2));
+  fx.rings.forEach((ring,j)=>{ring.scale.setScalar(.8+progress*(3.6+j*.8));ring.material.opacity=k*(.9-j*.18);});
+  fx.flash.scale.setScalar(.4+progress*3.8);fx.flash.material.opacity=Math.max(0,.82*(1-progress*3.2));
   if(fx.life<=0){scene.remove(fx.group);fx.group.traverse(o=>{o.geometry?.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});fxBursts.splice(i,1);}
  }
 }
@@ -791,6 +810,14 @@ function animate(now) {
     // La fórmula anterior trataba la cámara como ortográfica y desplazaba la nave.
     const shipTarget = worldPos(data.x, data.y, data.width, data.height, -10);
     const selectedModel = data.selectedShip && shipVariants[data.selectedShip] ? shipVariants[data.selectedShip] : shipModel;
+    // Pulsación de toberas: plasma exterior, núcleo blanco y estela variable.
+    for(const fx of engineFX){
+      const active=selectedModel===shipModel||selectedModel===fx.outer.parent;
+      fx.outer.visible=active;fx.inner.visible=active;fx.core.visible=active;
+      if(active){const pulse=.82+.2*Math.sin(now*.018+fx.seed)+.08*Math.sin(now*.037+fx.seed*2);
+        fx.outer.scale.set(1,pulse,1);fx.inner.scale.set(1,.88+pulse*.16,1);
+        fx.outer.material.opacity=.28+.16*pulse;fx.inner.material.opacity=.58+.18*pulse;fx.core.scale.setScalar(.85+.2*pulse);}
+    }
     shipModel.visible = selectedModel === shipModel;
     for (const [id, model] of Object.entries(shipVariants)) model.visible = model === selectedModel;
     ship.position.x=THREE.MathUtils.damp(ship.position.x,shipTarget.x,16,dt);
