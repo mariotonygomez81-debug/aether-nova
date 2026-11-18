@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-current-branding-2";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=current-branding-2', './aether3d.js?v=current-branding-2', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-visual-upgrade-1";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=visual-upgrade-1', './aether3d.js?v=visual-upgrade-1', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
