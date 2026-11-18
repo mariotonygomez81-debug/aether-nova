@@ -605,8 +605,9 @@ function makePhenomenon(kind){
   const light=new THREE.PointLight(0xff8a43,14,34);g.add(light);
  }else if(kind==='supernova'){
   const core=sphere(.72,new THREE.MeshBasicMaterial({color:0xffffff}),48);g.add(core);
-  const inner=sphere(1.02,additive(0xffe18a,.7),40);g.add(inner);inner.userData.corona=1;
-  const outer=sphere(1.55,additive(0xff4b27,.18),40);g.add(outer);outer.userData.corona=2;
+  const inner=sphere(1.02,additive(0xfff1b8,.82),48);g.add(inner);inner.userData.corona=1;
+  const outer=sphere(1.8,additive(0xff4b27,.24),48);g.add(outer);outer.userData.corona=2;
+  const hotHalo=ring(1.95,.12,additive(0xffd18a,.78),128);hotHalo.rotation.x=Math.PI/2.2;g.add(hotHalo);hotHalo.userData.hotHalo=true;
   for(let i=0;i<5;i++){
    const shock=ring(1.35+i*.22,.045-i*.004,additive([0xfff0b5,0xff9a43,0xff542e,0xe54cff,0x69cfff][i],.72-i*.09),112);
    shock.rotation.set(Math.PI/2+i*.41,i*.73,i*.29);g.add(shock);shock.userData.shock=i;
@@ -616,7 +617,8 @@ function makePhenomenon(kind){
   for(let i=0;i<420;i++){const u=Math.random()*2-1,p=Math.random()*Math.PI*2,r=1.35+Math.random()*2.25,q=Math.sqrt(1-u*u);positions.push(r*q*Math.cos(p),r*u,r*q*Math.sin(p));const c=new THREE.Color([0xffd18a,0xff7444,0x8edfff,0xfff4d4][i%4]);colors.push(c.r,c.g,c.b);}
   const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));pg.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
   const debris=new THREE.Points(pg,new THREE.PointsMaterial({size:.085,vertexColors:true,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));debris.userData.debris=true;g.add(debris);
-  const light=new THREE.PointLight(0xff6a36,24,56);g.add(light);
+  const light=new THREE.PointLight(0xff8a42,32,72);g.add(light);
+  const flash=sphere(2.1,additive(0xffffff,.12),32);g.add(flash);flash.userData.flash=true;
  }else if(kind==='magnetar'){
   const star=sphere(.72,new THREE.MeshStandardMaterial({color:0xf1e5ff,emissive:0x9c27ff,emissiveIntensity:5,metalness:.18,roughness:.16}),40);g.add(star);
   const corona=sphere(1.02,additive(0x9b42ff,.22),32);g.add(corona);corona.userData.corona=true;
@@ -628,6 +630,11 @@ function makePhenomenon(kind){
    const curve=new THREE.CatmullRomCurve3(pts);const arc=new THREE.Mesh(new THREE.TubeGeometry(curve,28,.018,5,false),additive(i%2?0xd85cff:0x5cfaff,.88));g.add(arc);arc.userData.arc=i;
   }
   const pulse=sphere(1.05,additive(0xc45cff,.28),28);pulse.userData.pulse=true;g.add(pulse);
+  // Frentes de onda visibles que se expanden desde el magnetar.
+  for(let i=0;i<3;i++){
+   const wave=ring(1,.045,additive([0xffffff,0xd45cff,0x65eaff][i],.9),128);
+   wave.rotation.x=Math.PI/2;g.add(wave);wave.userData.gravityWave=i;
+  }
   const light=new THREE.PointLight(0xb84cff,13,34);g.add(light);
  }else if(kind==='pulsar'){
   const star=sphere(.58,new THREE.MeshStandardMaterial({color:0xeaffff,emissive:0x00cfff,emissiveIntensity:6,metalness:.12,roughness:.12}),40);g.add(star);
@@ -657,11 +664,13 @@ function syncPhenomena(items,width,height,now){
    g.children.forEach((o,i)=>{
     if(o.userData.shock!==undefined){const k=o.userData.shock,spread=1+k*.17+progress*(2.4+k*.34);o.scale.setScalar(spread);o.rotation.z+=.0015*(k+1);o.material.opacity=Math.max(.035,(.72-k*.09)*(1-progress*.76));}
     if(o.userData.wave!==undefined){const k=o.userData.wave,p=(progress*1.8+k*.28)%1;o.scale.setScalar(1+p*(3.2+k*.35));o.material.opacity=.22*(1-p);}
-    if(o.userData.corona){const k=o.userData.corona;o.scale.setScalar(k===1?1.05+Math.sin(phase*5)*.13:1.55+Math.sin(phase*2.2)*.16);o.material.opacity=k===1?.5:.16;}
+    if(o.userData.corona){const k=o.userData.corona;o.scale.setScalar(k===1?1.05+Math.sin(phase*5)*.13:1.8+Math.sin(phase*2.2)*.2);o.material.opacity=k===1?.62:.22;}
+    if(o.userData.hotHalo){o.rotation.z=phase*.35;o.scale.setScalar(1+Math.sin(phase*6)*.08);o.material.opacity=.62;}
+    if(o.userData.flash){const f=(age%18)/18;o.scale.setScalar(1+f*2.2);o.material.opacity=.16*(1-f);}
     if(o.userData.debris){o.rotation.y=phase*.25;o.rotation.x=phase*.08;o.material.opacity=Math.max(.08,.9-progress*.62);}
    });
   }else{
-   const r=item.kind==='blackhole'?Math.max(.85,(item.radius||34)/34):item.kind==='magnetar'?1.25:1.15;
+   const r=item.kind==='blackhole'?Math.max(1.05,(item.radius||34)/34)*1.22:item.kind==='magnetar'?1.25:1.15;
    g.scale.setScalar(r);
    if(item.kind==='blackhole'){
     g.rotation.y=phase*.12;
@@ -678,6 +687,12 @@ function syncPhenomena(items,width,height,now){
      if(o.userData.field!==undefined)o.rotation.z=phase*(o.userData.field%2?.65:-.52)+o.userData.field*.2;
      if(o.userData.arc!==undefined){o.rotation.z=phase*(o.userData.arc%2?.42:-.36);o.material.opacity=.45+.42*(.5+.5*Math.sin(phase*9+o.userData.arc));}
      if(o.userData.pulse){const p=(age%72)/72;o.scale.setScalar(1.08+p*1.65);o.material.opacity=.3*(1-p);}
+     if(o.userData.gravityWave!==undefined){
+      const k=o.userData.gravityWave,period=140,p=((age+k*46)%period)/period;
+      o.scale.set(1.1+p*8.5,1.1+p*8.5,1);
+      o.material.opacity=.92*(1-p);
+      o.rotation.z=phase*(k%2?.18:-.14);
+     }
      if(o.userData.corona)o.scale.setScalar(1+Math.sin(phase*7)*.12);
     });
    }else if(item.kind==='pulsar'){
