@@ -2077,7 +2077,6 @@ function updateSpawner() {
   if (powerupSpawnClock >= powerupInterval) {
     spawnPowerup();
     powerupSpawnClock = 0;
-  creditCoins = [];
   }
   const eventDifficulty = activeGalacticEvent ? Math.max(1, Math.min(1.05, Number(activeGalacticEvent.difficulty_multiplier) || 1)) : 1;
   // Curva de campaña: el ritmo aumenta gradualmente, sin multiplicarse de forma abrupta.
@@ -2803,6 +2802,7 @@ function startNewGame(savedData = null) {
   enemyBullets = [];
   spawnClock = 0;
   powerupSpawnClock = 0;
+  creditCoins = [];
   campaignPickupKills = 0;
   campaignPickupIndex = 0;
   state.combo = 1;
