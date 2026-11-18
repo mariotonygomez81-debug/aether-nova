@@ -1090,3 +1090,50 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 @media(max-width:1000px){#screen-menu .showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#screen-menu .ship-selector{grid-template-columns:repeat(2,minmax(0,1fr))}#screen-menu .ship-opt{min-height:90px}}
 @media(max-width:650px){#screen-menu{padding:7px}#screen-menu .main-card{padding:10px;border-radius:16px}#screen-menu .menu-cinematic-hero{height:190px}#screen-menu .hero-ship{width:88%;left:-8%}#screen-menu .hero-planet{width:92px;right:6%}#screen-menu .hero-planet-ring{width:155px;height:38px;right:0}#screen-menu .game-title{font-size:32px}#screen-menu .lore-intro{font-size:11px}#screen-menu .showcase-grid{grid-template-columns:1fr 1fr}#screen-menu .showcase-card{min-height:115px}#screen-menu .run-mode-picker{padding:10px}#screen-menu .run-mode-options{gap:5px}#screen-menu .run-mode-opt{min-height:62px}#screen-menu .ship-selector{grid-template-columns:1fr 1fr;gap:7px}#screen-menu .ship-opt{min-height:86px;padding:10px 7px 10px 58px}#screen-menu .ship-opt:before{left:8px;width:38px;height:45px}#screen-menu .ship-opt strong{font-size:10px}#screen-menu .ship-opt small{font-size:8px}#screen-menu .menu-tools{grid-template-columns:repeat(2,minmax(0,1fr))}#screen-menu .mission-board{grid-template-columns:1fr}#screen-menu .ranking-box{grid-template-columns:1fr}#screen-menu .ranking-box>.rank-header,#screen-menu .ranking-box>#ranking-list,#screen-menu .ranking-box>.local-note,#screen-menu .privacy-link{grid-column:auto}#screen-menu .online-rank-panel,#screen-menu .galactic-event-panel{grid-column:1}}
 @media(prefers-reduced-motion:reduce){#screen-menu .ship-opt{transition:none}}
+
+
+/* ALPHA 29 — jerarquía de inicio: comandante arriba, expedición al centro */
+#screen-menu .auth-panel{order:2!important;display:grid;grid-template-columns:minmax(180px,.72fr) minmax(0,1.8fr);align-items:center;gap:10px;margin:0 0 14px;padding:10px 13px;border:1px solid rgba(68,186,235,.28);border-radius:13px;background:linear-gradient(100deg,rgba(8,26,48,.88),rgba(7,12,28,.82))}
+#screen-menu .auth-panel:before{grid-column:1/-1;margin:0 0 2px;font-size:8px;letter-spacing:.16em}
+#screen-menu #auth-form-box{display:grid;grid-template-columns:1fr;gap:6px;min-width:0}
+#screen-menu .auth-hint{margin:0;font-size:10px}
+#screen-menu .login-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#screen-menu .login-grid input{min-width:0;min-height:34px;padding:7px 9px;font-size:11px}
+#screen-menu #btn-login{min-height:34px;margin:0;font-size:9px}
+#screen-menu #auth-logged-box{min-width:0}
+#screen-menu .user-profile{display:flex;align-items:center;gap:9px;padding:0 0 7px}
+#screen-menu .pilot-badge{width:32px;height:32px;flex:0 0 32px}
+#screen-menu .user-profile strong{font-size:12px}
+#screen-menu .user-profile small{font-size:9px}
+#screen-menu .cosmetic-profile-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#screen-menu .cosmetic-profile-row label{font-size:9px}
+#screen-menu .cosmetic-profile-row select{max-width:120px;min-height:30px}
+#screen-menu .cloud-account-box{margin-top:0;padding:8px;border-radius:9px}
+#screen-menu .cloud-account-box>small{font-size:10px}
+#screen-menu .cloud-actions{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+#screen-menu .cloud-actions .mini-btn{flex:1;min-width:95px;min-height:29px;font-size:9px}
+#screen-menu .cloud-login{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#screen-menu .cloud-login input{min-width:0;min-height:32px;font-size:10px}
+#screen-menu #cloud-auth-status{font-size:8px}
+#screen-menu>.badge{order:3!important}
+#screen-menu .game-title{order:4!important}
+#screen-menu .lore-intro{order:5!important}
+#screen-menu .command-showcase{order:6!important}
+#screen-menu .pilot-economy{order:7!important}
+#screen-menu .run-mode-picker{order:8!important}
+#screen-menu .difficulty-picker{order:9!important}
+#screen-menu .ship-selector{order:10!important}
+#screen-menu .menu-actions{order:11!important;max-width:760px;margin:2px auto 14px}
+#screen-menu #btn-play{min-height:62px;font-size:17px;letter-spacing:.14em}
+#screen-menu #btn-continue{min-height:48px;font-size:13px}
+#screen-menu .menu-tools{order:12!important}
+#screen-menu .mission-board-panel{order:13!important}
+#screen-menu .ranking-box{order:14!important}
+@media(max-width:700px){
+ #screen-menu .auth-panel{grid-template-columns:1fr;gap:7px;padding:9px}
+ #screen-menu .auth-panel:before{grid-column:auto}
+ #screen-menu #auth-form-box{grid-template-columns:1fr}
+ #screen-menu .login-grid{grid-template-columns:1fr 1fr}
+ #screen-menu .cloud-login{grid-template-columns:1fr}
+ #screen-menu #btn-play{min-height:54px;font-size:14px}
+}
