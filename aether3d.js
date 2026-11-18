@@ -420,20 +420,27 @@ const bossGroup=new THREE.Group();scene.add(bossGroup);bossGroup.visible=false;
 const bossMat=new THREE.MeshStandardMaterial({color:0x596779,metalness:.94,roughness:.25});
 const bossBlack=new THREE.MeshStandardMaterial({color:0x11182a,metalness:.86,roughness:.3});
 const bossCore=new THREE.MeshStandardMaterial({color:0xff398d,emissive:0xe00058,emissiveIntensity:3.4});
-function buildBoss(){
- add(new THREE.BoxGeometry(8,.85,5.5),bossMat,[0,0,0],[0,0,0],bossGroup);
- add(new THREE.ConeGeometry(1.35,5.5,8),bossBlack,[0,0,-4.4],[Math.PI/2,0,0],bossGroup);
- add(new THREE.SphereGeometry(1.15,32,20),bossCore,[0,.35,-1.2],[0,0,0],bossGroup);
- for(const s of [-1,1]){
-  add(new THREE.BoxGeometry(4.8,.45,3.2),bossBlack,[s*5,-.1,.45],[0,0,s*-.12],bossGroup);
-  add(new THREE.BoxGeometry(1.1,1.2,2.2),bossMat,[s*7.1,.1,1.0],[0,0,s*-.15],bossGroup);
-  for(let i=0;i<3;i++)add(new THREE.CylinderGeometry(.32,.48,1.3,16),bossCore,[s*(2.8+i*.9),-.25,2.9],[Math.PI/2,0,0],bossGroup);
- }
- for(let i=0;i<5;i++)add(new THREE.BoxGeometry(.22,.18,1.8),bossCore,[-3.2+i*1.6,.55,1.1],[0,0,0],bossGroup);
+let currentBossVariant=-1;
+function buildBoss(v=0){
+ bossGroup.clear();
+ const colors=[0xff398d,0xff8b38,0x22f0d0,0x75f0c4,0xff3864,0xd8e2f0,0xffad66,0xff874a,0xb9a0ff,0xff3d8d];
+ bossCore.color.setHex(colors[v]);bossCore.emissive.setHex(colors[v]);
+ const p=(w,h,d,x,y,z,m=bossMat,r=[0,0,0])=>add(new THREE.BoxGeometry(w,h,d),m,[x,y,z],r,bossGroup);
+ const c=(x,y,z,r=1)=>add(new THREE.SphereGeometry(r,24,16),bossCore,[x,y,z],[0,0,0],bossGroup);
+ if(v===0){p(8,.85,5.5,0,0,0);c(0,.35,-1.2,1.15);for(const q of [-1,1]){p(4.8,.45,3.2,q*5,-.1,.45,bossBlack,[0,0,q*-.12]);p(1.1,1.2,2.2,q*7,.1,1);for(let i=0;i<3;i++)add(new THREE.CylinderGeometry(.32,.48,1.3,16),bossCore,[q*(2.8+i*.9),-.25,2.9],[Math.PI/2,0,0],bossGroup);}}
+ else if(v===1){p(4.2,1.1,7,0,0,-.2);add(new THREE.ConeGeometry(2.3,7,6),bossBlack,[0,0,-4],[Math.PI/2,0,0],bossGroup);c(0,.4,-1.4,1.3);for(const q of [-1,1]){p(1.1,.7,5,q*2.5,-.1,.6,bossBlack,[0,0,q*.24]);add(new THREE.ConeGeometry(.55,3.4,8),bossCore,[q*3.1,0,2],[Math.PI/2,0,0],bossGroup);}}
+ else if(v===2){for(let i=0;i<3;i++){const m=add(new THREE.TorusGeometry(3.2+i*.8,.32,12,64),bossCore,[0,0,0],[Math.PI/2,0,i*.45],bossGroup);m.rotation.x=.5+i*.3;}c(0,0,0,1.35);for(let i=0;i<8;i++){const q=i*Math.PI/4;p(1.1,.7,2.8,Math.cos(q)*4,Math.sin(q)*3,0,bossBlack,[0,0,q]);}}
+ else if(v===3){p(2.6,.8,5,0,0,0);c(0,.45,-.6,1.1);for(const q of [-1,1]){p(2,.55,5,q*3,.1,.5,bossBlack,[0,0,q*.55]);p(.8,1.1,3.5,q*5,.1,1);for(let i=0;i<4;i++)add(new THREE.ConeGeometry(.35,2.2,8),bossCore,[q*(2+i*.85),0,2.6],[Math.PI/2,0,q*.1],bossGroup);}}
+ else if(v===4){p(7,1,6,0,0,0,bossBlack);c(0,.5,-1,1.5);for(const q of [-1,1]){p(3,.45,4,q*4,.1,.5);add(new THREE.ConeGeometry(.8,4,8),bossCore,[q*5,0,-2],[Math.PI/2,0,q*.2],bossGroup);}for(let i=0;i<6;i++)p(.2,.2,2,-3+i*1.2,.7,1,bossCore);}
+ else if(v===5){p(10,1.6,5,0,0,0,bossBlack);p(8,.45,2.5,0,.9,.4);c(0,.65,-.6,1.25);for(const q of [-1,1]){p(2.6,1.3,4,q*5.2,0,.3);for(let i=0;i<4;i++)p(.35,.5,3,q*(2.2+i*.65),.9,1,bossCore);}}
+ else if(v===6){const core=add(new THREE.SphereGeometry(2.1,32,24),bossBlack,[0,0,0]);core.scale.set(1.25,1,.8);c(0,0,0,1.35);for(let i=0;i<3;i++){const m=add(new THREE.TorusGeometry(3.2+i*.7,.16,10,72),bossCore,[0,0,0],[.5+i*.35,.2+i*.45,0],bossGroup);m.rotation.z=i*.8;}for(let i=0;i<6;i++){const q=i*Math.PI/3;add(new THREE.ConeGeometry(.7,3.8,8),bossMat,[Math.cos(q)*4,Math.sin(q)*3,0],[0,0,q],bossGroup);}}
+ else if(v===7){p(9,1.4,7,0,0,0,bossBlack);c(0,.7,-1.4,1.3);for(const q of [-1,1]){p(2,.7,5,q*5,0,1);for(let i=0;i<3;i++)add(new THREE.CylinderGeometry(.55,.8,2.2,12),bossCore,[q*(3.2+i*.9),-.2,3],[Math.PI/2,0,0],bossGroup);}}
+ else if(v===8){c(0,0,0,1.15);for(let i=0;i<4;i++)add(new THREE.TorusGeometry(2.5+i*.6,.18,12,64),bossCore,[0,0,0],[Math.PI/2,i*.55,i*.8],bossGroup);for(let i=0;i<8;i++){const q=i*Math.PI/4;p(.5,.5,4,Math.cos(q)*3.8,Math.sin(q)*3,0,bossBlack,[0,0,q]);}}
+ else{p(8,1.2,6,0,0,0,bossBlack);c(0,.5,-.7,1.7);for(const q of [-1,1]){p(3,.5,5,q*4,.1,.2,bossMat,[0,0,q*.35]);for(let i=0;i<3;i++)add(new THREE.ConeGeometry(.45,3,8),bossCore,[q*(2.4+i*.9),0,2.6],[Math.PI/2,0,q*.1],bossGroup);}add(new THREE.TorusGeometry(5,.16,12,96),bossCore,[0,0,0],[Math.PI/2,0,0],bossGroup);}
 }
-buildBoss();
 function syncBoss(b,width,height,now){
  if(!b){bossGroup.visible=false;return;}
+ if(currentBossVariant!==b.variant){currentBossVariant=b.variant;buildBoss(b.variant);}
  bossGroup.visible=true;bossGroup.position.copy(worldPos(b.x,b.y,width,height,-10));
  bossGroup.scale.setScalar(Math.max(.85,b.radius/52));
  bossGroup.rotation.y=Math.sin(now*.001)*.08;bossGroup.rotation.z=Math.sin(now*.002)*.035;
