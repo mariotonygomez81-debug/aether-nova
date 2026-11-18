@@ -181,6 +181,7 @@ const SoundFX = {
   enabled: true,
   bgmTimer: null,
   musicEnabled: false,
+  musicManuallyDisabled: false,
   step: 0,
   lastPlay: Object.create(null),
   noiseBuffer: null,
@@ -312,6 +313,26 @@ const SoundFX = {
         this.tone({ frequency: 780, endFrequency: 1040, duration: .16, type: "triangle", volume: .065 });
         this.tone({ frequency: 1040, endFrequency: 1480, duration: .22, type: "sine", volume: .055 });
         break;
+    }
+  },
+  async activateMusicFromGesture() {
+    this.musicEnabled = true;
+    this.init();
+    if (!this.ctx || !this.master) return false;
+    try {
+      if (this.ctx.state !== "running") await this.ctx.resume();
+      if (this.ctx.state !== "running") return false;
+      this.startMusic();
+      const button = document.getElementById("btn-menu-music");
+      if (button) {
+        button.classList.add("is-playing");
+        button.textContent = "♫ BANDA SONORA ACTIVADA";
+        button.setAttribute("aria-pressed", "true");
+      }
+      return true;
+    } catch (error) {
+      console.warn("No se pudo iniciar la banda sonora:", error);
+      return false;
     }
   },
   startMusic() {
@@ -2515,7 +2536,9 @@ async function enterImmersiveMode() {
 
 function startNewGame(savedData = null) {
   enterImmersiveMode();
-  SoundFX.init();
+  // El clic de Iniciar/Continuar es el gesto del usuario que autoriza el audio.
+  // La banda sonora se activa automáticamente, sin exigir otro botón.
+  if (!SoundFX.musicManuallyDisabled) SoundFX.activateMusicFromGesture();
   bullets = [];
   enemyBullets = [];
   spawnClock = 0;
@@ -3324,23 +3347,21 @@ bindTap("btn-save-pause", saveProgress);
 
 
 bindTap("btn-menu-music", async (e) => {
-  SoundFX.init();
-  if (!SoundFX.ctx || !SoundFX.master) {
-    e.currentTarget.textContent = "AUDIO NO DISPONIBLE";
+  if (!SoundFX.musicEnabled) {
+    SoundFX.musicManuallyDisabled = false;
+    const ok = await SoundFX.activateMusicFromGesture();
+    if (!ok) e.currentTarget.textContent = "AUDIO NO DISPONIBLE";
     return;
   }
-  SoundFX.musicEnabled = !SoundFX.musicEnabled;
-  if (SoundFX.musicEnabled) {
-    try { await SoundFX.ctx.resume(); } catch (error) { console.warn("No se pudo activar el audio:", error); }
-    // La música tiene su propio control y no depende del interruptor de efectos.
-    SoundFX.startMusic();
-  } else if (SoundFX.bgmTimer) {
+  SoundFX.musicEnabled = false;
+  SoundFX.musicManuallyDisabled = true;
+  if (SoundFX.bgmTimer) {
     clearInterval(SoundFX.bgmTimer);
     SoundFX.bgmTimer = null;
   }
-  e.currentTarget.classList.toggle("is-playing", SoundFX.musicEnabled);
-  e.currentTarget.textContent = SoundFX.musicEnabled ? "♫ BANDA SONORA ACTIVADA" : "♫ ACTIVAR BANDA SONORA";
-  e.currentTarget.setAttribute("aria-pressed", String(SoundFX.musicEnabled));
+  e.currentTarget.classList.remove("is-playing");
+  e.currentTarget.textContent = "♫ ACTIVAR BANDA SONORA";
+  e.currentTarget.setAttribute("aria-pressed", "false");
 });
 
 bindTap("btn-audio", (e) => {
