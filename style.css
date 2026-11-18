@@ -1238,3 +1238,16 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 .coop-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.coop-pilot{justify-content:flex-start;min-width:0;padding:10px;border:1px solid rgba(104,169,202,.2);border-radius:10px;background:rgba(10,28,46,.7)}.coop-pilot-icon{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:9px;background:rgba(0,199,255,.12);color:#69eaff;font-size:19px}.coop-pilot-info{display:flex;flex-direction:column;min-width:0;flex:1}.coop-pilot-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#eefaff}.coop-pilot-info small{font-size:9px;color:#8eacbf}.coop-ready-state{font-size:8px;letter-spacing:.08em;color:#a6b6c3;white-space:nowrap}.coop-ready-state.ready{color:#75ffc9;text-shadow:0 0 9px rgba(80,255,190,.5)}.coop-empty{opacity:.45;border-style:dashed}
 .coop-room-actions{flex-wrap:wrap;margin-top:12px}.coop-room-actions button{flex:1;min-width:130px}.coop-room-actions .mini-btn{flex:0 0 auto}
 @media(max-width:650px){.coop-actions{grid-template-columns:1fr}.coop-join{min-height:42px}.coop-roster{grid-template-columns:1fr}.coop-pilot{padding:8px}.coop-ready-state{font-size:7px}.coop-room-actions{align-items:stretch}.coop-room-actions button{min-width:100%;}}
+
+
+/* ALPHA 56 — interfaz de joystick y Smart TV */
+.controller-panel{margin:16px 0 20px;padding:16px 18px;border:1px solid rgba(95,205,255,.26);border-radius:15px;background:linear-gradient(115deg,rgba(7,27,48,.94),rgba(12,13,33,.94));box-shadow:inset 0 0 28px rgba(40,180,255,.045)}
+.controller-top{display:flex;justify-content:space-between;align-items:center;gap:12px}.controller-top h3{margin:4px 0;font-size:clamp(16px,2.5vw,22px);letter-spacing:.12em;color:#e8faff}.controller-top p{margin:0;color:#91adbf;font-size:12px}
+.controller-status{flex:0 0 auto;padding:7px 10px;border:1px solid rgba(170,190,210,.2);border-radius:30px;color:#a9bdcb;font-size:9px;letter-spacing:.1em;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.controller-status i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#9aaab8;margin-right:6px}
+.controller-status.connected{color:#7fffd2;border-color:rgba(80,255,190,.3)}.controller-status.connected i{background:#4dffc1;box-shadow:0 0 10px #4dffc1}
+.controller-bottom{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px}
+.controller-instructions{display:flex;align-items:center;gap:8px;padding:9px;border-radius:9px;background:rgba(3,12,26,.55);color:#a9c5d7;font-size:10px}
+.controller-instructions b{display:grid;place-items:center;min-width:34px;height:30px;border:1px solid rgba(105,215,255,.35);border-radius:7px;color:#80eaff;font-size:12px}
+.controller-footnote{margin:12px 0 0;color:#7894a9;font-size:10px;line-height:1.5}
+@media(max-width:700px){.controller-top{align-items:flex-start;flex-direction:column}.controller-status{max-width:100%}.controller-bottom{grid-template-columns:repeat(2,minmax(0,1fr))}.controller-instructions{font-size:9px}}
