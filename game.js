@@ -2414,8 +2414,74 @@ function paintEraBackground(era) {
   eraBackgroundCache = off; lastEraBackgroundKey = key;
 }
 
+
+/* ALPHA 56 — GAMEPAD API: USB / BLUETOOTH / MANDOS EXPUESTOS POR WIFI */
+const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:false,connected:false,lastName:""};
+function controllerStatus(message,connected=false){
+  const el=document.getElementById("controller-status");if(!el)return;
+  el.textContent=message;el.classList.toggle("connected",connected);
+}
+function gamepadButton(gp,index){return !!gp.buttons[index]&&(gp.buttons[index].pressed||gp.buttons[index].value>.55);}
+function gamepadMenuMove(direction){
+  const active=document.querySelector(".overlay:not(.hidden)");
+  if(!active)return;
+  const items=[...active.querySelectorAll('button:not(:disabled):not(.hidden),input:not(:disabled),select:not(:disabled),[tabindex]:not([tabindex="-1"])')]
+    .filter(el=>el.getClientRects().length&&getComputedStyle(el).visibility!=="hidden");
+  if(!items.length)return;
+  let at=items.indexOf(document.activeElement);
+  if(at<0)at=0;else at=(at+direction+items.length)%items.length;
+  items[at].focus({preventScroll:true});
+}
+function pollGamepad(){
+  if(!navigator.getGamepads){
+    if(!gamepadState.connected)controllerStatus("MANDO NO COMPATIBLE",false);
+    keys.Left=false;keys.Right=false;return;
+  }
+  let pads=[];
+  try{pads=Array.from(navigator.getGamepads()||[]).filter(Boolean);}catch(e){}
+  let gp=pads.find(p=>p.index===gamepadState.index)||pads[0]||null;
+  if(!gp){
+    gamepadState.index=null;gamepadState.connected=false;gamepadState.buttons=[];
+    gamepadState.left=gamepadState.right=false;keys.Left=false;keys.Right=false;
+    controllerStatus("CONECTÁ TU JOYSTICK",false);return;
+  }
+  if(!gamepadState.connected||gamepadState.index!==gp.index){
+    gamepadState.index=gp.index;gamepadState.connected=true;gamepadState.lastName=gp.id||"Joystick";
+    controllerStatus("CONECTADO · "+gamepadState.lastName.slice(0,25),true);
+  }
+  const axis=Number(gp.axes?.[0]||0),hatLeft=gamepadButton(gp,14),hatRight=gamepadButton(gp,15);
+  const left=axis<-.28||hatLeft,right=axis>.28||hatRight;
+  keys.Left=left;keys.Right=right;
+  const pressed=gp.buttons.map(b=>!!b&&(b.pressed||b.value>.55));
+  const just=(index)=>!!pressed[index]&&!gamepadState.buttons[index];
+  const menuMode=state.mode!=="PLAYING";
+  if(menuMode){
+    if((just(12)||just(13)||just(14)||just(15))&&document.querySelector(".overlay:not(.hidden)")){
+      const dir=(just(12)||just(14))?-1:1;gamepadMenuMove(dir);
+    }
+    if(just(0)||just(2)){
+      const focused=document.activeElement;
+      if(focused&&focused!==document.body&&focused.click)focused.click();
+      else document.querySelector(".overlay:not(.hidden) button:not(:disabled):not(.hidden)")?.click();
+    }
+    if(just(9)&&state.mode==="PAUSED")togglePause();
+  }else{
+    if(just(0)||just(2)||just(5))triggerSuperBomb();
+    if(just(9)||just(1))togglePause();
+  }
+  gamepadState.buttons=pressed;
+}
+window.addEventListener("gamepadconnected",e=>{
+  gamepadState.index=e.gamepad.index;gamepadState.connected=true;gamepadState.lastName=e.gamepad.id||"Joystick";
+  controllerStatus("CONECTADO · "+gamepadState.lastName.slice(0,25),true);
+});
+window.addEventListener("gamepaddisconnected",e=>{
+  if(gamepadState.index===e.gamepad.index){gamepadState.index=null;gamepadState.connected=false;gamepadState.buttons=[];keys.Left=keys.Right=false;controllerStatus("MANDO DESCONECTADO",false);}
+});
+
 function updateAndDraw() {
   requestAnimationFrame(updateAndDraw);
+  pollGamepad();
 
   const era = ERAS[Math.min(9, Math.floor((state.level - 1) / 10))];
   paintEraBackground(era);
