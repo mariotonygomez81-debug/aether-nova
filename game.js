@@ -1165,6 +1165,7 @@ class CosmicPhenomenon {
     this.strikeFlash = 0;
     this.lastStrike = -90;
     this.lastPlayerPulse = -1;
+    this.detonated = false;
     this.dead = false;
   }
 
@@ -1174,10 +1175,11 @@ class CosmicPhenomenon {
     this.angle += 0.045;
 
     if (this.kind === "supernova") {
-      const ratio = this.timer / this.maxTimer;
-      this.radius = 18 + ratio * 155;
-      if (this.timer >= this.maxTimer) {
-        this.detonateSupernova();
+      if (!this.detonated) {
+        const ratio = this.timer / this.maxTimer;
+        this.radius = 18 + ratio * 155;
+        if (this.timer >= this.maxTimer) this.detonateSupernova();
+      } else if (this.timer >= this.maxTimer) {
         this.dead = true;
       }
     } else if (this.kind === "blackhole") {
@@ -1361,6 +1363,11 @@ class CosmicPhenomenon {
       });
     }
     player.absorbCosmicThreat("DESTRUIDO POR LA EXPLOSIÓN DE SUPERNOVA", "cryo");
+    // Mantiene vivo el fenómeno unos frames para mostrar el frente de choque 2D/3D.
+    this.detonated = true;
+    this.timer = 0;
+    this.maxTimer = 54;
+    this.radius = 220;
   }
 
   draw() {
@@ -1368,26 +1375,43 @@ class CosmicPhenomenon {
     ctx.translate(this.x, this.y);
 
     if (this.kind === "supernova") {
-      const pulse = 1 + Math.sin(this.timer * .19) * .1, charge = this.timer / this.maxTimer;
-      ctx.save(); ctx.rotate(this.angle * 1.7);
-      for (let i = 0; i < 16; i++) {
-        const a = i * Math.PI / 8, inner = this.radius * .72;
-        const outer = this.radius * (1.25 + .28 * Math.sin(this.timer * .13 + i));
-        ctx.strokeStyle = i % 3 === 0 ? "rgba(255,255,225,.95)" : "rgba(255,105,35,.72)";
-        ctx.lineWidth = i % 3 === 0 ? 3 : 1.6;
-        ctx.beginPath(); ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);
-        ctx.lineTo(Math.cos(a+.08)*outer,Math.sin(a+.08)*outer); ctx.stroke();
+      if (this.detonated) {
+        const p=this.timer/this.maxTimer, fade=1-p;
+        for(let i=0;i<4;i++){
+          const r=24+p*(420+i*115);
+          ctx.strokeStyle=i%2===0?"rgba(255,225,170,"+(fade*.9)+")":"rgba(255,82,42,"+(fade*.72)+")";
+          ctx.lineWidth=i===0?7:4; ctx.shadowBlur=IS_LOW_POWER?0:22;
+          ctx.shadowColor=i%2===0?"#fff0b2":"#ff4b2b";
+          ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+        }
+        ctx.shadowBlur=0;
+        const blast=ctx.createRadialGradient(0,0,8,0,0,Math.max(10,260*(1-p)));
+        blast.addColorStop(0,"rgba(255,255,245,"+(fade*.5)+")");
+        blast.addColorStop(.35,"rgba(255,170,70,"+(fade*.26)+")");
+        blast.addColorStop(1,"rgba(255,55,20,0)");
+        ctx.fillStyle=blast; ctx.beginPath(); ctx.arc(0,0,260*(1-p),0,Math.PI*2); ctx.fill();
+      } else {
+        const pulse = 1 + Math.sin(this.timer * .19) * .1, charge = this.timer / this.maxTimer;
+        ctx.save(); ctx.rotate(this.angle * 1.7);
+        for (let i = 0; i < 16; i++) {
+          const a = i * Math.PI / 8, inner = this.radius * .72;
+          const outer = this.radius * (1.25 + .28 * Math.sin(this.timer * .13 + i));
+          ctx.strokeStyle = i % 3 === 0 ? "rgba(255,255,225,.95)" : "rgba(255,105,35,.72)";
+          ctx.lineWidth = i % 3 === 0 ? 3 : 1.6;
+          ctx.beginPath(); ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);
+          ctx.lineTo(Math.cos(a+.08)*outer,Math.sin(a+.08)*outer); ctx.stroke();
+        }
+        ctx.restore();
+        ctx.strokeStyle = "rgba(255,210,120,.68)"; ctx.lineWidth = 3 + charge * 3;
+        ctx.beginPath(); ctx.arc(0,0,this.radius*1.45*pulse,0,Math.PI*2); ctx.stroke();
+        const glow = ctx.createRadialGradient(0,0,2,0,0,this.radius*1.65);
+        glow.addColorStop(0,"#ffffff"); glow.addColorStop(.18,"#fff8cf");
+        glow.addColorStop(.42,"#ffb52e"); glow.addColorStop(.72,"#ff4b20");
+        glow.addColorStop(1,"rgba(255,35,0,0)");
+        ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,0,this.radius*1.65*pulse,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle="#fff"; ctx.shadowBlur=IS_LOW_POWER?0:24; ctx.shadowColor="#ffb347";
+        ctx.beginPath(); ctx.arc(0,0,Math.max(5,this.radius*.2),0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
       }
-      ctx.restore();
-      ctx.strokeStyle = "rgba(255,210,120,.68)"; ctx.lineWidth = 3 + charge * 3;
-      ctx.beginPath(); ctx.arc(0,0,this.radius*1.45*pulse,0,Math.PI*2); ctx.stroke();
-      const glow = ctx.createRadialGradient(0,0,2,0,0,this.radius*1.65);
-      glow.addColorStop(0,"#ffffff"); glow.addColorStop(.18,"#fff8cf");
-      glow.addColorStop(.42,"#ffb52e"); glow.addColorStop(.72,"#ff4b20");
-      glow.addColorStop(1,"rgba(255,35,0,0)");
-      ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,0,this.radius*1.65*pulse,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle="#fff"; ctx.shadowBlur=IS_LOW_POWER?0:24; ctx.shadowColor="#ffb347";
-      ctx.beginPath(); ctx.arc(0,0,Math.max(5,this.radius*.2),0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
     } else if (this.kind === "blackhole") {
       const pulse = 1 + Math.sin(this.timer * .09) * .07;
       ctx.scale(1.24, 1.24);
