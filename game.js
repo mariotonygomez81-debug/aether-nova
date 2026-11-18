@@ -3208,6 +3208,11 @@ function renderCloudAccount() {
   const signup = document.getElementById("btn-cloud-signup");
   const login = document.getElementById("btn-cloud-login");
   [signup, login].forEach(el => { if (el) el.disabled = !cloudConfigured() || cloudBusy; });
+  const coopOnline = !!cloudSession?.access_token;
+  ["btn-coop-create","btn-coop-join"].forEach(id => { const el=document.getElementById(id); if(el) el.disabled=!coopOnline; });
+  const coopNote=document.getElementById("coop-auth-note");
+  if(coopNote && !coopOnline) coopNote.textContent="Inicia sesión con tu cuenta online para crear o unirte a una sala.";
+
   if (!cloudConfigured()) cloudSetStatus("Modo local disponible. Para habilitar perfiles, nube y torneos, configura Supabase en cloud-config.js.");
 }
 function cloudHeaders(token = cloudSession?.access_token) {
