@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "AETHER NOVA: ECLIPSE — Commercial Edition 7.4",
+  "name": "AETHER NOVA: ECLIPSE",
   "short_name": "AETHER NOVA",
-  "description": "Edición comercial 7.4: campaña de 100 sectores, cinco naves desbloqueables, misiones diarias y semanales, jefes y progresión local con respaldo online opcional.",
+  "description": "Videojuego arcade espacial con campaña de 100 sectores, flota, arsenal, progresión y servicios online opcionales.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
