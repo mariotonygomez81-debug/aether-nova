@@ -2417,7 +2417,16 @@ function renderCloudAccount() {
   if (!cloudConfigured()) cloudSetStatus("Modo local disponible. Para habilitar perfiles, nube y torneos, configura Supabase en cloud-config.js.");
 }
 function cloudHeaders(token = cloudSession?.access_token) {
-  return { apikey: CLOUD_CFG.anonKey, Authorization: `Bearer ${token || CLOUD_CFG.anonKey}`, "Content-Type": "application/json" };
+  const headers = {
+    apikey: CLOUD_CFG.anonKey,
+    "Content-Type": "application/json"
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 async function cloudAuthRequest(path, body) {
   const response = await cloudRequest(`${CLOUD_CFG.supabaseUrl}/auth/v1/${path}`, {
