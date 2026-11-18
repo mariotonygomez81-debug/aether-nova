@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-alpha40-supernova-magnetar-vfx";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha40-supernova-magnetar-vfx', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
+const CACHE_NAME = "aether-nova-eclipse-alpha41-gradual-100-sector-balance";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js', './aether3d.js?v=alpha41-gradual-100-sector-balance', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
