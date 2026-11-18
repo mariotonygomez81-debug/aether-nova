@@ -2459,7 +2459,7 @@ async function startPhonepadPairing(){
     const link=new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/");link.searchParams.set("code",code);
     const codeEl=document.getElementById("phonepad-code");if(codeEl)codeEl.textContent=code;
     const linkEl=document.getElementById("phonepad-link");if(linkEl){linkEl.href=link.href;linkEl.textContent=link.href;}
-    const qr=document.getElementById("phonepad-qr");if(qr){qr.innerHTML="";if(window.QRCode)new QRCode(qr,{text:link.href,width:150,height:150,colorDark:"#07111f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});else qr.textContent="Abrí el enlace del mando y escribí el código.";}
+    const qr=document.getElementById("phonepad-qr");if(qr){qr.innerHTML="";const appLink="aethernova://connect?code="+encodeURIComponent(code);if(window.QRCode)new QRCode(qr,{text:appLink,width:150,height:150,colorDark:"#07111f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});else qr.textContent="Escaneá el QR con AETHER NOVA Joystick o abrí el enlace HTTPS.";}
     document.getElementById("phonepad-pairing")?.classList.remove("hidden");
     phonepadStatus("QR LISTO · ESCANEÁ PARA CONECTAR",false);
   }catch(error){console.error("Phonepad pairing:",error);phonepadStatus(error.message||"NO SE PUDO VINCULAR",false);}
