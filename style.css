@@ -1392,3 +1392,15 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 .friend-presence{color:#91a7c2;font-size:.65rem}
 .friend-presence.is-online{color:#71f0ad}
 .friend-presence.is-playing{color:#79dcff}
+
+
+.coop-social-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.coop-social-card{min-width:0;padding:13px;border:1px solid rgba(108,157,205,.2);border-radius:13px;background:rgba(3,12,28,.45);display:grid;align-content:start;gap:9px}
+.squad-create-row{display:flex;gap:7px}
+.squad-create-row input{min-width:0;flex:1}
+.squad-roster{display:grid;gap:7px}
+.squad-name{font-size:.9rem;color:#91f4ff}
+.squad-member-row{display:grid;grid-template-columns:1fr auto;gap:3px 8px;padding:7px 9px;border-radius:8px;background:rgba(98,139,184,.09);font-size:.75rem}
+.squad-member-row small{color:#9eb4cf;font-size:.62rem}
+.squad-member-row small:last-child{grid-column:2;grid-row:1/3;align-self:center}
+@media(max-width:640px){.coop-social-grid{grid-template-columns:1fr}}
