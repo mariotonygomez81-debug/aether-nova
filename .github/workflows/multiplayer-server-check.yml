@@ -1,0 +1,24 @@
+name: Multiplayer server checks
+on:
+  push:
+    paths:
+      - "multiplayer-server/**"
+      - ".github/workflows/multiplayer-server-check.yml"
+  pull_request:
+    paths:
+      - "multiplayer-server/**"
+      - ".github/workflows/multiplayer-server-check.yml"
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: multiplayer-server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
