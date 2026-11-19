@@ -47,3 +47,7 @@ Nunca colocar claves secretas ni `service_role` en archivos del cliente.
 - El servidor valida las sesiones con Supabase Auth y comprueba la pertenencia a la sala mediante RLS.
 - GitHub Pages publica el cliente, no ejecuta WebSockets; el servidor necesita un host persistente con soporte WebSocket y las variables de entorno documentadas en `multiplayer-server/README.md`.
 - El backend aún requiere despliegue, integración del cliente y pruebas con dos cuentas antes de habilitar el combate online en producción.
+
+
+## Diagnóstico de dispositivos
+Abrí `https://mariotonygomez81-debug.github.io/aether-nova/diagnostics.html` desde PC, Android, iPhone o Android TV para comprobar las capacidades del navegador y el perfil adaptativo detectado. La página no envía datos y no reemplaza las pruebas reales del juego.
