@@ -3801,7 +3801,7 @@ function mergeCloudSaveData(localSave, remoteSave) {
   const mergedCommercial = { ...rc, ...lc };
   for (const field of maxFields) mergedCommercial[field] = Math.min(1000000000, Math.max(0, Number(lc[field]) || 0, Number(rc[field]) || 0));
   mergedCommercial.upgrades = {};
-  for (const upgrade of UPGRADE_DEFS) mergedCommercial.upgrades[upgrade.id] = Math.max(0, Math.min(upgrade.max,
+  for (const upgrade of UPGRADE_DEFS) mergedCommercial.upgrades[upgrade.id] = Math.min(upgrade.max, Math.max(0,
     Number(lc.upgrades?.[upgrade.id]) || 0, Number(rc.upgrades?.[upgrade.id]) || 0));
   mergedCommercial.achievements = [...new Set([...(Array.isArray(rc.achievements) ? rc.achievements : []), ...(Array.isArray(lc.achievements) ? lc.achievements : [])].filter(x => typeof x === "string"))];
   mergedCommercial.bossTrophies = [...new Set([...(Array.isArray(rc.bossTrophies) ? rc.bossTrophies : []), ...(Array.isArray(lc.bossTrophies) ? lc.bossTrophies : [])].filter(x => typeof x === "string"))].slice(-20);
