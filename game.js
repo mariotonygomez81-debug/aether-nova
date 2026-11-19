@@ -3786,6 +3786,12 @@ function buildCloudSave() {
     exportedAt: new Date().toISOString()
   };
 }
+function cloudRunSaveIsValid(run) {
+  return !run || (typeof run === "object" && !Array.isArray(run) &&
+    Number.isFinite(Number(run.level)) && Number(run.level) >= 1 && Number(run.level) <= 9999 &&
+    Number.isFinite(Number(run.score)) && Number(run.score) >= 0 &&
+    (!run.ship || Object.prototype.hasOwnProperty.call(SHIP_TYPES, run.ship)));
+}
 function mergeCloudSaveData(localSave, remoteSave) {
   const local = localSave && typeof localSave === "object" ? localSave : {};
   const remote = remoteSave && typeof remoteSave === "object" ? remoteSave : {};
@@ -3793,16 +3799,17 @@ function mergeCloudSaveData(localSave, remoteSave) {
   const rc = remote.commercialData && typeof remote.commercialData === "object" ? remote.commercialData : {};
   const maxFields = ["credits","totalRuns","totalScore","bestSector","bestScore","survivalBestSector","survivalBestScore","bossDefeats"];
   const mergedCommercial = { ...rc, ...lc };
-  for (const field of maxFields) mergedCommercial[field] = Math.max(Number(lc[field]) || 0, Number(rc[field]) || 0);
-  const upgradeIds = new Set([...Object.keys(rc.upgrades || {}), ...Object.keys(lc.upgrades || {})]);
+  for (const field of maxFields) mergedCommercial[field] = Math.min(1000000000, Math.max(0, Number(lc[field]) || 0, Number(rc[field]) || 0));
   mergedCommercial.upgrades = {};
-  for (const id of upgradeIds) mergedCommercial.upgrades[id] = Math.max(Number(lc.upgrades?.[id]) || 0, Number(rc.upgrades?.[id]) || 0);
-  mergedCommercial.achievements = [...new Set([...(rc.achievements || []), ...(lc.achievements || [])])];
-  mergedCommercial.bossTrophies = [...new Set([...(rc.bossTrophies || []), ...(lc.bossTrophies || [])])].slice(-20);
-  mergedCommercial.missions = { ...(rc.missions || {}), ...(lc.missions || {}) };
-  if (!Object.prototype.hasOwnProperty.call(SHIP_TYPES, mergedCommercial.selectedShip)) mergedCommercial.selectedShip = "valkyrie";
-  const lr = local.runSave && typeof local.runSave === "object" ? local.runSave : null;
-  const rr = remote.runSave && typeof remote.runSave === "object" ? remote.runSave : null;
+  for (const upgrade of UPGRADE_DEFS) mergedCommercial.upgrades[upgrade.id] = Math.max(0, Math.min(upgrade.max,
+    Number(lc.upgrades?.[upgrade.id]) || 0, Number(rc.upgrades?.[upgrade.id]) || 0));
+  mergedCommercial.achievements = [...new Set([...(Array.isArray(rc.achievements) ? rc.achievements : []), ...(Array.isArray(lc.achievements) ? lc.achievements : [])].filter(x => typeof x === "string"))];
+  mergedCommercial.bossTrophies = [...new Set([...(Array.isArray(rc.bossTrophies) ? rc.bossTrophies : []), ...(Array.isArray(lc.bossTrophies) ? lc.bossTrophies : [])].filter(x => typeof x === "string"))].slice(-20);
+  mergedCommercial.missions = { ...(rc.missions && typeof rc.missions === "object" && !Array.isArray(rc.missions) ? rc.missions : {}), ...(lc.missions && typeof lc.missions === "object" && !Array.isArray(lc.missions) ? lc.missions : {}) };
+  mergedCommercial.difficulty = ["easy", "normal", "hard"].includes(mergedCommercial.difficulty) ? mergedCommercial.difficulty : "normal";
+  mergedCommercial.selectedShip = Object.prototype.hasOwnProperty.call(SHIP_TYPES, mergedCommercial.selectedShip) ? mergedCommercial.selectedShip : "valkyrie";
+  const lr = cloudRunSaveIsValid(local.runSave) ? local.runSave : null;
+  const rr = cloudRunSaveIsValid(remote.runSave) ? remote.runSave : null;
   const rank = r => [Number(r?.level) || 0, Number(r?.score) || 0, Number(r?.updatedAt) || 0];
   const better = (a,b) => {
     const x=rank(a), y=rank(b);
@@ -3834,6 +3841,9 @@ async function uploadCloudSave() {
     if (remoteSnapshot && (remoteSnapshot.version !== 1 && remoteSnapshot.version !== 2 ||
         !remoteSnapshot.commercialData || typeof remoteSnapshot.commercialData !== "object" || Array.isArray(remoteSnapshot.commercialData))) {
       return cloudSetStatus("La copia de nube tiene un formato desconocido. No se sobrescribió.", true);
+    }
+    if (!cloudRunSaveIsValid(localSnapshot.runSave) || !cloudRunSaveIsValid(remoteSnapshot?.runSave)) {
+      return cloudSetStatus("Una de las partidas guardadas tiene datos inválidos. No se modificó la nube ni el progreso local.", true);
     }
     if (!backupCloudMigration(localSnapshot, remoteSnapshot)) return;
     const merged = remoteSnapshot ? mergeCloudSaveData(localSnapshot, remoteSnapshot) : localSnapshot;
