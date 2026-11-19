@@ -28,7 +28,7 @@ export class AetherBattleRoom extends Room {
     if (!/^[0-9a-f-]{36}$/i.test(String(options.coopRoomId))) throw new ServerError(400, "Identificador de sala inválido.");
     this.coopRoomId = String(options.coopRoomId);
     this.setPrivate(true);
-    this.setState(new AetherBattleState());
+    this.state = new AetherBattleState();
     this.inputs = new Map();
     this.lastInputAt = new Map();
     this.lastFireAt = new Map();
@@ -36,10 +36,8 @@ export class AetherBattleRoom extends Room {
     this.lastTickAt = Date.now();
     this.state.phase = "waiting";
 
-    this.messages = {
-      input: (client, message) => this.receiveInput(client, message),
-      weapon: (client, message) => this.useWeapon(client, message)
-    };
+    this.onMessage("input", (client, message) => this.receiveInput(client, message));
+    this.onMessage("weapon", (client, message) => this.useWeapon(client, message));
 
     this.setSimulationInterval((deltaMs) => this.simulate(deltaMs), 1000 / 30);
   }
