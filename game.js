@@ -157,6 +157,7 @@ let bossIntroTimer = 0;
 let player = null;
 let player2 = null;
 let localCoopEnabled = false;
+function getActivePilots(){return [player,player2].filter(p=>p&&p.lives>0);}
 let W = window.innerWidth;
 let H = window.innerHeight;
 let DPR = 1;
@@ -1326,6 +1327,7 @@ class CosmicPhenomenon {
           player.absorbCosmicThreat("DESTRUIDO POR RAYO GAMMA DEL PÚLSAR", "antigamma");
           state.shake = Math.max(state.shake, 18);
         }
+        if(player2&&player2.lives>0&&player2.buffs.antigamma<=0&&hitBeam(player2,42)){player2.absorbCosmicThreat("RAYO GAMMA DEL PÚLSAR","antigamma");state.shake=Math.max(state.shake,18);}
       }
     } else if (this.kind === "ionstorm") {
       // La tormenta anuncia cada descarga antes de atravesar una columna del escenario.
@@ -1344,6 +1346,7 @@ class CosmicPhenomenon {
           player.takeDamage("DESCARGA DE TORMENTA IÓNICA");
           state.shake = Math.max(state.shake, 9);
         }
+        if(player2&&player2.lives>0&&Math.abs(player2.x-this.strikeX)<width+player2.radius&&player2.buffs.antigamma<=0){player2.takeDamage("DESCARGA IÓNICA");state.shake=Math.max(state.shake,9);}
         spawnExplosion(this.strikeX, this.y, "#67e8f9", IS_LOW_POWER ? 7 : 13);
       }
     } else if (this.kind === "debrisfield") {
@@ -1396,6 +1399,7 @@ class CosmicPhenomenon {
       });
     }
     player.absorbCosmicThreat("DESTRUIDO POR LA EXPLOSIÓN DE SUPERNOVA", "cryo");
+    if(player2&&player2.lives>0)player2.absorbCosmicThreat("EXPLOSIÓN DE SUPERNOVA","cryo");
     // Mantiene vivo el fenómeno unos frames para mostrar el frente de choque 2D/3D.
     this.detonated = true;
     this.timer = 0;
