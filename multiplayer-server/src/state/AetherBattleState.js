@@ -33,6 +33,7 @@ export const ShotState = schema({
 });
 
 export const AetherBattleState = schema({
+  coopRoomId: t.string(),
   phase: t.string().default("waiting"),
   sector: t.number().default(1),
   serverTick: t.number().default(0),
