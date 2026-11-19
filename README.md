@@ -40,3 +40,10 @@ Nunca colocar claves secretas ni `service_role` en archivos del cliente.
 - El perfil adaptativo limita pixel ratio y frecuencia de renderizado según memoria, núcleos, ahorro de datos y clase de dispositivo.
 - Las cuentas serán obligatorias para el progreso sincronizado y el juego online; el modo invitado/local deberá retirarse gradualmente en la siguiente fase, preservando migración de partidas.
 - El esquema Supabase existente incluye perfiles, guardados, ranking, salas cooperativas y políticas RLS. El combate online sincronizado sigue siendo una fase pendiente.
+
+
+## Servidor de combate online (en desarrollo)
+- El backend autoritativo independiente está en `multiplayer-server/` y usa Colyseus 0.18.12 con estado replicado.
+- El servidor valida las sesiones con Supabase Auth y comprueba la pertenencia a la sala mediante RLS.
+- GitHub Pages publica el cliente, no ejecuta WebSockets; el servidor necesita un host persistente con soporte WebSocket y las variables de entorno documentadas en `multiplayer-server/README.md`.
+- El backend aún requiere despliegue, integración del cliente y pruebas con dos cuentas antes de habilitar el combate online en producción.
