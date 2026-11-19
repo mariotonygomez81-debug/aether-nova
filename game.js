@@ -895,6 +895,8 @@ class Player {
     this.empBombs = 0;
     this.clusterBombs = 1;
     this.singularityBombs = 1;
+    this.cryoBombs = 1;
+    this.gravityBombs = 1;
     this.permanentShieldCharges = Math.min(3, upgrades.aegis || 0);
     this.missileLevel = Math.max(0, upgrades.seeker || 0);
     this.droneLevel = Math.max(0, upgrades.droneBay || 0);
@@ -1986,6 +1988,8 @@ const POWERUP_POOL = [
   { id: "missiles",  label: "M", color: "#ff9e00", text: "MISILES BUSCADORES" },
   { id: "bomb",      label: "B", color: "#ff2a85", text: "+1 BOMBA SUPERNOVA" },
   { id: "empbomb",   label: "E", color: "#5eead4", text: "+1 BOMBA DE PULSO EMP" },
+  { id: "cryobomb",  label: "C", color: "#8be9ff", text: "+1 BOMBA CRIOGÉNICA" },
+  { id: "gravitybomb",label: "G", color: "#c4a7ff", text: "+1 BOMBA GRAVITACIONAL" },
   { id: "life",      label: "+", color: "#52b788", text: "+1 VIDA CASCO" },
   { id: "shield",    label: "S", color: "#38b6ff", text: "ESCUDO DE ENERGÍA" },
   { id: "cryo",      label: "C", color: "#90e0ef", text: "CRIO-ESCUDO (SUPERNOVA)" },
@@ -2000,7 +2004,8 @@ function spawnPowerup() {
   campaignPickupKills++;
   const earlySequence = ["triple", "bomb", "rapid", "laser", "spread", "life", "plasma", "missiles"];
   const available = POWERUP_POOL.filter(power => {
-    if (["cryo", "antigrav"].includes(power.id)) return state.level >= 5;
+    if (["cryo", "antigrav", "cryobomb"].includes(power.id)) return state.level >= 5;
+    if (power.id === "gravitybomb") return state.level >= 12;
     if (power.id === "faraday") return state.level >= 12;
     if (power.id === "antigamma") return state.level >= 24;
     return true;
@@ -2051,6 +2056,8 @@ function applyPowerup(p, pilot = player) {
   addFloatingText(p.x, p.y - 15, `P${pilot.pilotId} · ${p.text}`, p.color);
   if (p.id === "bomb") pilot.bombs = Math.min(5, pilot.bombs + 1);
   else if (p.id === "empbomb") pilot.empBombs = Math.min(3, (pilot.empBombs || 0) + 1);
+  else if (p.id === "cryobomb") pilot.cryoBombs = Math.min(3, (pilot.cryoBombs || 0) + 1);
+  else if (p.id === "gravitybomb") pilot.gravityBombs = Math.min(3, (pilot.gravityBombs || 0) + 1);
   else if (p.id === "life") pilot.lives = Math.min(6, pilot.lives + 1);
   else pilot.buffs[p.id] = 660;
   updateHUD();
@@ -2096,6 +2103,30 @@ function addFloatingText(x, y, text, color = "#ffffff") {
 
 function triggerSuperBomb(mode = "auto", pilot = player) {
   if (state.mode !== "PLAYING" || !pilot || pilot.lives <= 0) return;
+  if (mode === "cryo" || mode === "gravity") {
+    const stockKey = mode === "cryo" ? "cryoBombs" : "gravityBombs";
+    if ((pilot[stockKey] || 0) <= 0) return;
+    pilot[stockKey]--;
+    const tint = mode === "cryo" ? "#8be9ff" : "#c4a7ff";
+    const ratio = mode === "cryo" ? .55 : .68;
+    enemyBullets.forEach(b => { b.dead = true; });
+    enemies.forEach(e => {
+      if (e.dead) return;
+      if (mode === "gravity") { e.x += (W / 2 - e.x) * .16; e.y += (H * .42 - e.y) * .12; }
+      e.hp -= Math.max(1, Math.ceil(e.hp * ratio));
+      spawnImpactBurst(e.x, e.y, tint, IS_LOW_POWER ? 6 : 13);
+      if (e.hp <= 0) { e.dead = true; dropEnemyCredits(e); spawnExplosion(e.x, e.y, tint, IS_LOW_POWER ? 8 : 16); state.score += 95; advanceProgress(2); }
+    });
+    enemies = enemies.filter(e => !e.dead);
+    if (boss) { boss.hp -= Math.ceil(boss.maxHp * (mode === "cryo" ? .13 : .17)); addFloatingText(boss.x, boss.y, mode === "cryo" ? "¡COLAPSO CRIOGÉNICO!" : "¡POZO GRAVITACIONAL!", tint); if (boss.hp <= 0) defeatBoss(); }
+    asteroids.forEach(a => { if (mode === "gravity") { a.x += (W / 2 - a.x) * .12; a.y += (H * .45 - a.y) * .1; } spawnImpactBurst(a.x, a.y, tint, 5); });
+    state.flash = Math.max(state.flash, mode === "cryo" ? .28 : .36);
+    state.shake = Math.max(state.shake, mode === "cryo" ? 11 : 18);
+    SoundFX.play(mode === "cryo" ? "shieldHit" : "supernova");
+    addFloatingText(pilot.x, pilot.y - 42, mode === "cryo" ? "¡BOMBA CRIOGÉNICA!" : "¡BOMBA GRAVITACIONAL!", tint);
+    updateHUD();
+    return;
+  }
   if (mode === "cluster" || mode === "singularity") {
     const stockKey = mode === "cluster" ? "clusterBombs" : "singularityBombs";
     if ((pilot[stockKey] || 0) <= 0) return;
@@ -2465,8 +2496,8 @@ const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:f
 const keyboardInput={left:false,right:false};
 const keyboardInput2={left:false,right:false};
 const touchInput={left:false,right:false};
-const phonepad2State={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
-const phonepadState={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
+const phonepad2State={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
+const phonepadState={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
 function refreshHorizontalInput(){
   keys.Left=keyboardInput.left||touchInput.left||gamepadState.left||phonepadState.left;
   keys.Right=keyboardInput.right||touchInput.right||gamepadState.right||phonepadState.right;
@@ -2476,7 +2507,7 @@ function phonepadPublishStatus(){
   if(!channel||!player)return;
   const buffs={};
   ["triple","rapid","laser","plasma","spread","wingmen","missiles","shield"].forEach(id=>{if((player.buffs?.[id]||0)>0)buffs[id]=Math.ceil(player.buffs[id]/60);});
-  const snapshot={player:1,bombs:player.bombs||0,emp:player.empBombs||0,cluster:player.clusterBombs||0,singularity:player.singularityBombs||0,lives:player.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
+  const snapshot={player:1,bombs:player.bombs||0,emp:player.empBombs||0,cluster:player.clusterBombs||0,singularity:player.singularityBombs||0,cryo:player.cryoBombs||0,gravity:player.gravityBombs||0,lives:player.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
   const signature=JSON.stringify(snapshot);
   if(signature===phonepadState.lastStatus)return;
   phonepadState.lastStatus=signature;
@@ -2487,7 +2518,7 @@ function phonepad2PublishStatus(){
   if(!channel||!pilot)return;
   const buffs={};
   Object.keys(pilot.buffs||{}).forEach(id=>{if(pilot.buffs[id]>0)buffs[id]=Math.ceil(pilot.buffs[id]/60);});
-  const snapshot={player:2,bombs:pilot.bombs||0,emp:pilot.empBombs||0,cluster:pilot.clusterBombs||0,singularity:pilot.singularityBombs||0,lives:pilot.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
+  const snapshot={player:2,bombs:pilot.bombs||0,emp:pilot.empBombs||0,cluster:pilot.clusterBombs||0,singularity:pilot.singularityBombs||0,cryo:pilot.cryoBombs||0,gravity:pilot.gravityBombs||0,lives:pilot.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
   const signature=JSON.stringify(snapshot);
   if(signature===phonepad2State.lastStatus)return;
   phonepad2State.lastStatus=signature;
@@ -2498,7 +2529,7 @@ function phonepadStatus(message,connected=false){
   if(el){el.textContent=message;el.classList.toggle("connected",connected);}
 }
 function phonepadRelease(){
-  phonepadState.left=phonepadState.right=phonepadState.bomb=phonepadState.emp=phonepadState.cluster=phonepadState.singularity=phonepadState.pause=false;
+  phonepadState.left=phonepadState.right=phonepadState.bomb=phonepadState.emp=phonepadState.cluster=phonepadState.singularity=phonepadState.cryo=phonepadState.gravity=phonepadState.pause=false;
   refreshHorizontalInput();
 }
 async function startPhonepadPairing(){
@@ -2514,13 +2545,15 @@ async function startPhonepadPairing(){
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
         phonepadState.left=payload.l===true;phonepadState.right=payload.r===true;
-        const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,pause=payload.p===true;
+        const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,cryo=payload.y===true,gravity=payload.g===true,pause=payload.p===true;
         if(bomb&&!phonepadState.bomb)triggerSuperBomb("supernova");
         if(emp&&!phonepadState.emp)triggerSuperBomb("emp");
         if(cluster&&!phonepadState.cluster)triggerSuperBomb("cluster");
         if(singularity&&!phonepadState.singularity)triggerSuperBomb("singularity");
+        if(cryo&&!phonepadState.cryo)triggerSuperBomb("cryo");
+        if(gravity&&!phonepadState.gravity)triggerSuperBomb("gravity");
         if(pause&&!phonepadState.pause)togglePause();
-        phonepadState.bomb=bomb;phonepadState.emp=emp;phonepadState.cluster=cluster;phonepadState.singularity=singularity;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
+        phonepadState.bomb=bomb;phonepadState.emp=emp;phonepadState.cluster=cluster;phonepadState.singularity=singularity;phonepadState.cryo=cryo;phonepadState.gravity=gravity;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
         phonepadStatus("CELULAR CONECTADO",true);
       });
     phonepadState.client=client;phonepadState.channel=channel;phonepadState.code=code;phonepadState.lastAt=Date.now();
@@ -2549,13 +2582,15 @@ async function startPhonepad2Pairing(){
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
         phonepad2State.left=payload.l===true;phonepad2State.right=payload.r===true;
-        const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,pause=payload.p===true;
+        const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,cryo=payload.y===true,gravity=payload.g===true,pause=payload.p===true;
         if(bomb&&!phonepad2State.bomb)triggerSuperBomb("supernova",player2);
         if(emp&&!phonepad2State.emp)triggerSuperBomb("emp",player2);
         if(cluster&&!phonepad2State.cluster)triggerSuperBomb("cluster",player2);
         if(singularity&&!phonepad2State.singularity)triggerSuperBomb("singularity",player2);
+        if(cryo&&!phonepad2State.cryo)triggerSuperBomb("cryo",player2);
+        if(gravity&&!phonepad2State.gravity)triggerSuperBomb("gravity",player2);
         if(pause&&!phonepad2State.pause)togglePause();
-        phonepad2State.bomb=bomb;phonepad2State.emp=emp;phonepad2State.cluster=cluster;phonepad2State.singularity=singularity;phonepad2State.pause=pause;
+        phonepad2State.bomb=bomb;phonepad2State.emp=emp;phonepad2State.cluster=cluster;phonepad2State.singularity=singularity;phonepad2State.cryo=cryo;phonepad2State.gravity=gravity;phonepad2State.pause=pause;
         phonepad2State.lastAt=now;phonepad2State.connected=true;
         phonepadStatus("JUGADOR 2 CONECTADO",true);
       });
@@ -2576,7 +2611,7 @@ async function startPhonepad2Pairing(){
 }
 function pollPhonepad2Timeout(){
   if(phonepad2State.connected&&Date.now()-phonepad2State.lastAt>1800){
-    phonepad2State.connected=false;phonepad2State.left=phonepad2State.right=phonepad2State.bomb=phonepad2State.emp=phonepad2State.cluster=phonepad2State.singularity=phonepad2State.pause=false;
+    phonepad2State.connected=false;phonepad2State.left=phonepad2State.right=phonepad2State.bomb=phonepad2State.emp=phonepad2State.cluster=phonepad2State.singularity=phonepad2State.cryo=phonepad2State.gravity=phonepad2State.pause=false;
     phonepadStatus("JUGADOR 2 DESCONECTADO · REINTENTÁ EL QR",false);
   }
 }
