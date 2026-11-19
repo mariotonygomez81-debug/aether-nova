@@ -1,4 +1,4 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/+supabase/supabase-js@2.119.2/+esm";
 
 (() => {
   const config = window.AETHER_CLOUD_CONFIG;
