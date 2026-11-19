@@ -145,7 +145,8 @@ const SHIP_TYPES = {
 };
 
 const canvas = document.getElementById("gameCanvas");
-const IS_LOW_POWER = window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+const PLATFORM_RUNTIME = window.AETHER_PLATFORM || { platform: "desktop", tier: "medium", pixelRatio: 1.2, fps: 40, particles: 0.72 };
+const IS_LOW_POWER = PLATFORM_RUNTIME.tier === "low" || PLATFORM_RUNTIME.platform !== "desktop";
 const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
 let eraBackgroundCache = null;
 let lastEraBackgroundKey = "";
@@ -165,7 +166,7 @@ let DPR = 1;
 function resizeCanvas() {
   W = Math.max(320, window.innerWidth);
   H = Math.max(320, window.innerHeight);
-  DPR = Math.min(window.devicePixelRatio || 1, IS_LOW_POWER ? 1.25 : 1.65);
+  DPR = Math.min(window.devicePixelRatio || 1, PLATFORM_RUNTIME.pixelRatio || (IS_LOW_POWER ? 1.15 : 1.5));
   eraBackgroundCache = null;
   lastEraBackgroundKey = "";
   canvas.width = Math.round(W * DPR);
