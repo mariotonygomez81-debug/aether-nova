@@ -3872,6 +3872,8 @@ bindHold("btn-left", "Left");
 bindHold("btn-right", "Right");
 bindTap("btn-phonepad-pair", startPhonepadPairing);
 bindTap("btn-phonepad2-pair", startPhonepad2Pairing);
+bindTap("btn-local-coop",()=>{localCoopEnabled=!localCoopEnabled;const b=document.getElementById("btn-local-coop");if(b){b.classList.toggle("active",localCoopEnabled);b.textContent=localCoopEnabled?"COOPERATIVO ACTIVADO · 2 JUGADORES":"ACTIVAR COOPERATIVO LOCAL";}document.getElementById("phonepad2-launch")?.classList.toggle("hidden",!localCoopEnabled);document.getElementById("coop-hud")?.classList.toggle("hidden",!localCoopEnabled);});
+bindTap("btn-phonepad2-pair", startPhonepad2Pairing);
 bindTap("btn-phonepad-copy",()=>{if(phonepadState.code)navigator.clipboard?.writeText(new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/?code="+phonepadState.code).href).catch(()=>{});});
 
 window.addEventListener("keydown", (e) => {
@@ -3879,6 +3881,10 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "ArrowLeft" || e.code === "KeyA") keyboardInput.left = true;
   if (e.code === "ArrowRight" || e.code === "KeyD") keyboardInput.right = true;
   refreshHorizontalInput();
+  if (e.code === "KeyJ") keyboardInput2.left = true;
+  if (e.code === "KeyL") keyboardInput2.right = true;
+  if (e.code === "KeyU" && !e.repeat) triggerSuperBomb("supernova",player2);
+  if (e.code === "KeyI" && !e.repeat) triggerSuperBomb("emp",player2);
   if ((e.code === "KeyB" || e.code === "Space") && !e.repeat) triggerSuperBomb();
   if ((e.code === "KeyP" || (e.code === "Escape" && !document.fullscreenElement)) && !e.repeat) togglePause();
 });
@@ -3887,6 +3893,8 @@ window.addEventListener("keyup", (e) => {
   if (e.code === "ArrowLeft" || e.code === "KeyA") keyboardInput.left = false;
   if (e.code === "ArrowRight" || e.code === "KeyD") keyboardInput.right = false;
   refreshHorizontalInput();
+  if (e.code === "KeyJ") keyboardInput2.left = false;
+  if (e.code === "KeyL") keyboardInput2.right = false;
 });
 window.addEventListener("blur", () => { keyboardInput.left=keyboardInput.right=false;touchInput.left=touchInput.right=false;gamepadState.left=gamepadState.right=false;refreshHorizontalInput(); });
 document.addEventListener("visibilitychange", () => {
