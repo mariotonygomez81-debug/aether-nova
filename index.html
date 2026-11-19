@@ -239,6 +239,24 @@
           <div id="coop-room-status" class="coop-note">Esperando pilotos...</div>
           <div class="coop-room-actions"><button type="button" id="btn-coop-ready" class="secondary-btn">ESTOY LISTO</button><button type="button" id="btn-coop-start" class="primary-btn hidden">INICIAR MISIÓN</button><button type="button" id="btn-coop-leave" class="mini-btn">ABANDONAR SALA</button></div>
         </div>
+        <div class="coop-social-grid">
+          <section class="coop-social-card">
+            <span class="section-kicker">ESCUADRÓN SOCIAL</span>
+            <div id="squad-create-row" class="squad-create-row">
+              <input id="squad-name-input" type="text" maxlength="24" placeholder="Nombre del escuadrón">
+              <button type="button" id="btn-squad-create" class="mini-btn">CREAR</button>
+            </div>
+            <div id="squad-roster" class="squad-roster"><small>Inicia sesión para crear o unirte a un escuadrón.</small></div>
+            <button type="button" id="btn-squad-leave" class="mini-btn friend-muted hidden">ABANDONAR ESCUADRÓN</button>
+            <small id="squad-status" class="coop-note">Hasta 4 pilotos por escuadrón.</small>
+          </section>
+          <section class="coop-social-card">
+            <span class="section-kicker">INVITACIONES RECIBIDAS</span>
+            <div id="game-invite-list" class="friend-list"><small class="friend-empty">No hay invitaciones pendientes.</small></div>
+            <div id="squad-invite-list" class="friend-list"><small class="friend-empty">No hay invitaciones a escuadrones.</small></div>
+            <button type="button" id="btn-social-refresh" class="mini-btn">ACTUALIZAR INVITACIONES</button>
+          </section>
+        </div>
       </section>
 
       <section id="controller-panel" class="controller-panel">
