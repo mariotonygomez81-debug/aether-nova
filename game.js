@@ -3551,7 +3551,7 @@ async function cloudSignUp() {
     if (data.access_token) {
       cloudSetSession(data);
       cloudSetStatus("Cuenta online creada y conectada. Ya puedes participar en la clasificación.");
-      await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); await refreshOnlineRanking(); await loadGalacticEvents();
+      await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); await refreshOnlineRanking(); await loadGalacticEvents(); await uploadCloudSave();
     } else cloudSetStatus("Cuenta creada. Revisa tu correo para confirmar la dirección y luego inicia sesión.");
   } catch (error) { cloudSetStatus(error.message, true); }
   finally { cloudBusy = false; renderCloudAccount(); }
@@ -3779,57 +3779,105 @@ async function cloudPostProfile() {
 function buildCloudSave() {
   const key = activeProfile ? activeProfile.key : "guest";
   return {
-    version: 1,
-    commercialData,
+    version: 2,
+    commercialData: JSON.parse(JSON.stringify(commercialData)),
     runSave: readStoredJSON(`aether_save_${key}`, null),
     pilotName: activeProfile?.name || "Comandante",
     exportedAt: new Date().toISOString()
   };
 }
+function mergeCloudSaveData(localSave, remoteSave) {
+  const local = localSave && typeof localSave === "object" ? localSave : {};
+  const remote = remoteSave && typeof remoteSave === "object" ? remoteSave : {};
+  const lc = local.commercialData && typeof local.commercialData === "object" ? local.commercialData : {};
+  const rc = remote.commercialData && typeof remote.commercialData === "object" ? remote.commercialData : {};
+  const maxFields = ["credits","totalRuns","totalScore","bestSector","bestScore","survivalBestSector","survivalBestScore","bossDefeats"];
+  const mergedCommercial = { ...rc, ...lc };
+  for (const field of maxFields) mergedCommercial[field] = Math.max(Number(lc[field]) || 0, Number(rc[field]) || 0);
+  const upgradeIds = new Set([...Object.keys(rc.upgrades || {}), ...Object.keys(lc.upgrades || {})]);
+  mergedCommercial.upgrades = {};
+  for (const id of upgradeIds) mergedCommercial.upgrades[id] = Math.max(Number(lc.upgrades?.[id]) || 0, Number(rc.upgrades?.[id]) || 0);
+  mergedCommercial.achievements = [...new Set([...(rc.achievements || []), ...(lc.achievements || [])])];
+  mergedCommercial.bossTrophies = [...new Set([...(rc.bossTrophies || []), ...(lc.bossTrophies || [])])].slice(-20);
+  mergedCommercial.missions = { ...(rc.missions || {}), ...(lc.missions || {}) };
+  if (!Object.prototype.hasOwnProperty.call(SHIP_TYPES, mergedCommercial.selectedShip)) mergedCommercial.selectedShip = "valkyrie";
+  const lr = local.runSave && typeof local.runSave === "object" ? local.runSave : null;
+  const rr = remote.runSave && typeof remote.runSave === "object" ? remote.runSave : null;
+  const rank = r => [Number(r?.level) || 0, Number(r?.score) || 0, Number(r?.updatedAt) || 0];
+  const better = (a,b) => {
+    const x=rank(a), y=rank(b);
+    for (let i=0;i<x.length;i++) { if (x[i]!==y[i]) return x[i]>y[i]?a:b; }
+    return a || b || null;
+  };
+  return {
+    version: 2, commercialData: mergedCommercial, runSave: better(lr,rr),
+    pilotName: local.pilotName || remote.pilotName || activeProfile?.name || "Comandante",
+    exportedAt: new Date().toISOString()
+  };
+}
+function backupCloudMigration(localSnapshot, remoteSnapshot) {
+  const key = "aether_migration_backup_v2_" + String(cloudSession?.user?.id || "unknown");
+  const backup = { savedAt: new Date().toISOString(), local: localSnapshot, cloud: remoteSnapshot || null };
+  try { localStorage.setItem(key, JSON.stringify(backup)); return true; }
+  catch (error) {
+    cloudSetStatus("No hay espacio para crear una copia de seguridad local. No se modificó la nube ni tu partida.", true);
+    return false;
+  }
+}
 async function uploadCloudSave() {
-  if (!cloudSession?.user?.id) return cloudSetStatus("Inicia sesión online para subir tu progreso.", true);
+  if (!cloudSession?.user?.id) return cloudSetStatus("Inicia sesión online para sincronizar tu progreso.", true);
   try {
+    const key = activeProfile ? activeProfile.key : "guest";
+    const localSnapshot = buildCloudSave();
+    const rows = await cloudFetch(`pilot_saves?select=save_data,updated_at&user_id=eq.${encodeURIComponent(cloudSession.user.id)}&limit=1`);
+    const remoteSnapshot = rows?.[0]?.save_data || null;
+    if (remoteSnapshot && (remoteSnapshot.version !== 1 && remoteSnapshot.version !== 2 ||
+        !remoteSnapshot.commercialData || typeof remoteSnapshot.commercialData !== "object" || Array.isArray(remoteSnapshot.commercialData))) {
+      return cloudSetStatus("La copia de nube tiene un formato desconocido. No se sobrescribió.", true);
+    }
+    if (!backupCloudMigration(localSnapshot, remoteSnapshot)) return;
+    const merged = remoteSnapshot ? mergeCloudSaveData(localSnapshot, remoteSnapshot) : localSnapshot;
+    commercialData = { ...commercialData, ...merged.commercialData };
+    state.selectedShip = Object.prototype.hasOwnProperty.call(SHIP_TYPES, commercialData.selectedShip) ? commercialData.selectedShip : "valkyrie";
+    state.difficulty = ["easy", "normal", "hard"].includes(commercialData.difficulty) ? commercialData.difficulty : "normal";
+    localStorage.setItem(COMMERCIAL_KEY, JSON.stringify(commercialData));
+    if (merged.runSave) localStorage.setItem(`aether_save_${key}`, JSON.stringify(merged.runSave));
     await cloudFetch("pilot_saves?on_conflict=user_id", {
       method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: activeProfile?.name || "Comandante", save_data: buildCloudSave(), updated_at: new Date().toISOString() })
+      body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: activeProfile?.name || "Comandante", save_data: merged, updated_at: new Date().toISOString() })
     });
+    checkSavedRun(); renderHangar(); updateCommercialUI();
     armCloudProgressSync();
-    cloudSetStatus("Progreso subido a la nube correctamente. La sincronización automática quedó activada para esta sesión.");
+    cloudSetStatus(remoteSnapshot
+      ? "Sincronización completada: se combinaron los avances y se guardó una copia local de seguridad."
+      : "Tu progreso local se migró a la nube. Se conservó una copia de seguridad en este dispositivo.");
   } catch (error) { cloudSetStatus(error.message, true); }
 }
 async function restoreCloudSave() {
   if (!cloudSession?.user?.id) return cloudSetStatus("Inicia sesión online para recuperar tu progreso.", true);
-  if (!confirm("¿Recuperar el progreso de la nube? Las mejoras y créditos locales actuales serán reemplazados por la copia online.")) return;
+  if (!confirm("¿Recuperar la copia de nube? Antes se guardará una copia local de seguridad de ambos progresos.")) return;
   try {
     const rows = await cloudFetch(`pilot_saves?select=save_data,updated_at&user_id=eq.${encodeURIComponent(cloudSession.user.id)}&limit=1`);
     const cloud = rows?.[0]?.save_data;
     if (!cloud) return cloudSetStatus("No hay una copia online para esta cuenta.", true);
-    if (cloud.version !== 1 || !cloud.commercialData || typeof cloud.commercialData !== "object" || Array.isArray(cloud.commercialData)) {
+    if ((cloud.version !== 1 && cloud.version !== 2) || !cloud.commercialData || typeof cloud.commercialData !== "object" || Array.isArray(cloud.commercialData)) {
       return cloudSetStatus("La copia online no tiene un formato compatible. No se modificó tu progreso local.", true);
     }
     if (cloud.runSave && (typeof cloud.runSave !== "object" || Array.isArray(cloud.runSave) || !Number.isFinite(Number(cloud.runSave.level)) || Number(cloud.runSave.level) < 1 || Number(cloud.runSave.level) > 9999)) {
       return cloudSetStatus("La partida guardada en la nube está dañada o no es compatible. Tu progreso local permanece intacto.", true);
     }
-    if (cloud.commercialData && typeof cloud.commercialData === "object") {
-      const incoming = cloud.commercialData;
-      commercialData = { ...commercialData, ...incoming,
-        credits: Math.max(0, Number(incoming.credits) || 0),
-        upgrades: { ...commercialData.upgrades, ...(incoming.upgrades || {}) },
-        achievements: Array.isArray(incoming.achievements) ? incoming.achievements : commercialData.achievements,
-        missions: incoming.missions && typeof incoming.missions === "object" && !Array.isArray(incoming.missions) ? incoming.missions : commercialData.missions
-      };
-      state.selectedShip = Object.prototype.hasOwnProperty.call(SHIP_TYPES, commercialData.selectedShip) ? commercialData.selectedShip : "valkyrie";
-      state.difficulty = ["easy", "normal", "hard"].includes(commercialData.difficulty) ? commercialData.difficulty : "normal";
-      ensureMissionState();
-      saveCommercialData();
-    }
+    if (!backupCloudMigration(buildCloudSave(), cloud)) return;
+    commercialData = { ...commercialData, ...cloud.commercialData };
+    state.selectedShip = Object.prototype.hasOwnProperty.call(SHIP_TYPES, commercialData.selectedShip) ? commercialData.selectedShip : "valkyrie";
+    state.difficulty = ["easy", "normal", "hard"].includes(commercialData.difficulty) ? commercialData.difficulty : "normal";
+    ensureMissionState();
+    saveCommercialData();
     if (cloud.runSave) {
       const key = activeProfile ? activeProfile.key : "guest";
       localStorage.setItem(`aether_save_${key}`, JSON.stringify(cloud.runSave));
     }
-    checkSavedRun(); renderHangar();
-    armCloudProgressSync();
-    cloudSetStatus(`Progreso recuperado. Copia del ${new Date(rows[0].updated_at).toLocaleString("es-AR")}.`);
+    checkSavedRun(); renderHangar(); armCloudProgressSync();
+    cloudSetStatus(`Progreso recuperado. Copia del ${new Date(rows[0].updated_at).toLocaleString("es-AR")}. Se guardó una copia de seguridad local.`);
   } catch (error) { cloudSetStatus(error.message, true); }
 }
 function updateCloudScoreStatus(message, isError = false) {
