@@ -2496,18 +2496,19 @@ const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:f
 const keyboardInput={left:false,right:false};
 const keyboardInput2={left:false,right:false};
 const touchInput={left:false,right:false};
-const phonepad2State={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,lastStatusAt:0,channel:null,client:null,code:"",lastStatus:""};
-const phonepadState={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,lastStatusAt:0,channel:null,client:null,code:"",lastStatus:""};
+const phonepad2State={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,lastStatusAt:0,channel:null,client:null,code:"",lastStatus:"",selectedShip:"viper"};
+const phonepadState={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,lastStatusAt:0,channel:null,client:null,code:"",lastStatus:"",selectedShip:"valkyrie"};
 function refreshHorizontalInput(){
   keys.Left=keyboardInput.left||touchInput.left||gamepadState.left||phonepadState.left;
   keys.Right=keyboardInput.right||touchInput.right||gamepadState.right||phonepadState.right;
 }
+function applyPhonepadShipChoice(pilot,typeKey){if(!pilot||!SHIP_TYPES[typeKey])return false;const spec=SHIP_TYPES[typeKey],upgrades=commercialData.upgrades||{};pilot.type=typeKey;pilot.speed=spec.speed*(1+(upgrades.reactor||0)*.05);pilot.baseFireRate=Math.max(4,spec.fireRate*(1-(upgrades.cannon||0)*.045)*(typeKey==="valkyrie"?.94:1));pilot.shipDamageBonus=Number(spec.damage)||1;if(pilot.pilotId===2){pilot.color="#ffad45";pilot.accent="#ff5a36";phonepad2State.selectedShip=typeKey;}else{pilot.color=spec.color;pilot.accent=spec.accent;phonepadState.selectedShip=typeKey;state.selectedShip=typeKey;}return true;}
 function phonepadPublishStatus(){
   const channel=phonepadState.channel;
   if(!channel||!player)return;
   const buffs={};
   ["triple","rapid","laser","plasma","spread","wingmen","missiles","shield"].forEach(id=>{if((player.buffs?.[id]||0)>0)buffs[id]=Math.ceil(player.buffs[id]/60);});
-  const snapshot={player:1,bombs:player.bombs||0,emp:player.empBombs||0,cluster:player.clusterBombs||0,singularity:player.singularityBombs||0,cryo:player.cryoBombs||0,gravity:player.gravityBombs||0,lives:player.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
+  const snapshot={player:1,selectedShip:player.type||"valkyrie",bombs:player.bombs||0,emp:player.empBombs||0,cluster:player.clusterBombs||0,singularity:player.singularityBombs||0,cryo:player.cryoBombs||0,gravity:player.gravityBombs||0,lives:player.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
   const signature=JSON.stringify(snapshot);
   if(signature===phonepadState.lastStatus&&Date.now()-phonepadState.lastStatusAt<1000)return;
   phonepadState.lastStatus=signature;phonepadState.lastStatusAt=Date.now();
@@ -2518,7 +2519,7 @@ function phonepad2PublishStatus(){
   if(!channel||!pilot)return;
   const buffs={};
   Object.keys(pilot.buffs||{}).forEach(id=>{if(pilot.buffs[id]>0)buffs[id]=Math.ceil(pilot.buffs[id]/60);});
-  const snapshot={player:2,bombs:pilot.bombs||0,emp:pilot.empBombs||0,cluster:pilot.clusterBombs||0,singularity:pilot.singularityBombs||0,cryo:pilot.cryoBombs||0,gravity:pilot.gravityBombs||0,lives:pilot.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
+  const snapshot={player:2,selectedShip:pilot.type||"viper",bombs:pilot.bombs||0,emp:pilot.empBombs||0,cluster:pilot.clusterBombs||0,singularity:pilot.singularityBombs||0,cryo:pilot.cryoBombs||0,gravity:pilot.gravityBombs||0,lives:pilot.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
   const signature=JSON.stringify(snapshot);
   if(signature===phonepad2State.lastStatus&&Date.now()-phonepad2State.lastStatusAt<1000)return;
   phonepad2State.lastStatus=signature;phonepad2State.lastStatusAt=Date.now();
@@ -2544,7 +2545,7 @@ async function startPhonepadPairing(){
       .on("broadcast",{event:"input"},({payload})=>{
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
-        phonepadState.left=payload.l===true;phonepadState.right=payload.r===true;
+        phonepadState.left=payload.l===true;phonepadState.right=payload.r===true;if(payload.ship&&SHIP_TYPES[payload.ship]&&player&&player.type!==payload.ship)applyPhonepadShipChoice(player,payload.ship);
         const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,cryo=payload.y===true,gravity=payload.g===true,pause=payload.p===true;
         if(bomb&&!phonepadState.bomb)triggerSuperBomb("supernova");
         if(emp&&!phonepadState.emp)triggerSuperBomb("emp");
@@ -2584,7 +2585,7 @@ async function startPhonepad2Pairing(){
       .on("broadcast",{event:"input"},({payload})=>{
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
-        phonepad2State.left=payload.l===true;phonepad2State.right=payload.r===true;
+        phonepad2State.left=payload.l===true;phonepad2State.right=payload.r===true;if(payload.ship&&SHIP_TYPES[payload.ship]&&player2&&player2.type!==payload.ship)applyPhonepadShipChoice(player2,payload.ship);
         const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,cryo=payload.y===true,gravity=payload.g===true,pause=payload.p===true;
         if(bomb&&!phonepad2State.bomb)triggerSuperBomb("supernova",player2);
         if(emp&&!phonepad2State.emp)triggerSuperBomb("emp",player2);
@@ -2742,7 +2743,7 @@ function updateAndDraw() {
       selectedShip: state.selectedShip, type: player.type, color: player.color, accent: player.accent,
       invulnerable: player.invuln > 0 && Math.floor(player.invuln / 5) % 2 === 0,
       shield: player.buffs.shield > 0, playing: state.mode === "PLAYING",
-      coopPlayer2: player2 && player2.lives > 0 ? {x:player2.x,y:player2.y,tilt:player2.tilt,color:player2.color,invulnerable:player2.invuln>0&&Math.floor(player2.invuln/5)%2===0,shield:player2.buffs.shield>0} : null,
+      coopPlayer2: player2 && player2.lives > 0 ? {x:player2.x,y:player2.y,tilt:player2.tilt,color:player2.color,selectedShip:player2.type,invulnerable:player2.invuln>0&&Math.floor(player2.invuln/5)%2===0,shield:player2.buffs.shield>0} : null,
       enemyShots: enemyBullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "enemy-shot-" + Math.random().toString(36).slice(2)),
         x: b.x, y: b.y, vx: b.vx, vy: b.vy, color: b.color || "#ff4d6d"
@@ -3200,7 +3201,8 @@ function startNewGame(savedData = null) {
     if (state.runMode === "daily") { player.lives = 2; player.bombs = 0; }
   }
 
-  player2 = localCoopEnabled && state.runMode !== "daily" ? new Player("viper", 2) : null;
+  player2 = localCoopEnabled && state.runMode !== "daily" ? new Player(phonepad2State.selectedShip||"viper", 2) : null;
+  if(player2){player.x=W*.36;player2.x=W*.64;applyPhonepadShipChoice(player,phonepadState.selectedShip||state.selectedShip);applyPhonepadShipChoice(player2,phonepad2State.selectedShip||"viper");}
   if(player2){player2.bombs=1;addFloatingText(W*0.72,H*0.72,"PILOTO 2 · LISTO PARA EL COMBATE","#ffb347");}
   phonepad2State.lastStatus="";
   state.levelProgress = savedData ? Math.max(0, Math.min(Number(savedData.progress) || 0, 14 + Math.floor(state.level * 1.4) - 1)) : 0;
