@@ -3549,7 +3549,7 @@ async function cloudSignUp() {
     if (data.access_token) {
       cloudSetSession(data);
       cloudSetStatus("Cuenta online creada y conectada. Ya puedes participar en la clasificación.");
-      await cloudPostProfile(); await refreshOnlineRanking(); await loadGalacticEvents();
+      await cloudPostProfile(); await cloudLoadPilotIdentity(); await refreshOnlineRanking(); await loadGalacticEvents();
     } else cloudSetStatus("Cuenta creada. Revisa tu correo para confirmar la dirección y luego inicia sesión.");
   } catch (error) { cloudSetStatus(error.message, true); }
   finally { cloudBusy = false; renderCloudAccount(); }
@@ -3568,6 +3568,64 @@ async function cloudSignIn() {
   } catch (error) { cloudSetStatus(error.message, true); }
   finally { cloudBusy = false; renderCloudAccount(); }
 }
+
+async function cloudLoadPilotIdentity() {
+  const panel = document.getElementById("pilot-identity-panel");
+  if (!cloudSession?.user?.id || !panel) return;
+  try {
+    const rows = await cloudFetch(`pilot_profiles?select=public_pilot_id,is_discoverable,allow_friend_requests,show_presence,allow_invites&user_id=eq.${encodeURIComponent(cloudSession.user.id)}&limit=1`);
+    const profile = rows?.[0];
+    if (!profile) throw new Error("No se encontró el perfil online del piloto.");
+    const id = document.getElementById("pilot-public-id");
+    if (id) id.textContent = profile.public_pilot_id || "PENDIENTE";
+    for (const key of ["is_discoverable","allow_friend_requests","show_presence","allow_invites"]) {
+      const control = document.getElementById("pilot-pref-" + key);
+      if (control) control.checked = profile[key] !== false;
+    }
+    const status = document.getElementById("pilot-identity-status");
+    if (status) status.textContent = "Identidad NOVA sincronizada.";
+    panel.classList.remove("hidden");
+  } catch (error) {
+    const status = document.getElementById("pilot-identity-status");
+    if (status) status.textContent = error.message || "No se pudo cargar la identidad.";
+  }
+}
+async function cloudSavePilotPrivacy() {
+  if (!cloudSession?.user?.id) return;
+  const keys = ["is_discoverable","allow_friend_requests","show_presence","allow_invites"];
+  const payload = {};
+  for (const key of keys) payload[key] = !!document.getElementById("pilot-pref-" + key)?.checked;
+  const controls = keys.map(key => document.getElementById("pilot-pref-" + key)).filter(Boolean);
+  const status = document.getElementById("pilot-identity-status");
+  controls.forEach(el => el.disabled = true);
+  if (status) status.textContent = "Guardando preferencias…";
+  try {
+    await cloudFetch(`pilot_profiles?user_id=eq.${encodeURIComponent(cloudSession.user.id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(payload)
+    });
+    if (status) status.textContent = "Privacidad actualizada correctamente.";
+  } catch (error) {
+    if (status) status.textContent = error.message || "No se pudieron guardar los cambios.";
+    await cloudLoadPilotIdentity();
+  } finally {
+    controls.forEach(el => el.disabled = false);
+  }
+}
+async function copyPilotPublicId() {
+  const value = document.getElementById("pilot-public-id")?.textContent?.trim();
+  if (!value || value === "PENDIENTE") return;
+  try {
+    await navigator.clipboard.writeText(value);
+    const status = document.getElementById("pilot-identity-status");
+    if (status) status.textContent = "ID copiado: " + value;
+  } catch (_) {
+    const status = document.getElementById("pilot-identity-status");
+    if (status) status.textContent = "Tu ID público es " + value;
+  }
+}
+
 async function cloudPostProfile() {
   if (!cloudSession?.user?.id) return;
   const pilotName = activeProfile?.name || cloudSession.user.user_metadata?.pilot_name || "Comandante";
@@ -4063,6 +4121,10 @@ bindTap("btn-login", loginWithPin);
 document.getElementById("pilot-cosmetic")?.addEventListener("change", event => setPilotCosmetic(event.target.value));
 renderCosmetics();
 bindTap("btn-cloud-signup", cloudSignUp);
+bindTap("btn-pilot-id-copy", copyPilotPublicId);
+for (const key of ["is_discoverable","allow_friend_requests","show_presence","allow_invites"]) {
+  document.getElementById("pilot-pref-" + key)?.addEventListener("change", cloudSavePilotPrivacy);
+}
 bindTap("btn-cloud-login", cloudSignIn);
 bindTap("btn-cloud-upload", uploadCloudSave);
 bindTap("btn-cloud-restore", restoreCloudSave);
