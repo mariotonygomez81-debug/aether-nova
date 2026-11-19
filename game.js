@@ -4473,7 +4473,7 @@ async function coopRefreshSocialInvites(){
       roster?.append(socialNode("strong","squad-name",members[0].squad_name));
       for(const member of members){
         const item=socialNode("div","squad-member-row");
-        item.append(socialNode("span","",member.pilot_name||"Piloto"),socialNode("small","",member.public_pilot_id||"")+"");
+        item.append(socialNode("span","",member.pilot_name||"Piloto"),socialNode("small","",member.public_pilot_id||""));
         const role=socialNode("small","",member.role==="leader"?"LÍDER":member.role==="officer"?"OFICIAL":"PILOTO");
         item.append(role);roster?.append(item);
       }
