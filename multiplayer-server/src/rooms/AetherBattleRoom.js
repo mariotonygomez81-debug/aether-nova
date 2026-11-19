@@ -25,6 +25,7 @@ export class AetherBattleRoom extends Room {
 
   async onCreate(options) {
     if (!options.coopRoomId) throw new ServerError(400, "Falta el identificador de la sala cooperativa.");
+    if (!/^[0-9a-f-]{36}$/i.test(String(options.coopRoomId))) throw new ServerError(400, "Identificador de sala inválido.");
     this.coopRoomId = String(options.coopRoomId);
     this.setPrivate(true);
     this.setState(new AetherBattleState());
@@ -68,6 +69,7 @@ export class AetherBattleRoom extends Room {
     ]);
     if (!members?.length || !rooms?.length) throw new ServerError(403, "Tu cuenta no pertenece a esta sala.");
     if (rooms[0].status !== "playing") throw new ServerError(409, "La sala todavía no inició la misión.");
+    this.maxClients = clamp(Number(rooms[0].max_players) || 2, 2, 4);
     if (!SHIP_IDS.has(members[0].ship_id)) throw new ServerError(400, "La nave elegida no es válida.");
 
     const pilot = new PilotState();
