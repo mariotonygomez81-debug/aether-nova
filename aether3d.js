@@ -4,7 +4,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 // La lógica y las colisiones siguen ejecutándose en game.js.
 const canvas = document.getElementById('aether3dCanvas');
 const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.15));
+renderer.setPixelRatio(window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, 1.15));
 renderer.shadowMap.enabled = false;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 0);
@@ -833,12 +833,12 @@ function syncPhenomena(items,width,height,now){
 }
 let last = performance.now();
 let lastRender = 0;
-const renderInterval = 1000 / 30; // 30 FPS estables para una respuesta visual más fluida sin saturar equipos modestos.
+const renderInterval = 1000 / (window.AETHER_PLATFORM?.fps || 40); // Límite adaptativo por dispositivo.
 let targetX = 0, targetY = 0;
 function resize() {
   const w=window.innerWidth, h=window.innerHeight; camera.aspect=w/h; camera.updateProjectionMatrix();
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.15));
-renderer.shadowMap.enabled = false; renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.15)); renderer.setSize(w,h);
+  renderer.setPixelRatio(window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, 1.15));
+  renderer.shadowMap.enabled = false; renderer.setSize(w,h);
 }
 window.addEventListener('resize', resize, { passive: true });
 function animate(now) {
