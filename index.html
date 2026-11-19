@@ -35,6 +35,7 @@
     <div class="hud-center">
       <div id="ui-sector-name">ÓRBITA DE EXODUS</div>
       <div class="progress-bar"><div id="ui-progress"></div></div>
+      <div id="coop-hud" class="coop-hud hidden" aria-live="polite"></div>
       <div id="boss-bar-wrap" class="hidden">
         <span id="boss-name">ACORAZADO OMEGA</span>
         <div class="boss-bar"><div id="boss-hp"></div></div>
@@ -217,8 +218,11 @@
         <div class="controller-top"><div><span class="section-kicker">SISTEMA DE CONTROL UNIVERSAL</span><h3>JUGÁ CON TU JOYSTICK</h3><p>USB · Bluetooth · Wi-Fi* · mandos compatibles</p></div><span id="controller-status" class="controller-status"><i></i> BUSCANDO MANDO</span></div>
         <div class="controller-bottom"><div class="controller-instructions"><b>◀ ▶</b><span>Mover nave</span></div><div class="controller-instructions"><b>A / ✕</b><span>Superbomba</span></div><div class="controller-instructions"><b>START / ☰</b><span>Pausa</span></div><div class="controller-instructions"><b>A / ✕</b><span>Seleccionar en menús</span></div></div>
         <p class="controller-footnote">Conectá el mando al dispositivo antes de abrir el juego y presioná cualquier botón. *Los mandos Wi-Fi funcionan si el sistema los presenta al navegador como un Gamepad estándar. En Smart TV, abrí AETHER NOVA desde un navegador compatible o una consola / TV Box.</p>
-        <div class="phonepad-launch"><div><b>¿NO TENÉS JOYSTICK?</b><span>Usá tu celular como mando inalámbrico.</span></div><button type="button" id="btn-phonepad-pair" class="primary-btn">VINCULAR CELULAR</button></div>
+        <div class="phonepad-launch"><div><b>¿NO TENÉS JOYSTICK?</b><span>Usá tu celular como mando inalámbrico.</span></div><button type="button" id="btn-phonepad-pair" class="primary-btn">VINCULAR JUGADOR 1</button></div>
+        <div class="phonepad-launch coop-local-launch"><div><b>✦ MODO COOPERATIVO LOCAL</b><span>Dos naves, dos celulares o teclado compartido, una misma misión.</span></div><button type="button" id="btn-local-coop" class="secondary-btn">ACTIVAR COOPERATIVO LOCAL</button></div>
+        <div id="phonepad2-launch" class="phonepad-launch hidden"><div><b>JUGADOR 2 · NAVE DE ESCOLTA</b><span>Vinculá un segundo celular para controlar la nave naranja.</span></div><button type="button" id="btn-phonepad2-pair" class="primary-btn">VINCULAR JUGADOR 2</button></div>
         <div id="phonepad-pairing" class="phonepad-pairing hidden"><div class="phonepad-qr" id="phonepad-qr"></div><div class="phonepad-details"><small>ESCANEÁ EL QR O ABRÍ EL ENLACE</small><strong id="phonepad-code">--------</strong><a id="phonepad-link" href="#" target="_blank" rel="noopener">Abrir mando en celular</a><button type="button" id="btn-phonepad-copy" class="mini-btn">COPIAR ENLACE</button><span id="phonepad-status">ESPERANDO EL CELULAR…</span></div></div>
+        <div id="phonepad2-pairing" class="phonepad-pairing hidden"><div class="phonepad-qr" id="phonepad2-qr"></div><div class="phonepad-details"><small>QR EXCLUSIVO · JUGADOR 2</small><strong id="phonepad2-code">--------</strong><a id="phonepad2-link" href="#" target="_blank" rel="noopener">Abrir mando del jugador 2</a><span>Controles y artefactos independientes</span></div></div>
       </section>
 
       <div class="menu-tools">
