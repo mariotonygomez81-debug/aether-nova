@@ -133,6 +133,11 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
       client = createClient(config.supabaseUrl,config.anonKey,{
         auth:{autoRefreshToken:false,persistSession:false,detectSessionInUrl:false}
       });
+      const authResult = await client.auth.setSession({
+        access_token:session.access_token,
+        refresh_token:session.refresh_token
+      });
+      if (authResult.error) throw authResult.error;
       await client.realtime.setAuth(session.access_token);
       const profile = await readProfile(session);
       await startOwnPresence(session,profile);
