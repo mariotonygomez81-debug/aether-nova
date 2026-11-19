@@ -2496,8 +2496,8 @@ const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:f
 const keyboardInput={left:false,right:false};
 const keyboardInput2={left:false,right:false};
 const touchInput={left:false,right:false};
-const phonepad2State={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
-const phonepadState={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
+const phonepad2State={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,lastStatusAt:0,channel:null,client:null,code:"",lastStatus:""};
+const phonepadState={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,cryo:false,gravity:false,pause:false,connected:false,lastAt:0,lastStatusAt:0,channel:null,client:null,code:"",lastStatus:""};
 function refreshHorizontalInput(){
   keys.Left=keyboardInput.left||touchInput.left||gamepadState.left||phonepadState.left;
   keys.Right=keyboardInput.right||touchInput.right||gamepadState.right||phonepadState.right;
@@ -2509,8 +2509,8 @@ function phonepadPublishStatus(){
   ["triple","rapid","laser","plasma","spread","wingmen","missiles","shield"].forEach(id=>{if((player.buffs?.[id]||0)>0)buffs[id]=Math.ceil(player.buffs[id]/60);});
   const snapshot={player:1,bombs:player.bombs||0,emp:player.empBombs||0,cluster:player.clusterBombs||0,singularity:player.singularityBombs||0,cryo:player.cryoBombs||0,gravity:player.gravityBombs||0,lives:player.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
   const signature=JSON.stringify(snapshot);
-  if(signature===phonepadState.lastStatus)return;
-  phonepadState.lastStatus=signature;
+  if(signature===phonepadState.lastStatus&&Date.now()-phonepadState.lastStatusAt<1000)return;
+  phonepadState.lastStatus=signature;phonepadState.lastStatusAt=Date.now();
   channel.send({type:"broadcast",event:"game-status",payload:snapshot}).catch(()=>{});
 }
 function phonepad2PublishStatus(){
@@ -2520,8 +2520,8 @@ function phonepad2PublishStatus(){
   Object.keys(pilot.buffs||{}).forEach(id=>{if(pilot.buffs[id]>0)buffs[id]=Math.ceil(pilot.buffs[id]/60);});
   const snapshot={player:2,bombs:pilot.bombs||0,emp:pilot.empBombs||0,cluster:pilot.clusterBombs||0,singularity:pilot.singularityBombs||0,cryo:pilot.cryoBombs||0,gravity:pilot.gravityBombs||0,lives:pilot.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
   const signature=JSON.stringify(snapshot);
-  if(signature===phonepad2State.lastStatus)return;
-  phonepad2State.lastStatus=signature;
+  if(signature===phonepad2State.lastStatus&&Date.now()-phonepad2State.lastStatusAt<1000)return;
+  phonepad2State.lastStatus=signature;phonepad2State.lastStatusAt=Date.now();
   channel.send({type:"broadcast",event:"game-status",payload:snapshot}).catch(()=>{});
 }
 function phonepadStatus(message,connected=false){
@@ -2554,6 +2554,9 @@ async function startPhonepadPairing(){
         if(gravity&&!phonepadState.gravity)triggerSuperBomb("gravity");
         if(pause&&!phonepadState.pause)togglePause();
         phonepadState.bomb=bomb;phonepadState.emp=emp;phonepadState.cluster=cluster;phonepadState.singularity=singularity;phonepadState.cryo=cryo;phonepadState.gravity=gravity;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
+        const action=bomb&&!phonepadState._b?"SUPERNOVA":emp&&!phonepadState._e?"EMP":cluster&&!phonepadState._c?"RACIMO":singularity&&!phonepadState._s?"SINGULARIDAD":cryo&&!phonepadState._y?"CRIO":gravity&&!phonepadState._g?"GRAVEDAD":pause&&!phonepadState._p?"PAUSA":null;
+        phonepadState._b=bomb;phonepadState._e=emp;phonepadState._c=cluster;phonepadState._s=singularity;phonepadState._y=cryo;phonepadState._g=gravity;phonepadState._p=pause;
+        if(action)channel.send({type:"broadcast",event:"command-ack",payload:{action,player:1,at:now}}).catch(()=>{});
         phonepadStatus("CELULAR CONECTADO",true);
       });
     phonepadState.client=client;phonepadState.channel=channel;phonepadState.code=code;phonepadState.lastAt=Date.now();
@@ -2592,6 +2595,9 @@ async function startPhonepad2Pairing(){
         if(pause&&!phonepad2State.pause)togglePause();
         phonepad2State.bomb=bomb;phonepad2State.emp=emp;phonepad2State.cluster=cluster;phonepad2State.singularity=singularity;phonepad2State.cryo=cryo;phonepad2State.gravity=gravity;phonepad2State.pause=pause;
         phonepad2State.lastAt=now;phonepad2State.connected=true;
+        const action=bomb&&!phonepad2State._b?"SUPERNOVA":emp&&!phonepad2State._e?"EMP":cluster&&!phonepad2State._c?"RACIMO":singularity&&!phonepad2State._s?"SINGULARIDAD":cryo&&!phonepad2State._y?"CRIO":gravity&&!phonepad2State._g?"GRAVEDAD":pause&&!phonepad2State._p?"PAUSA":null;
+        phonepad2State._b=bomb;phonepad2State._e=emp;phonepad2State._c=cluster;phonepad2State._s=singularity;phonepad2State._y=cryo;phonepad2State._g=gravity;phonepad2State._p=pause;
+        if(action)channel.send({type:"broadcast",event:"command-ack",payload:{action,player:2,at:now}}).catch(()=>{});
         phonepadStatus("JUGADOR 2 CONECTADO",true);
       });
     phonepad2State.client=client;phonepad2State.channel=channel;phonepad2State.code=code;phonepad2State.lastAt=Date.now();
@@ -3942,6 +3948,11 @@ function bindHold(id, dirKey) {
 
 bindHold("btn-left", "Left");
 bindHold("btn-right", "Right");
+bindTap("btn-emp",()=>triggerSuperBomb("emp",player));
+bindTap("btn-cluster",()=>triggerSuperBomb("cluster",player));
+bindTap("btn-singularity",()=>triggerSuperBomb("singularity",player));
+bindTap("btn-cryo",()=>triggerSuperBomb("cryo",player));
+bindTap("btn-gravity",()=>triggerSuperBomb("gravity",player));
 bindTap("btn-phonepad-pair", startPhonepadPairing);
 bindTap("btn-phonepad2-pair", startPhonepad2Pairing);
 bindTap("btn-local-coop",()=>{localCoopEnabled=!localCoopEnabled;const b=document.getElementById("btn-local-coop");if(b){b.classList.toggle("active",localCoopEnabled);b.textContent=localCoopEnabled?"COOPERATIVO ACTIVADO · 2 JUGADORES":"ACTIVAR COOPERATIVO LOCAL";}document.getElementById("phonepad2-launch")?.classList.toggle("hidden",!localCoopEnabled);document.getElementById("coop-hud")?.classList.toggle("hidden",!localCoopEnabled);});
@@ -3956,6 +3967,16 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyL") keyboardInput2.right = true;
   if (e.code === "KeyU" && !e.repeat) triggerSuperBomb("supernova",player2);
   if (e.code === "KeyI" && !e.repeat) triggerSuperBomb("emp",player2);
+  if (e.code === "KeyO" && !e.repeat) triggerSuperBomb("cluster",player2);
+  if (e.code === "KeyK" && !e.repeat) triggerSuperBomb("singularity",player2);
+  if (e.code === "KeyM" && !e.repeat) triggerSuperBomb("cryo",player2);
+  if (e.code === "KeyN" && !e.repeat) triggerSuperBomb("gravity",player2);
+  if (e.code === "Digit1" && !e.repeat) triggerSuperBomb("supernova",player);
+  if (e.code === "Digit2" && !e.repeat) triggerSuperBomb("emp",player);
+  if (e.code === "Digit3" && !e.repeat) triggerSuperBomb("cluster",player);
+  if (e.code === "Digit4" && !e.repeat) triggerSuperBomb("singularity",player);
+  if (e.code === "Digit5" && !e.repeat) triggerSuperBomb("cryo",player);
+  if (e.code === "Digit6" && !e.repeat) triggerSuperBomb("gravity",player);
   if ((e.code === "KeyB" || e.code === "Space") && !e.repeat) triggerSuperBomb();
   if ((e.code === "KeyP" || (e.code === "Escape" && !document.fullscreenElement)) && !e.repeat) togglePause();
 });
