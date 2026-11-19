@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-safe-cloud-migration-1";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=nova-community-2', './aether3d.js?v=nova-community-2', './platform-runtime.js', './social-realtime.js', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html', './phone-controller.html'];
+const CACHE_NAME = "aether-nova-authoritative-client-1";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=nova-community-2', './aether3d.js?v=nova-community-2', './platform-runtime.js', './social-realtime.js', './multiplayer-client.js', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html', './phone-controller.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
