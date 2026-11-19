@@ -4438,9 +4438,9 @@ requestAnimationFrame(updateAndDraw);
 let coopClient=null,coopRoom=null,coopChannel=null,coopIsReady=false,coopRoster=[],coopStarting=false;
 async function coopGetClient(){
   if(!cloudConfigured()||!cloudSession?.access_token||!cloudSession?.refresh_token)throw new Error("Primero inicia sesión con tu cuenta online.");
-  if(!coopClient){const sdk=await import("https://esm.sh/@supabase/supabase-js@2.119.2");coopClient=sdk.createClient(CLOUD_CFG.supabaseUrl,CLOUD_CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:20}}});}
+  if(!coopClient){const sdk=await import("https://esm.sh/@supabase/supabase-js@2.119.2");coopClient=sdk.createClient(CLOUD_CFG.supabaseUrl,CLOUD_CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:20}}});coopClient.auth.onAuthStateChange((_event,session)=>{if(session?.access_token&&session?.refresh_token)cloudSetSession(session);});}
   const result=await coopClient.auth.setSession({access_token:cloudSession.access_token,refresh_token:cloudSession.refresh_token});
-  if(result.error)throw result.error;return coopClient;
+  if(result.error)throw result.error;if(result.data?.session)cloudSetSession(result.data.session);return coopClient;
 }
 function coopPilotName(){return String(activeProfile?.name||cloudSession?.user?.email?.split("@")[0]||"Comandante").slice(0,16);}
 function coopShipId(){return SHIP_TYPES[state.selectedShip]?state.selectedShip:"valkyrie";}
