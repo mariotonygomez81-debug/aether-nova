@@ -53,10 +53,14 @@
   <div id="active-buffs"></div>
 
   <div id="touch-controls" class="hidden">
-    <button type="button" id="btn-left" class="ctrl-btn">◀</button>
-    <button type="button" id="btn-bomb" class="ctrl-btn bomb-btn">💣 <span id="ui-bombs">1</span></button>
-    <button type="button" id="btn-emp" class="ctrl-btn">ϟ EMP</button><button type="button" id="btn-cluster" class="ctrl-btn">✺ RACIMO</button><button type="button" id="btn-singularity" class="ctrl-btn">◉ SINGULARIDAD</button><button type="button" id="btn-cryo" class="ctrl-btn">❄ CRIO</button><button type="button" id="btn-gravity" class="ctrl-btn">◎ GRAVEDAD</button>
-    <button type="button" id="btn-right" class="ctrl-btn">▶</button>
+    <button type="button" id="btn-left" class="ctrl-btn move-btn" aria-label="Mover a la izquierda">◀</button>
+    <button type="button" id="btn-bomb" class="ctrl-btn bomb-btn" aria-label="Supernova"> <span class="control-icon">💣</span><span class="control-label">SUPERNOVA</span><span id="ui-bombs" class="control-count">1</span></button>
+    <button type="button" id="btn-emp" class="ctrl-btn weapon-btn" aria-label="Pulso electromagnético"><span class="control-icon">ϟ</span><span class="control-label">EMP</span></button>
+    <button type="button" id="btn-cluster" class="ctrl-btn weapon-btn" aria-label="Bomba de racimo"><span class="control-icon">✺</span><span class="control-label">RACIMO</span></button>
+    <button type="button" id="btn-singularity" class="ctrl-btn weapon-btn" aria-label="Singularidad"><span class="control-icon">◉</span><span class="control-label">SINGULARIDAD</span></button>
+    <button type="button" id="btn-cryo" class="ctrl-btn weapon-btn" aria-label="Bomba criogénica"><span class="control-icon">❄</span><span class="control-label">CRIO</span></button>
+    <button type="button" id="btn-gravity" class="ctrl-btn weapon-btn" aria-label="Bomba gravitacional"><span class="control-icon">◎</span><span class="control-label">GRAVEDAD</span></button>
+    <button type="button" id="btn-right" class="ctrl-btn move-btn" aria-label="Mover a la derecha">▶</button>
   </div>
 
   <section id="screen-menu" class="overlay">
