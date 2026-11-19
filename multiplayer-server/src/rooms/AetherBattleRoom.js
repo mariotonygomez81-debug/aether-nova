@@ -22,13 +22,13 @@ async function supabaseRequest(path, token) {
 
 export class AetherBattleRoom extends Room {
   maxClients = 4;
+  state = new AetherBattleState();
 
   async onCreate(options) {
     if (!options.coopRoomId) throw new ServerError(400, "Falta el identificador de la sala cooperativa.");
     if (!/^[0-9a-f-]{36}$/i.test(String(options.coopRoomId))) throw new ServerError(400, "Identificador de sala inválido.");
     this.coopRoomId = String(options.coopRoomId);
     this.setPrivate(true);
-    this.state = new AetherBattleState();
     this.inputs = new Map();
     this.lastInputAt = new Map();
     this.lastFireAt = new Map();
