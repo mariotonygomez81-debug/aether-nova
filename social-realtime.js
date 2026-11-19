@@ -8,6 +8,8 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
   let ownChannel = null;
   const friendChannels = new Map();
   let trackedStatus = "";
+  let ownPresencePayload = {};
+  let notificationChannel = null;
 
   const restHeaders = (token) => ({
     apikey: config.anonKey,
@@ -48,12 +50,13 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     ownChannel.subscribe(async status => {
       if (status !== "SUBSCRIBED") return;
       trackedStatus = document.getElementById("hud")?.classList.contains("hidden") ? "online" : "playing";
-      await ownChannel.track({
+      ownPresencePayload = {
         pilot_id:currentUser,
         pilot_name:profile.pilot_name || "Comandante",
         public_pilot_id:profile.public_pilot_id,
         status:trackedStatus
-      });
+      };
+      await ownChannel.track(ownPresencePayload);
     });
   }
   async function startFriendChannel(userId) {
@@ -82,7 +85,23 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         }
       }
       await Promise.all(ids.map(startFriendChannel));
+      for (const [id,channel] of friendChannels) updateFromChannel(id,channel);
     } catch(error) { console.warn("AETHER NOVA Presence: no se pudo sincronizar amigos.",error); }
+  }
+  async function subscribeSocialNotifications() {
+    if (!client || !currentUser) return;
+    if (notificationChannel) await client.removeChannel(notificationChannel);
+    notificationChannel = client.channel("social-inbox:" + currentUser);
+    const notify = () => window.dispatchEvent(new Event("aether:social-inbox-updated"));
+    for (const table of ["friend_requests","game_invites","squad_invites"]) {
+      notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:"recipient_id=eq."+currentUser},notify);
+      notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:"requester_id=eq."+currentUser},notify);
+      notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:"sender_id=eq."+currentUser},notify);
+      notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:"inviter_id=eq."+currentUser},notify);
+    }
+    notificationChannel.subscribe(status => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") console.warn("AETHER NOVA: notificaciones en tiempo real no disponibles.");
+    });
   }
   async function stop() {
     if (ownChannel && client) await client.removeChannel(ownChannel);
@@ -94,6 +113,9 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     client = null;
     currentUser = null;
     trackedStatus = "";
+    ownPresencePayload = {};
+    if (notificationChannel && client) await client.removeChannel(notificationChannel);
+    notificationChannel = null;
     document.querySelectorAll(".friend-presence").forEach(node => {
       node.textContent = "Desconectado";
       node.classList.remove("is-online","is-playing");
@@ -111,6 +133,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
       const profile = await readProfile(session);
       await startOwnPresence(session,profile);
       await syncFriends();
+      await subscribeSocialNotifications();
     } catch(error) {
       console.warn("AETHER NOVA Presence no disponible.",error);
       await stop();
@@ -129,7 +152,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     const next = document.getElementById("hud")?.classList.contains("hidden") ? "online" : "playing";
     if (next !== trackedStatus) {
       trackedStatus = next;
-      try { await ownChannel.track({status:next}); } catch(error) {}
+      try { ownPresencePayload = {...ownPresencePayload,status:next}; await ownChannel.track(ownPresencePayload); } catch(error) {}
     }
   },5000);
   window.addEventListener("beforeunload",() => { if(client) void client.removeAllChannels(); });
