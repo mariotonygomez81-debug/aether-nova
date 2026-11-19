@@ -10,7 +10,7 @@
   try {
     const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
     if (gl) {
-      webgl = gl instanceof WebGL2RenderingContext ? "WebGL 2 disponible" : "WebGL 1 disponible";
+      webgl = (typeof WebGL2RenderingContext !== "undefined" && gl instanceof WebGL2RenderingContext) ? "WebGL 2 disponible" : "WebGL 1 disponible";
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     }
   } catch (_) {}
