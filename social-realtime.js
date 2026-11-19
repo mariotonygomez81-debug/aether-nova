@@ -93,11 +93,15 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     if (notificationChannel) await client.removeChannel(notificationChannel);
     notificationChannel = client.channel("social-inbox:" + currentUser);
     const notify = () => window.dispatchEvent(new Event("aether:social-inbox-updated"));
-    for (const table of ["friend_requests","game_invites","squad_invites"]) {
-      notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:"recipient_id=eq."+currentUser},notify);
-      notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:"requester_id=eq."+currentUser},notify);
-      notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:"sender_id=eq."+currentUser},notify);
-      notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:"inviter_id=eq."+currentUser},notify);
+    const filters = {
+      friend_requests:["recipient_id","requester_id"],
+      game_invites:["recipient_id","sender_id"],
+      squad_invites:["invitee_id","inviter_id"]
+    };
+    for (const [table,columns] of Object.entries(filters)) {
+      for (const column of columns) {
+        notificationChannel.on("postgres_changes",{event:"*",schema:"public",table,filter:column+"=eq."+currentUser},notify);
+      }
     }
     notificationChannel.subscribe(status => {
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") console.warn("AETHER NOVA: notificaciones en tiempo real no disponibles.");
@@ -110,12 +114,12 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
       for (const channel of friendChannels.values()) await client.removeChannel(channel);
     }
     friendChannels.clear();
+    if (notificationChannel && client) await client.removeChannel(notificationChannel);
+    notificationChannel = null;
     client = null;
     currentUser = null;
     trackedStatus = "";
     ownPresencePayload = {};
-    if (notificationChannel && client) await client.removeChannel(notificationChannel);
-    notificationChannel = null;
     document.querySelectorAll(".friend-presence").forEach(node => {
       node.textContent = "Desconectado";
       node.classList.remove("is-online","is-playing");
