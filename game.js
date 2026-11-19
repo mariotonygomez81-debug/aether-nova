@@ -3464,6 +3464,7 @@ function cloudSetSession(session) {
     localStorage.removeItem(CLOUD_SESSION_KEY);
   } catch (error) { console.warn("No se pudo guardar la sesión temporal online.", error); }
   renderCloudAccount();
+  window.dispatchEvent(new CustomEvent("aether:auth", { detail: { session: cloudSession } }));
 }
 function cloudFetchOptions(options = {}) {
   const controller = new AbortController();
@@ -3607,6 +3608,7 @@ async function cloudSavePilotPrivacy() {
       body: JSON.stringify(payload)
     });
     if (status) status.textContent = "Privacidad actualizada correctamente.";
+    window.dispatchEvent(new Event("aether:privacy-updated"));
   } catch (error) {
     if (status) status.textContent = error.message || "No se pudieron guardar los cambios.";
     await cloudLoadPilotIdentity();
@@ -3654,9 +3656,11 @@ async function cloudRefreshFriendNetwork() {
       list.append(friendElement("div","friend-group-title",heading));
       for (const item of items) {
         const row = friendElement("div","friend-row");
+        row.dataset.userId = item.other_user_id;
         const info = friendElement("div","friend-row-info");
         info.append(friendElement("strong","",item.pilot_name || "Piloto"));
         info.append(friendElement("small","",item.public_pilot_id || ""));
+        info.append(friendElement("small","friend-presence","Desconectado"));
         row.append(info);
         const actions = friendElement("div","friend-row-actions");
         if (item.status === "pending" && item.direction === "incoming") {
@@ -3698,6 +3702,7 @@ async function cloudRefreshFriendNetwork() {
     }
     if (!rows.length) list.append(friendElement("small","friend-empty","Todavía no tienes amigos ni solicitudes."));
     if (note) note.textContent = friends.length + " amigos · " + incoming.length + " solicitudes recibidas.";
+    window.dispatchEvent(new Event("aether:friends-updated"));
   } catch(error) {
     if (note) note.textContent = error.message || "No se pudo cargar tu red de pilotos.";
   }
