@@ -276,6 +276,23 @@ for(const [id,group] of Object.entries(shipVariants))attachEngineFX(group,id);
 const shield = new THREE.Mesh(new THREE.SphereGeometry(2.65, 24, 16), new THREE.MeshBasicMaterial({ color: 0x37dcff, wireframe: true, transparent: true, opacity: .13 }));
 shield.visible = false; ship.add(shield);
 
+// Nave del segundo piloto: modelo 3D duplicado, materiales propios y firma naranja.
+const ship2 = ship.clone(true);
+ship2.visible = false;
+ship2.scale.setScalar(.78);
+ship2.traverse(part=>{
+  if(!part.isMesh||!part.material)return;
+  const copyMaterial=mat=>{
+    const m=mat.clone();
+    if(m.color)m.color.set(0xffa34d);
+    if(m.emissive)m.emissive.set(0x9b3c12);
+    if("emissiveIntensity" in m)m.emissiveIntensity=Math.max(1.1,m.emissiveIntensity||0);
+    return m;
+  };
+  part.material=Array.isArray(part.material)?part.material.map(copyMaterial):copyMaterial(part.material);
+});
+scene.add(ship2);
+
 // Asteroides 3D sincronizados con las instancias reales del motor 2D.
 // La simulación, impactos, vida y recompensas siguen controlados por game.js.
 const asteroidMeshes = new Map();
@@ -870,6 +887,27 @@ function animate(now) {
       }
     });
     shield.visible=!!data.shield;
+    const p2=data.coopPlayer2;
+    if(p2){
+      ship2.visible=true;
+      if(ship2.children[0])ship2.children[0].visible=true;
+      const p2Target=worldPos(p2.x,p2.y,data.width,data.height,-10.7);
+      ship2.position.x=THREE.MathUtils.damp(ship2.position.x,p2Target.x,16,dt);
+      ship2.position.y=THREE.MathUtils.damp(ship2.position.y,p2Target.y,16,dt);
+      ship2.position.z=THREE.MathUtils.damp(ship2.position.z,-10.7,16,dt);
+      ship2.rotation.z=THREE.MathUtils.damp(ship2.rotation.z,-(p2.x-data.width/2)/(data.width/2)*.22,7,dt);
+      ship2.rotation.x=THREE.MathUtils.damp(ship2.rotation.x,Math.sin(now*.002+.8)*.018,3,dt);
+      ship2.traverse(part=>{
+        if(!part.isMesh||!part.material)return;
+        const mats=Array.isArray(part.material)?part.material:[part.material];
+        for(const mat of mats){
+          if(mat.userData.coopBaseOpacity===undefined)mat.userData.coopBaseOpacity=mat.opacity;
+          mat.transparent=!!p2.invulnerable;
+          mat.opacity=p2.invulnerable?Math.min(mat.userData.coopBaseOpacity,.58):mat.userData.coopBaseOpacity;
+          mat.depthWrite=!p2.invulnerable;
+        }
+      });
+    }else ship2.visible=false;
     glowMat.emissiveIntensity=2.4+Math.sin(now*.012)*.45;
     rim.position.x=ship.position.x; rim.position.y=ship.position.y;
     camera.position.x=THREE.MathUtils.damp(camera.position.x,ship.position.x*.18,2.4,dt);
@@ -882,7 +920,7 @@ function animate(now) {
     syncBoss(data.boss, data.width, data.height, now);
     syncPhenomena(data.phenomena, data.width, data.height, now);
   } else {
-    ship.visible=false; shield.visible=false; bossGroup.visible=false;
+    ship.visible=false; ship2.visible=false; shield.visible=false; bossGroup.visible=false;
     for (const mesh of asteroidMeshes.values()) mesh.visible=false;
     for (const mesh of shotMeshes.values()) mesh.visible=false;
     for (const mesh of enemyShotMeshes.values()) mesh.visible=false;
