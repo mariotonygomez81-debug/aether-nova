@@ -2078,9 +2078,12 @@ function addFloatingText(x, y, text, color = "#ffffff") {
   floatingTexts.push({ x, y, text, color, life: 55 });
 }
 
-function triggerSuperBomb() {
-  if (state.mode !== "PLAYING" || !player || (player.bombs <= 0 && (player.empBombs || 0) <= 0)) return;
-  if (player.empBombs > 0) {
+function triggerSuperBomb(mode = "auto") {
+  if (state.mode !== "PLAYING" || !player) return;
+  const useEmp = mode === "emp" || (mode === "auto" && (player.empBombs || 0) > 0);
+  if (mode === "emp" && (player.empBombs || 0) <= 0) return;
+  if (mode === "supernova" && player.bombs <= 0) return;
+  if (useEmp && (player.empBombs || 0) > 0) {
     player.empBombs--;
     enemyBullets.forEach(b => { b.dead = true; });
     enemies.forEach(e => {
@@ -2107,6 +2110,7 @@ function triggerSuperBomb() {
     updateHUD();
     return;
   }
+  if (player.bombs <= 0) return;
   player.bombs--;
   SoundFX.play("supernova");
   state.shake = 28;
@@ -2419,17 +2423,28 @@ function paintEraBackground(era) {
 const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:false,connected:false,lastName:""};
 const keyboardInput={left:false,right:false};
 const touchInput={left:false,right:false};
-const phonepadState={left:false,right:false,bomb:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:""};
+const phonepadState={left:false,right:false,bomb:false,emp:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
 function refreshHorizontalInput(){
   keys.Left=keyboardInput.left||touchInput.left||gamepadState.left||phonepadState.left;
   keys.Right=keyboardInput.right||touchInput.right||gamepadState.right||phonepadState.right;
+}
+function phonepadPublishStatus(){
+  const channel=phonepadState.channel;
+  if(!channel||!player)return;
+  const buffs={};
+  ["triple","rapid","laser","plasma","spread","wingmen","missiles","shield"].forEach(id=>{if((player.buffs?.[id]||0)>0)buffs[id]=Math.ceil(player.buffs[id]/60);});
+  const snapshot={bombs:player.bombs||0,emp:player.empBombs||0,lives:player.lives||0,level:state.level||1,buffs};
+  const signature=JSON.stringify(snapshot);
+  if(signature===phonepadState.lastStatus)return;
+  phonepadState.lastStatus=signature;
+  channel.send({type:"broadcast",event:"game-status",payload:snapshot}).catch(()=>{});
 }
 function phonepadStatus(message,connected=false){
   const el=document.getElementById("phonepad-status");
   if(el){el.textContent=message;el.classList.toggle("connected",connected);}
 }
 function phonepadRelease(){
-  phonepadState.left=phonepadState.right=phonepadState.bomb=phonepadState.pause=false;
+  phonepadState.left=phonepadState.right=phonepadState.bomb=phonepadState.emp=phonepadState.pause=false;
   refreshHorizontalInput();
 }
 async function startPhonepadPairing(){
@@ -2445,10 +2460,11 @@ async function startPhonepadPairing(){
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
         phonepadState.left=payload.l===true;phonepadState.right=payload.r===true;
-        const bomb=payload.b===true,pause=payload.p===true;
-        if(bomb&&!phonepadState.bomb)triggerSuperBomb();
+        const bomb=payload.b===true,emp=payload.e===true,pause=payload.p===true;
+        if(bomb&&!phonepadState.bomb)triggerSuperBomb("supernova");
+        if(emp&&!phonepadState.emp)triggerSuperBomb("emp");
         if(pause&&!phonepadState.pause)togglePause();
-        phonepadState.bomb=bomb;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
+        phonepadState.bomb=bomb;phonepadState.emp=emp;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
         phonepadStatus("CELULAR CONECTADO",true);
       });
     phonepadState.client=client;phonepadState.channel=channel;phonepadState.code=code;phonepadState.lastAt=Date.now();
@@ -2957,6 +2973,7 @@ function updateHUD() {
   document.getElementById("ui-sector-name").textContent = `${era.name} (MK-${player.getEvolutionTier()})`;
   const pct = Math.min(100, (state.levelProgress / state.levelTarget) * 100);
   document.getElementById("ui-progress").style.width = `${pct}%`;
+  phonepadPublishStatus();
 }
 
 function renderBuffTags() {
