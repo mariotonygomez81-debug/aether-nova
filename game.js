@@ -893,6 +893,8 @@ class Player {
     this.lives = Math.min(6, spec.lives + (upgrades.hull || 0));
     this.bombs = Math.min(5, 1 + (upgrades.bombBay || 0));
     this.empBombs = 0;
+    this.clusterBombs = 1;
+    this.singularityBombs = 1;
     this.permanentShieldCharges = Math.min(3, upgrades.aegis || 0);
     this.missileLevel = Math.max(0, upgrades.seeker || 0);
     this.droneLevel = Math.max(0, upgrades.droneBay || 0);
@@ -2094,6 +2096,31 @@ function addFloatingText(x, y, text, color = "#ffffff") {
 
 function triggerSuperBomb(mode = "auto", pilot = player) {
   if (state.mode !== "PLAYING" || !pilot || pilot.lives <= 0) return;
+  if (mode === "cluster" || mode === "singularity") {
+    const stockKey = mode === "cluster" ? "clusterBombs" : "singularityBombs";
+    if ((pilot[stockKey] || 0) <= 0) return;
+    pilot[stockKey]--;
+    const tint = mode === "cluster" ? "#ff9f43" : "#a78bfa";
+    const ratio = mode === "cluster" ? .42 : .76;
+    const bossRatio = mode === "cluster" ? .09 : .19;
+    enemyBullets.forEach(b => { b.dead = true; });
+    asteroids.forEach(a => { spawnExplosion(a.x,a.y,tint,8); a.dead=true; });
+    asteroids = [];
+    enemies.forEach(e => {
+      if(e.dead)return;
+      e.hp -= Math.max(1,Math.ceil(e.hp*ratio));
+      spawnImpactBurst(e.x,e.y,tint,IS_LOW_POWER?5:10);
+      if(e.hp<=0){e.dead=true;dropEnemyCredits(e);spawnExplosion(e.x,e.y,tint,IS_LOW_POWER?8:15);state.score+=80;advanceProgress(2);}
+    });
+    enemies = enemies.filter(e=>!e.dead);
+    if(boss){boss.hp-=Math.ceil(boss.maxHp*bossRatio);addFloatingText(boss.x,boss.y,mode==="cluster"?"¡BOMBA DE RACIMO!":"¡ANIQUILACIÓN SINGULAR!",tint);if(boss.hp<=0)defeatBoss();}
+    state.flash=Math.max(state.flash,mode==="cluster"?.24:.42);
+    state.shake=Math.max(state.shake,mode==="cluster"?15:23);
+    SoundFX.play(mode==="cluster"?"boom":"supernova");
+    addFloatingText(pilot.x,pilot.y-42,mode==="cluster"?"¡RACIMO DETONADO!":"¡ANIQUILACIÓN!",tint);
+    updateHUD();
+    return;
+  }
   const useEmp = mode === "emp" || (mode === "auto" && (pilot.empBombs || 0) > 0);
   if (mode === "emp" && (pilot.empBombs || 0) <= 0) return;
   if (mode === "supernova" && pilot.bombs <= 0) return;
@@ -2438,8 +2465,8 @@ const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:f
 const keyboardInput={left:false,right:false};
 const keyboardInput2={left:false,right:false};
 const touchInput={left:false,right:false};
-const phonepad2State={left:false,right:false,bomb:false,emp:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
-const phonepadState={left:false,right:false,bomb:false,emp:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
+const phonepad2State={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
+const phonepadState={left:false,right:false,bomb:false,emp:false,cluster:false,singularity:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
 function refreshHorizontalInput(){
   keys.Left=keyboardInput.left||touchInput.left||gamepadState.left||phonepadState.left;
   keys.Right=keyboardInput.right||touchInput.right||gamepadState.right||phonepadState.right;
@@ -2449,7 +2476,7 @@ function phonepadPublishStatus(){
   if(!channel||!player)return;
   const buffs={};
   ["triple","rapid","laser","plasma","spread","wingmen","missiles","shield"].forEach(id=>{if((player.buffs?.[id]||0)>0)buffs[id]=Math.ceil(player.buffs[id]/60);});
-  const snapshot={player:1,bombs:player.bombs||0,emp:player.empBombs||0,lives:player.lives||0,level:state.level||1,buffs};
+  const snapshot={player:1,bombs:player.bombs||0,emp:player.empBombs||0,cluster:player.clusterBombs||0,singularity:player.singularityBombs||0,lives:player.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
   const signature=JSON.stringify(snapshot);
   if(signature===phonepadState.lastStatus)return;
   phonepadState.lastStatus=signature;
@@ -2460,7 +2487,7 @@ function phonepad2PublishStatus(){
   if(!channel||!pilot)return;
   const buffs={};
   Object.keys(pilot.buffs||{}).forEach(id=>{if(pilot.buffs[id]>0)buffs[id]=Math.ceil(pilot.buffs[id]/60);});
-  const snapshot={player:2,bombs:pilot.bombs||0,emp:pilot.empBombs||0,lives:pilot.lives||0,level:state.level||1,buffs};
+  const snapshot={player:2,bombs:pilot.bombs||0,emp:pilot.empBombs||0,cluster:pilot.clusterBombs||0,singularity:pilot.singularityBombs||0,lives:pilot.lives||0,level:state.level||1,buffs,mode:state.mode,score:state.score||0};
   const signature=JSON.stringify(snapshot);
   if(signature===phonepad2State.lastStatus)return;
   phonepad2State.lastStatus=signature;
@@ -2487,11 +2514,13 @@ async function startPhonepadPairing(){
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
         phonepadState.left=payload.l===true;phonepadState.right=payload.r===true;
-        const bomb=payload.b===true,emp=payload.e===true,pause=payload.p===true;
+        const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,pause=payload.p===true;
         if(bomb&&!phonepadState.bomb)triggerSuperBomb("supernova");
         if(emp&&!phonepadState.emp)triggerSuperBomb("emp");
+        if(cluster&&!phonepadState.cluster)triggerSuperBomb("cluster");
+        if(singularity&&!phonepadState.singularity)triggerSuperBomb("singularity");
         if(pause&&!phonepadState.pause)togglePause();
-        phonepadState.bomb=bomb;phonepadState.emp=emp;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
+        phonepadState.bomb=bomb;phonepadState.emp=emp;phonepadState.cluster=cluster;phonepadState.singularity=singularity;phonepadState.pause=pause;phonepadState.lastAt=now;phonepadState.connected=true;refreshHorizontalInput();
         phonepadStatus("CELULAR CONECTADO",true);
       });
     phonepadState.client=client;phonepadState.channel=channel;phonepadState.code=code;phonepadState.lastAt=Date.now();
@@ -2520,11 +2549,13 @@ async function startPhonepad2Pairing(){
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
         phonepad2State.left=payload.l===true;phonepad2State.right=payload.r===true;
-        const bomb=payload.b===true,emp=payload.e===true,pause=payload.p===true;
+        const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,pause=payload.p===true;
         if(bomb&&!phonepad2State.bomb)triggerSuperBomb("supernova",player2);
         if(emp&&!phonepad2State.emp)triggerSuperBomb("emp",player2);
+        if(cluster&&!phonepad2State.cluster)triggerSuperBomb("cluster",player2);
+        if(singularity&&!phonepad2State.singularity)triggerSuperBomb("singularity",player2);
         if(pause&&!phonepad2State.pause)togglePause();
-        phonepad2State.bomb=bomb;phonepad2State.emp=emp;phonepad2State.pause=pause;
+        phonepad2State.bomb=bomb;phonepad2State.emp=emp;phonepad2State.cluster=cluster;phonepad2State.singularity=singularity;phonepad2State.pause=pause;
         phonepad2State.lastAt=now;phonepad2State.connected=true;
         phonepadStatus("JUGADOR 2 CONECTADO",true);
       });
