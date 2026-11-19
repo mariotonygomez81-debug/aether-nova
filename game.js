@@ -3550,7 +3550,7 @@ async function cloudSignUp() {
     if (data.access_token) {
       cloudSetSession(data);
       cloudSetStatus("Cuenta online creada y conectada. Ya puedes participar en la clasificación.");
-      await cloudPostProfile(); await cloudLoadPilotIdentity(); await refreshOnlineRanking(); await loadGalacticEvents();
+      await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); await refreshOnlineRanking(); await loadGalacticEvents();
     } else cloudSetStatus("Cuenta creada. Revisa tu correo para confirmar la dirección y luego inicia sesión.");
   } catch (error) { cloudSetStatus(error.message, true); }
   finally { cloudBusy = false; renderCloudAccount(); }
@@ -3565,7 +3565,7 @@ async function cloudSignIn() {
     const data = await cloudAuthRequest("token?grant_type=password", { email, password });
     cloudSetSession(data);
     cloudSetStatus("Sesión online iniciada. Tu progreso local permanece intacto.");
-    await cloudPostProfile(); await cloudLoadPilotIdentity(); await refreshOnlineRanking(); await loadGalacticEvents();
+    await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); await refreshOnlineRanking(); await loadGalacticEvents();
   } catch (error) { cloudSetStatus(error.message, true); }
   finally { cloudBusy = false; renderCloudAccount(); }
 }
@@ -3625,6 +3625,133 @@ async function copyPilotPublicId() {
     const status = document.getElementById("pilot-identity-status");
     if (status) status.textContent = "Tu ID público es " + value;
   }
+}
+
+
+function friendElement(tag, className, textValue) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (textValue !== undefined) el.textContent = textValue;
+  return el;
+}
+async function cloudRefreshFriendNetwork() {
+  const list = document.getElementById("friend-network-list");
+  const note = document.getElementById("friend-network-status");
+  if (!cloudSession?.user?.id || !list) return;
+  try {
+    const rows = await cloudFetch("friend_network?select=request_id,status,direction,other_user_id,public_pilot_id,pilot_name,cosmetic_id,created_at&order=created_at.desc");
+    list.replaceChildren();
+    const incoming = rows.filter(x => x.status === "pending" && x.direction === "incoming");
+    const outgoing = rows.filter(x => x.status === "pending" && x.direction === "outgoing");
+    const friends = rows.filter(x => x.status === "accepted");
+    const groups = [
+      ["SOLICITUDES RECIBIDAS", incoming],
+      ["SOLICITUDES ENVIADAS", outgoing],
+      ["AMIGOS", friends]
+    ];
+    for (const [heading, items] of groups) {
+      if (!items.length) continue;
+      list.append(friendElement("div","friend-group-title",heading));
+      for (const item of items) {
+        const row = friendElement("div","friend-row");
+        const info = friendElement("div","friend-row-info");
+        info.append(friendElement("strong","",item.pilot_name || "Piloto"));
+        info.append(friendElement("small","",item.public_pilot_id || ""));
+        row.append(info);
+        const actions = friendElement("div","friend-row-actions");
+        if (item.status === "pending" && item.direction === "incoming") {
+          const accept = friendElement("button","mini-btn friend-action","ACEPTAR");
+          accept.type = "button";
+          accept.addEventListener("click", async () => {
+            accept.disabled = true;
+            try {
+              await cloudFetch("rpc/friend_request_status",{method:"POST",body:JSON.stringify({p_request_id:item.request_id,p_accept:true})});
+              await cloudRefreshFriendNetwork();
+            } catch(error) { if(note) note.textContent=error.message; accept.disabled=false; }
+          });
+          const reject = friendElement("button","mini-btn friend-action friend-muted","RECHAZAR");
+          reject.type = "button";
+          reject.addEventListener("click", async () => {
+            reject.disabled = true;
+            try {
+              await cloudFetch("rpc/friend_request_status",{method:"POST",body:JSON.stringify({p_request_id:item.request_id,p_accept:false})});
+              await cloudRefreshFriendNetwork();
+            } catch(error) { if(note) note.textContent=error.message; reject.disabled=false; }
+          });
+          actions.append(accept,reject);
+        } else {
+          const action = friendElement("button","mini-btn friend-action friend-muted",item.status === "accepted" ? "ELIMINAR" : "CANCELAR");
+          action.type = "button";
+          action.addEventListener("click", async () => {
+            if (item.status === "accepted" && !confirm("¿Eliminar a este piloto de tu lista de amigos?")) return;
+            action.disabled = true;
+            try {
+              await cloudFetch("friend_requests?id=eq."+encodeURIComponent(item.request_id),{method:"DELETE",headers:{Prefer:"return=minimal"}});
+              await cloudRefreshFriendNetwork();
+            } catch(error) { if(note) note.textContent=error.message; action.disabled=false; }
+          });
+          actions.append(action);
+        }
+        row.append(actions);
+        list.append(row);
+      }
+    }
+    if (!rows.length) list.append(friendElement("small","friend-empty","Todavía no tienes amigos ni solicitudes."));
+    if (note) note.textContent = friends.length + " amigos · " + incoming.length + " solicitudes recibidas.";
+  } catch(error) {
+    if (note) note.textContent = error.message || "No se pudo cargar tu red de pilotos.";
+  }
+}
+async function cloudSearchPilots() {
+  const input = document.getElementById("friend-search-input");
+  const results = document.getElementById("friend-search-results");
+  const note = document.getElementById("friend-network-status");
+  const query = input?.value?.trim() || "";
+  if (!cloudSession?.user?.id) { if(note) note.textContent="Inicia sesión para buscar pilotos."; return; }
+  if (query.length < 3) { if(note) note.textContent="Escribe al menos 3 caracteres o el ID NOVA completo."; return; }
+  const button = document.getElementById("btn-friend-search");
+  if (button) button.disabled = true;
+  results?.replaceChildren();
+  if (note) note.textContent = "Buscando pilotos…";
+  try {
+    const found = await cloudFetch("rpc/search_pilot_directory",{method:"POST",body:JSON.stringify({p_query:query})});
+    if (!found?.length) {
+      results?.append(friendElement("small","friend-empty","No encontramos pilotos visibles con esa búsqueda."));
+    }
+    for (const pilot of found || []) {
+      const row = friendElement("div","friend-row");
+      const info = friendElement("div","friend-row-info");
+      info.append(friendElement("strong","",pilot.pilot_name || "Piloto"));
+      info.append(friendElement("small","",pilot.public_pilot_id || ""));
+      row.append(info);
+      const send = friendElement("button","mini-btn friend-action","AGREGAR");
+      send.type = "button";
+      send.addEventListener("click", async () => {
+        send.disabled = true;
+        try {
+          const me = cloudSession.user.id;
+          const other = pilot.pilot_user_id;
+          const existing = await cloudFetch("friend_requests?select=id,status,requester_id,recipient_id&or="+encodeURIComponent("(and(requester_id.eq."+me+",recipient_id.eq."+other+"),and(requester_id.eq."+other+",recipient_id.eq."+me+"))"));
+          const oldRejected = (existing || []).find(x => x.status === "rejected");
+          if (oldRejected) await cloudFetch("friend_requests?id=eq."+encodeURIComponent(oldRejected.id),{method:"DELETE",headers:{Prefer:"return=minimal"}});
+          if ((existing || []).some(x => x.status === "accepted")) throw new Error("Este piloto ya está en tu lista de amigos.");
+          if ((existing || []).some(x => x.status === "pending" && x.recipient_id === me)) throw new Error("Este piloto ya te envió una solicitud. Revisa las recibidas.");
+          await cloudFetch("friend_requests",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({requester_id:me,recipient_id:other,status:"pending"})});
+          send.textContent = "ENVIADA";
+          if(note) note.textContent = "Solicitud enviada a " + (pilot.pilot_name || "este piloto") + ".";
+          await cloudRefreshFriendNetwork();
+        } catch(error) {
+          if(note) note.textContent = error.message || "No se pudo enviar la solicitud.";
+          send.disabled = false;
+        }
+      });
+      row.append(send);
+      results?.append(row);
+    }
+    if (note && found?.length) note.textContent = found.length + " piloto(s) encontrado(s).";
+  } catch(error) {
+    if (note) note.textContent = error.message || "No se pudo buscar pilotos.";
+  } finally { if(button) button.disabled = false; }
 }
 
 async function cloudPostProfile() {
@@ -3973,7 +4100,7 @@ async function restoreCloudSession() {
   try {
     await cloudRefreshSession();
     cloudSetStatus("Sesión online restaurada de forma segura.");
-    try { await cloudPostProfile(); await cloudLoadPilotIdentity(); } catch (profileError) { console.warn("No se pudo actualizar el perfil online; la sesión sigue activa.", profileError); }
+    try { await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); } catch (profileError) { console.warn("No se pudo actualizar el perfil online; la sesión sigue activa.", profileError); }
     void refreshOnlineRanking();
     void loadGalacticEvents();
   } catch (error) {
@@ -4123,6 +4250,8 @@ document.getElementById("pilot-cosmetic")?.addEventListener("change", event => s
 renderCosmetics();
 bindTap("btn-cloud-signup", cloudSignUp);
 bindTap("btn-pilot-id-copy", copyPilotPublicId);
+bindTap("btn-friend-search", cloudSearchPilots);
+document.getElementById("friend-search-input")?.addEventListener("keydown", event => { if(event.key === "Enter") cloudSearchPilots(); });
 for (const key of ["is_discoverable","allow_friend_requests","show_presence","allow_invites"]) {
   document.getElementById("pilot-pref-" + key)?.addEventListener("change", cloudSavePilotPrivacy);
 }
