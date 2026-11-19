@@ -2476,7 +2476,7 @@ async function startPhonepadPairing(){
     phonepadStatus("CÓDIGO GENERADO · CONECTANDO…",false);
     await new Promise((resolve,reject)=>{
       const timeout=setTimeout(()=>reject(new Error("Código generado, pero Supabase tardó en conectar. Revisá Realtime e intentá nuevamente.")),12000);
-      channel.subscribe(s=>{if(s==="SUBSCRIBED"){clearTimeout(timeout);phonepadStatus("QR LISTO · ESCANEÁ PARA CONECTAR",false);resolve(s);}else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){clearTimeout(timeout);reject(new Error("Código generado, pero Realtime rechazó el canal. Revisá si los canales públicos están habilitados."));}});
+      channel.subscribe(s=>{if(s==="SUBSCRIBED"){clearTimeout(timeout);phonepadStatus("QR LISTO · ESCANEÁ PARA CONECTAR",false);phonepadPublishStatus();resolve(s);}else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){clearTimeout(timeout);reject(new Error("Código generado, pero Realtime rechazó el canal. Revisá si los canales públicos están habilitados."));}});
     });
   }catch(error){console.error("Phonepad pairing:",error);phonepadStatus(error.message||"NO SE PUDO VINCULAR",false);}
 }
