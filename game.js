@@ -2545,7 +2545,7 @@ async function startPhonepadPairing(){
       .on("broadcast",{event:"input"},({payload})=>{
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
-        phonepadState.left=payload.l===true;phonepadState.right=payload.r===true;if(payload.ship&&SHIP_TYPES[payload.ship]&&player&&player.type!==payload.ship)applyPhonepadShipChoice(player,payload.ship);
+        phonepadState.left=payload.l===true;phonepadState.right=payload.r===true;if(payload.ship&&SHIP_TYPES[payload.ship]){phonepadState.selectedShip=payload.ship;if(player&&player.type!==payload.ship)applyPhonepadShipChoice(player,payload.ship);}
         const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,cryo=payload.y===true,gravity=payload.g===true,pause=payload.p===true;
         if(bomb&&!phonepadState.bomb)triggerSuperBomb("supernova");
         if(emp&&!phonepadState.emp)triggerSuperBomb("emp");
@@ -2585,7 +2585,7 @@ async function startPhonepad2Pairing(){
       .on("broadcast",{event:"input"},({payload})=>{
         if(!payload||typeof payload!=="object")return;
         const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
-        phonepad2State.left=payload.l===true;phonepad2State.right=payload.r===true;if(payload.ship&&SHIP_TYPES[payload.ship]&&player2&&player2.type!==payload.ship)applyPhonepadShipChoice(player2,payload.ship);
+        phonepad2State.left=payload.l===true;phonepad2State.right=payload.r===true;if(payload.ship&&SHIP_TYPES[payload.ship]){phonepad2State.selectedShip=payload.ship;if(player2&&player2.type!==payload.ship)applyPhonepadShipChoice(player2,payload.ship);}
         const bomb=payload.b===true,emp=payload.e===true,cluster=payload.c===true,singularity=payload.s===true,cryo=payload.y===true,gravity=payload.g===true,pause=payload.p===true;
         if(bomb&&!phonepad2State.bomb)triggerSuperBomb("supernova",player2);
         if(emp&&!phonepad2State.emp)triggerSuperBomb("emp",player2);
