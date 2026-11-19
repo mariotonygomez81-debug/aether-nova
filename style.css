@@ -1285,3 +1285,5 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 #phonepad2-launch{margin-top:8px}
 #phonepad2-pairing{border-color:rgba(255,179,71,.55)}
 #phonepad2-pairing .phonepad-qr{box-shadow:0 0 22px rgba(255,179,71,.18)}
+
+.coop-keyboard-help{margin:7px 0 0;color:#a9bed3;font-size:11px;line-height:1.55;text-align:center}
