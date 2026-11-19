@@ -1287,3 +1287,74 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 #phonepad2-pairing .phonepad-qr{box-shadow:0 0 22px rgba(255,179,71,.18)}
 
 .coop-keyboard-help{margin:7px 0 0;color:#a9bed3;font-size:11px;line-height:1.55;text-align:center}
+
+
+/* BARRA INFERIOR TACTICA: CONTROLES COMPACTOS Y ETIQUETAS DENTRO DE CADA BOTON */
+#touch-controls{
+  left:clamp(10px,1.2vw,20px);
+  right:clamp(10px,1.2vw,20px);
+  display:grid;
+  grid-template-columns:clamp(58px,6vw,82px) repeat(6,minmax(0,1fr)) clamp(58px,6vw,82px);
+  align-items:end;
+  justify-items:center;
+  gap:clamp(5px,1vw,14px);
+  max-width:1500px;
+  margin-inline:auto;
+}
+#touch-controls .ctrl-btn{
+  width:100%;
+  min-width:0;
+  max-width:112px;
+  height:66px;
+  padding:6px 3px;
+  border-radius:14px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  white-space:normal;
+  line-height:1;
+  overflow:hidden;
+}
+#touch-controls .move-btn{
+  width:100%;
+  max-width:none;
+  height:66px;
+  font-size:27px;
+  border-radius:17px;
+}
+#touch-controls .weapon-btn .control-icon,
+#touch-controls .bomb-btn .control-icon{
+  display:block;
+  font-size:clamp(17px,2vw,23px);
+  line-height:1;
+}
+#touch-controls .control-label{
+  display:block;
+  max-width:100%;
+  font-size:clamp(7px,.72vw,10px);
+  line-height:1.1;
+  font-weight:900;
+  letter-spacing:.035em;
+  text-align:center;
+  overflow-wrap:anywhere;
+}
+#touch-controls .control-count{
+  display:block;
+  font-size:12px;
+  line-height:1;
+  font-weight:900;
+}
+@media(max-width:900px){
+  #touch-controls{gap:4px;grid-template-columns:54px repeat(6,minmax(0,1fr)) 54px}
+  #touch-controls .ctrl-btn{height:58px;border-radius:11px}
+  #touch-controls .control-label{font-size:7px;letter-spacing:0}
+}
+@media(max-width:620px){
+  #touch-controls{left:5px;right:5px;gap:3px;grid-template-columns:42px repeat(6,minmax(0,1fr)) 42px}
+  #touch-controls .ctrl-btn{height:54px;padding:4px 1px}
+  #touch-controls .move-btn{height:54px;font-size:22px}
+  #touch-controls .control-icon{font-size:16px!important}
+  #touch-controls .control-label{font-size:6px}
+}
