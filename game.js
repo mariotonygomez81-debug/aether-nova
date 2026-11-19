@@ -2540,7 +2540,7 @@ async function startPhonepadPairing(){
     if(phonepadState.channel&&phonepadState.client)await phonepadState.client.removeChannel(phonepadState.channel);
     const bytes=new Uint8Array(6);crypto.getRandomValues(bytes);
     const code=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
-    const sdk=await import("https://esm.sh/@supabase/supabase-js@2");
+    const sdk=await import("https://esm.sh/@supabase/supabase-js@2.119.2");
     const client=sdk.createClient(CLOUD_CFG.supabaseUrl,CLOUD_CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:25}}});
     const channel=client.channel("aether-phone-"+code,{config:{private:false,broadcast:{ack:false,self:false}}})
       .on("broadcast",{event:"input"},({payload})=>{
