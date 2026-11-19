@@ -3663,6 +3663,15 @@ async function cloudRefreshFriendNetwork() {
         info.append(friendElement("small","friend-presence","Desconectado"));
         row.append(info);
         const actions = friendElement("div","friend-row-actions");
+        if (item.status === "accepted") {
+          const gameInvite = friendElement("button","mini-btn friend-action","INVITAR A PARTIDA");
+          gameInvite.type = "button";
+          gameInvite.addEventListener("click", () => window.AETHER_COOP_INVITE?.(item.other_user_id));
+          const squadInvite = friendElement("button","mini-btn friend-action","INVITAR AL ESCUADRÓN");
+          squadInvite.type = "button";
+          squadInvite.addEventListener("click", () => window.AETHER_SQUAD_INVITE?.(item.other_user_id));
+          actions.append(gameInvite,squadInvite);
+        }
         if (item.status === "pending" && item.direction === "incoming") {
           const accept = friendElement("button","mini-btn friend-action","ACEPTAR");
           accept.type = "button";
@@ -4398,5 +4407,105 @@ async function coopToggleReady(){try{if(!coopRoom||!coopChannel)return;const nex
 async function coopStartMission(){if(!coopRoom||coopStarting)return;coopStarting=true;coopPaintRoster();try{const client=await coopGetClient(),{data,error}=await client.rpc("coop_start_room",{p_room_id:coopRoom.id});if(error)throw error;coopRoom=data?.room||coopRoom;await coopChannel.send({type:"broadcast",event:"mission_start",payload:{room_id:coopRoom.id,sector:1,at:Date.now()}});coopStatus("Escuadrón autorizado. El combate cooperativo sincronizado se habilitará en la siguiente fase.");}catch(e){coopStatus(e.message||"No se pudo iniciar la misión.",true);}finally{coopStarting=false;coopPaintRoster();}}
 async function coopLeaveRoom(){try{if(!coopRoom)return;const client=await coopGetClient(),id=coopRoom.id;if(coopChannel){await client.removeChannel(coopChannel);coopChannel=null;}const {error}=await client.rpc("coop_leave_room",{p_room_id:id});if(error)throw error;coopRoom=null;coopRoster=[];coopIsReady=false;document.getElementById("coop-room")?.classList.add("hidden");document.getElementById("coop-actions")?.classList.remove("hidden");coopStatus("Has abandonado el escuadrón.");}catch(e){coopStatus(e.message||"No se pudo abandonar la sala.",true);}}
 function coopCopyCode(){if(!coopRoom)return;const code=coopRoom.code;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(code).then(()=>coopStatus("Código "+code+" copiado.")).catch(()=>coopStatus("Código de invitación: "+code));else coopStatus("Código de invitación: "+code);}
-function coopInitUI(){const connected=!!cloudSession?.access_token,auth=document.getElementById("coop-auth-note");if(auth)auth.textContent=connected?"Cuenta online conectada. Crea un escuadrón o ingresa un código.":"Inicia sesión con tu cuenta online para crear o unirte a una sala.";["btn-coop-create","btn-coop-join"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!connected;});document.getElementById("btn-coop-create")?.addEventListener("click",coopCreateRoom);document.getElementById("btn-coop-join")?.addEventListener("click",coopJoinRoom);document.getElementById("btn-coop-ready")?.addEventListener("click",coopToggleReady);document.getElementById("btn-coop-start")?.addEventListener("click",coopStartMission);document.getElementById("btn-coop-leave")?.addEventListener("click",coopLeaveRoom);document.getElementById("btn-coop-copy")?.addEventListener("click",coopCopyCode);document.getElementById("coop-code-input")?.addEventListener("input",e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"");});}
+
+let currentSquadId=null,currentSquadCanInvite=false;
+function socialNote(message,isError=false){
+  const el=document.getElementById("squad-status");
+  if(el){el.textContent=message;el.classList.toggle("error",!!isError);}
+}
+function socialNode(tag,cls,textValue){
+  const el=document.createElement(tag);if(cls)el.className=cls;if(textValue!==undefined)el.textContent=textValue;return el;
+}
+async function coopRefreshSocialInvites(){
+  if(!cloudSession?.access_token)return;
+  try{
+    const client=await coopGetClient();
+    const [game,squad,mine]=await Promise.all([
+      client.from("game_invite_inbox").select("invite_id,room_id,room_code,sender_name,sender_public_id,created_at"),
+      client.from("squad_invite_inbox").select("invite_id,squad_id,inviter_name,inviter_public_id,squad_name,created_at"),
+      client.from("my_squad").select("squad_id,squad_name,leader_id,max_members,user_id,role,pilot_name,public_pilot_id").order("joined_at",{ascending:true})
+    ]);
+    if(game.error)throw game.error;if(squad.error)throw squad.error;if(mine.error)throw mine.error;
+    const gameBox=document.getElementById("game-invite-list");gameBox?.replaceChildren();
+    for(const inv of game.data||[]){
+      const row=socialNode("div","friend-row"),info=socialNode("div","friend-row-info");
+      info.append(socialNode("strong","",inv.sender_name||"Piloto"),socialNode("small","",inv.sender_public_id||"Invitación a sala "+inv.room_code));
+      const actions=socialNode("div","friend-row-actions");
+      const accept=socialNode("button","mini-btn friend-action","UNIRME");accept.type="button";
+      accept.addEventListener("click",async()=>{
+        accept.disabled=true;
+        try{
+          const result=await client.rpc("respond_game_invite",{p_invite_id:inv.invite_id,p_accept:true});
+          if(result.error)throw result.error;
+          const code=result.data;
+          const joined=await client.rpc("coop_join_room",{p_code:code,p_pilot_name:coopPilotName(),p_ship_id:coopShipId()});
+          if(joined.error)throw joined.error;
+          if(!joined.data?.room)throw new Error("La sala no devolvió información.");
+          await coopJoinRealtime(joined.data.room);
+          await coopRefreshSocialInvites();
+        }catch(e){socialNote(e.message||"No se pudo aceptar la invitación.",true);accept.disabled=false;}
+      });
+      const reject=socialNode("button","mini-btn friend-action friend-muted","RECHAZAR");reject.type="button";
+      reject.addEventListener("click",async()=>{reject.disabled=true;try{const r=await client.rpc("respond_game_invite",{p_invite_id:inv.invite_id,p_accept:false});if(r.error)throw r.error;await coopRefreshSocialInvites();}catch(e){socialNote(e.message,true);reject.disabled=false;}});
+      actions.append(accept,reject);row.append(info,actions);gameBox?.append(row);
+    }
+    if(!(game.data||[]).length)gameBox?.append(socialNode("small","friend-empty","No hay invitaciones a partidas."));
+    const squadBox=document.getElementById("squad-invite-list");squadBox?.replaceChildren();
+    for(const inv of squad.data||[]){
+      const row=socialNode("div","friend-row"),info=socialNode("div","friend-row-info");
+      info.append(socialNode("strong","",inv.squad_name||"Escuadrón"),socialNode("small","", "Invita: "+(inv.inviter_name||"Piloto")+" · "+(inv.inviter_public_id||"")));
+      const actions=socialNode("div","friend-row-actions");
+      const accept=socialNode("button","mini-btn friend-action","ACEPTAR");accept.type="button";
+      accept.addEventListener("click",async()=>{accept.disabled=true;try{const r=await client.rpc("respond_squad_invite",{p_invite_id:inv.invite_id,p_accept:true});if(r.error)throw r.error;await coopRefreshSocialInvites();}catch(e){socialNote(e.message||"No se pudo aceptar.",true);accept.disabled=false;}});
+      const reject=socialNode("button","mini-btn friend-action friend-muted","RECHAZAR");reject.type="button";
+      reject.addEventListener("click",async()=>{reject.disabled=true;try{const r=await client.rpc("respond_squad_invite",{p_invite_id:inv.invite_id,p_accept:false});if(r.error)throw r.error;await coopRefreshSocialInvites();}catch(e){socialNote(e.message,true);reject.disabled=false;}});
+      actions.append(accept,reject);row.append(info,actions);squadBox?.append(row);
+    }
+    if(!(squad.data||[]).length)squadBox?.append(socialNode("small","friend-empty","No hay invitaciones a escuadrones."));
+    const roster=document.getElementById("squad-roster");roster?.replaceChildren();
+    const members=mine.data||[];
+    currentSquadId=members[0]?.squad_id||null;
+    const me=members.find(x=>x.user_id===cloudSession.user.id);
+    currentSquadCanInvite=["leader","officer"].includes(me?.role);
+    document.getElementById("squad-create-row")?.classList.toggle("hidden",!!currentSquadId);
+    document.getElementById("btn-squad-leave")?.classList.toggle("hidden",!currentSquadId);
+    if(currentSquadId){
+      roster?.append(socialNode("strong","squad-name",members[0].squad_name));
+      for(const member of members){
+        const item=socialNode("div","squad-member-row");
+        item.append(socialNode("span","",member.pilot_name||"Piloto"),socialNode("small","",member.public_pilot_id||"")+"");
+        const role=socialNode("small","",member.role==="leader"?"LÍDER":member.role==="officer"?"OFICIAL":"PILOTO");
+        item.append(role);roster?.append(item);
+      }
+      socialNote(members.length+"/"+members[0].max_members+" pilotos en el escuadrón.");
+    }else{
+      roster?.append(socialNode("small","friend-empty","Todavía no perteneces a un escuadrón."));
+      socialNote("Crea un escuadrón o acepta una invitación.");
+    }
+  }catch(e){socialNote(e.message||"No se pudieron actualizar las invitaciones.",true);}
+}
+async function coopCreateSquad(){
+  const name=document.getElementById("squad-name-input")?.value?.trim()||"";
+  try{const client=await coopGetClient();const r=await client.rpc("create_squad",{p_name:name});if(r.error)throw r.error;document.getElementById("squad-name-input").value="";await coopRefreshSocialInvites();}
+  catch(e){socialNote(e.message||"No se pudo crear el escuadrón.",true);}
+}
+async function coopLeaveSquad(){
+  if(!currentSquadId||!confirm("¿Abandonar tu escuadrón? Si eres el líder, el mando pasará a otro piloto."))return;
+  try{const client=await coopGetClient();const r=await client.rpc("leave_squad",{p_squad_id:currentSquadId});if(r.error)throw r.error;currentSquadId=null;await coopRefreshSocialInvites();}
+  catch(e){socialNote(e.message||"No se pudo abandonar el escuadrón.",true);}
+}
+async function coopSendSquadInvite(userId){
+  if(!currentSquadId||!currentSquadCanInvite){socialNote("Primero crea un escuadrón o solicita permiso al líder.",true);return;}
+  try{const client=await coopGetClient();const r=await client.rpc("send_squad_invite",{p_squad_id:currentSquadId,p_invitee_id:userId});if(r.error)throw r.error;socialNote("Invitación al escuadrón enviada.");}
+  catch(e){socialNote(e.message||"No se pudo invitar al piloto.",true);}
+}
+async function coopSendGameInvite(userId){
+  if(!coopRoom){coopStatus("Primero crea o únete a una sala online para invitar a un amigo.",true);return;}
+  try{const client=await coopGetClient();const r=await client.rpc("send_game_invite",{p_room_id:coopRoom.id,p_recipient_id:userId});if(r.error)throw r.error;coopStatus("Invitación a partida enviada.");}
+  catch(e){coopStatus(e.message||"No se pudo enviar la invitación.",true);}
+}
+window.AETHER_COOP_INVITE=coopSendGameInvite;
+window.AETHER_SQUAD_INVITE=coopSendSquadInvite;
+
+function coopInitUI(){const connected=!!cloudSession?.access_token,auth=document.getElementById("coop-auth-note");if(auth)auth.textContent=connected?"Cuenta online conectada. Crea o únete a una sala.":"Inicia sesión con tu cuenta online para crear o unirte a una sala.";["btn-coop-create","btn-coop-join"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!connected;});document.getElementById("btn-coop-create")?.addEventListener("click",coopCreateRoom);document.getElementById("btn-coop-join")?.addEventListener("click",coopJoinRoom);document.getElementById("btn-coop-ready")?.addEventListener("click",coopToggleReady);document.getElementById("btn-coop-start")?.addEventListener("click",coopStartMission);document.getElementById("btn-coop-leave")?.addEventListener("click",coopLeaveRoom);document.getElementById("btn-coop-copy")?.addEventListener("click",coopCopyCode);document.getElementById("coop-code-input")?.addEventListener("input",e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"");});document.getElementById("btn-squad-create")?.addEventListener("click",coopCreateSquad);document.getElementById("btn-squad-leave")?.addEventListener("click",coopLeaveSquad);document.getElementById("btn-social-refresh")?.addEventListener("click",coopRefreshSocialInvites);window.addEventListener("aether:auth",()=>coopRefreshSocialInvites());if(connected)void coopRefreshSocialInvites();}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",coopInitUI,{once:true});else coopInitUI();
