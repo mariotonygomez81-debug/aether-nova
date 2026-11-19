@@ -158,6 +158,7 @@ let player = null;
 let player2 = null;
 let localCoopEnabled = false;
 function getActivePilots(){return [player,player2].filter(p=>p&&p.lives>0);}
+function getNearestPilot(x,y){return getActivePilots().sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0]||player;}
 let W = window.innerWidth;
 let H = window.innerHeight;
 let DPR = 1;
@@ -1679,7 +1680,7 @@ class EnemyShip {
       this.y += this.vy;
       this.dashTimer--;
       if (this.dashTimer <= 0 && player) {
-        const angle = Math.atan2(player.y - this.y, player.x - this.x);
+        const targetPilot=getNearestPilot(this.x,this.y);const angle = Math.atan2(targetPilot.y - this.y, targetPilot.x - this.x);
         this.vx = Math.cos(angle) * 4.8;
         this.vy = Math.sin(angle) * 4.8;
         this.dashTimer = 150;
@@ -1705,7 +1706,7 @@ class EnemyShip {
 
   shoot() {
     if (!player || enemyBullets.length > (IS_LOW_POWER ? 100 : 170)) return;
-    const ang = Math.atan2(player.y - this.y, player.x - this.x);
+    const targetPilot=getNearestPilot(this.x,this.y);const ang = Math.atan2(targetPilot.y - this.y, targetPilot.x - this.x);
     const shot = (angle, speed, color) => enemyBullets.push({
       x: this.x, y: this.y + 14, vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed, color
@@ -1838,13 +1839,13 @@ class BossShip {
     if (this.variant === 5 && this.specialClock % (this.phase === 3 ? 145 : 230) === 0) {
       for(let i=0;i<(this.phase===3?8:5);i++){const q=i*Math.PI*2/(this.phase===3?8:5);enemyBullets.push({x:this.x+Math.cos(q)*62,y:this.y+Math.sin(q)*38,vx:Math.cos(q)*2.1,vy:Math.sin(q)*2.1+1.1,color:"#d8e2f0"});}
     }
-    if (this.variant === 6 && this.specialClock % (this.phase===3?170:260)<55 && player) {player.x+=Math.sign(this.x-player.x)*(this.phase===3?.95:.5);player.x=Math.max(player.radius,Math.min(W-player.radius,player.x));}
+    if (this.variant === 6 && this.specialClock % (this.phase===3?170:260)<55 && player) {const targetPilot=getNearestPilot(this.x,this.y);targetPilot.x+=Math.sign(this.x-targetPilot.x)*(this.phase===3?.95:.5);targetPilot.x=Math.max(targetPilot.radius,Math.min(W-targetPilot.radius,targetPilot.x));}
     if (this.variant === 7 && this.specialClock % (this.phase===3?155:225)===0) {for(const side of [-1,1])for(let i=0;i<3;i++)enemyBullets.push({x:this.x+side*48,y:this.y+20,vx:side*(1.5+i*.65),vy:3.4+i*.25,color:"#ff874a"});}
-    if (this.variant === 8 && this.specialClock % (this.phase===3?125:195)===0) {const lanes=this.phase===3?7:5;for(let i=0;i<lanes;i++){const x=(i+1)*W/(lanes+1);enemyBullets.push({x,y:this.y+22,vx:(player?Math.sign(player.x-x):0)*.65,vy:4.4,color:"#b9a0ff"});}}
+    if (this.variant === 8 && this.specialClock % (this.phase===3?125:195)===0) {const lanes=this.phase===3?7:5;for(let i=0;i<lanes;i++){const x=(i+1)*W/(lanes+1);enemyBullets.push({x,y:this.y+22,vx:(getNearestPilot(x,this.y)?Math.sign(getNearestPilot(x,this.y).x-x):0)*.65,vy:4.4,color:"#b9a0ff"});}}
     if (this.variant === 9 && this.phase===3 && this.specialClock%145===0) {for(let i=0;i<18;i++){const q=i*Math.PI*2/18;enemyBullets.push({x:this.x,y:this.y,vx:Math.cos(q)*4.4,vy:Math.sin(q)*4.4,color:"#ff3d8d"});}state.flash=Math.max(state.flash,.14);}
     const cadence = Math.max(34, (this.phase === 1 ? 88 : this.phase === 2 ? 66 : 48) - Math.floor(state.level / 18));
     if (player && this.attackClock % cadence === 0 && enemyBullets.length < (IS_LOW_POWER ? 55 : 85)) {
-      const aim = Math.atan2(player.y - this.y, player.x - this.x);
+      const targetPilot=getNearestPilot(this.x,this.y);const aim = Math.atan2(targetPilot.y - this.y, targetPilot.x - this.x);
       const speed = 3.6 + Math.min(1.6, state.level * .016) + (this.phase - 1) * .35;
       const addShot = (angle, velocity = speed, color = "#ff3864") => {
         if (enemyBullets.length < (IS_LOW_POWER ? 90 : 150)) {
