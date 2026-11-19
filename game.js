@@ -2038,18 +2038,14 @@ function dropEnemyCredits(enemy) {
   spawnCreditCoin(enemy.x, enemy.y, base + sectorBonus);
 }
 
-function applyPowerup(p) {
+function applyPowerup(p, pilot = player) {
+  if(!pilot)return;
   SoundFX.play("powerup");
-  addFloatingText(p.x, p.y - 15, p.text, p.color);
-  if (p.id === "bomb") {
-    player.bombs = Math.min(5, player.bombs + 1);
-  } else if (p.id === "empbomb") {
-    player.empBombs = Math.min(3, (player.empBombs || 0) + 1);
-  } else if (p.id === "life") {
-    player.lives = Math.min(6, player.lives + 1);
-  } else {
-    player.buffs[p.id] = 660;
-  }
+  addFloatingText(p.x, p.y - 15, `P${pilot.pilotId} · ${p.text}`, p.color);
+  if (p.id === "bomb") pilot.bombs = Math.min(5, pilot.bombs + 1);
+  else if (p.id === "empbomb") pilot.empBombs = Math.min(3, (pilot.empBombs || 0) + 1);
+  else if (p.id === "life") pilot.lives = Math.min(6, pilot.lives + 1);
+  else pilot.buffs[p.id] = 660;
   updateHUD();
 }
 /* ============================================================================
@@ -2659,6 +2655,7 @@ function updateAndDraw() {
 
   updateSpawner();
   player.update();
+  if(player2)player2.update();
 
   // Puente de estado de solo lectura para el renderizador 3D. La simulación,
   // colisiones, armas, progresión y guardado siguen perteneciendo al motor original.
@@ -2746,10 +2743,9 @@ function updateAndDraw() {
     if (!window.__AETHER3D_ACTIVE) a.draw();
 
     if (Math.hypot(a.x - player.x, a.y - player.y) < a.radius + player.radius - 4) {
-      a.dead = true;
-      spawnImpactBurst((a.x + player.x) * .5, (a.y + player.y) * .5, "#ffb45e", IS_LOW_POWER ? 7 : 13);
-      spawnExplosion(a.x, a.y, "#ffb45e", IS_LOW_POWER ? 6 : 11);
-      player.takeDamage("COLISIÓN CON ASTEROIDE");
+      a.dead=true;spawnImpactBurst((a.x+player.x)*.5,(a.y+player.y)*.5,"#ffb45e",IS_LOW_POWER?7:13);spawnExplosion(a.x,a.y,"#ffb45e",IS_LOW_POWER?6:11);player.takeDamage("COLISIÓN CON ASTEROIDE");
+    } else if(player2&&player2.lives>0&&Math.hypot(a.x-player2.x,a.y-player2.y)<a.radius+player2.radius-4){
+      a.dead=true;spawnImpactBurst((a.x+player2.x)*.5,(a.y+player2.y)*.5,"#ffb347",IS_LOW_POWER?7:13);spawnExplosion(a.x,a.y,"#ffb347",IS_LOW_POWER?6:11);player2.takeDamage("COLISIÓN CON ASTEROIDE");
     }
 
     bullets.forEach((b) => {
@@ -2821,15 +2817,10 @@ function updateAndDraw() {
     });
 
     // Solo si sobrevivió a los disparos puede chocar con el jugador.
-    if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < e.radius + player.radius) {
-      e.dead = true;
-      e._noKillReward = true;
-      const impactX = (e.x + player.x) * 0.5;
-      const impactY = (e.y + player.y) * 0.5;
-      spawnImpactBurst(impactX, impactY, "#ff6688", IS_LOW_POWER ? 9 : 17);
-      spawnExplosion(e.x, e.y, "#ff6688", IS_LOW_POWER ? 8 : 15);
-      SoundFX.play("boom");
-      player.takeDamage("CHOQUE CON NAVE ENEMIGA");
+    if (!e.dead && Math.hypot(e.x-player.x,e.y-player.y)<e.radius+player.radius) {
+      e.dead=true;e._noKillReward=true;spawnImpactBurst((e.x+player.x)*.5,(e.y+player.y)*.5,"#ff6688",IS_LOW_POWER?9:17);spawnExplosion(e.x,e.y,"#ff6688",IS_LOW_POWER?8:15);SoundFX.play("boom");player.takeDamage("CHOQUE CON NAVE ENEMIGA");
+    } else if(!e.dead&&player2&&player2.lives>0&&Math.hypot(e.x-player2.x,e.y-player2.y)<e.radius+player2.radius){
+      e.dead=true;e._noKillReward=true;spawnImpactBurst((e.x+player2.x)*.5,(e.y+player2.y)*.5,"#ffb347",IS_LOW_POWER?9:17);spawnExplosion(e.x,e.y,"#ffb347",IS_LOW_POWER?8:15);SoundFX.play("boom");player2.takeDamage("CHOQUE CON NAVE ENEMIGA");
     }
   });
 
@@ -2872,10 +2863,8 @@ function updateAndDraw() {
       ctx.fill();
     }
 
-    if (!eb.dead && Math.hypot(eb.x - player.x, eb.y - player.y) < player.radius - 3) {
-      eb.dead = true;
-      player.takeDamage("FUEGO ENEMIGO");
-    }
+    if (!eb.dead && Math.hypot(eb.x-player.x,eb.y-player.y)<player.radius-3) {eb.dead=true;player.takeDamage("FUEGO ENEMIGO");}
+    else if(!eb.dead&&player2&&player2.lives>0&&Math.hypot(eb.x-player2.x,eb.y-player2.y)<player2.radius-3){eb.dead=true;player2.takeDamage("FUEGO ENEMIGO");}
   });
 
   creditCoins.forEach((coin) => {
@@ -2912,11 +2901,8 @@ function updateAndDraw() {
     ctx.fillText(String(coin.amount), 0, 0);
     ctx.restore();
 
-    if (!coin.dead && Math.hypot(coin.x - player.x, coin.y - player.y) < player.radius + 15) {
-      coin.dead = true;
-      awardCombatCredits(coin.amount, coin.x, coin.y, "MONEDA");
-      SoundFX.play("powerup");
-      addFloatingText(coin.x, coin.y - 20, `+${coin.amount} CRÉDITOS`, "#ffd34e");
+    if (!coin.dead && (Math.hypot(coin.x-player.x,coin.y-player.y)<player.radius+15 || (player2&&player2.lives>0&&Math.hypot(coin.x-player2.x,coin.y-player2.y)<player2.radius+15))) {
+      coin.dead=true;awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");SoundFX.play("powerup");addFloatingText(coin.x,coin.y-20,`+${coin.amount} CRÉDITOS`,"#ffd34e");
     }
   });
 
@@ -2964,9 +2950,10 @@ function updateAndDraw() {
       const lengthSq = vx * vx + vy * vy;
       const t = lengthSq > 0 ? Math.max(0, Math.min(1, -(sx * vx + sy * vy) / lengthSq)) : 0;
       const closest = Math.hypot(sx + vx * t, sy + vy * t);
-      if (closest < player.radius + 14) {
-        p.dead = true;
-        applyPowerup(p);
+      if (closest < player.radius + 14) {p.dead=true;applyPowerup(p,player);}
+      else if(player2&&player2.lives>0){
+        const sx2=(p.prevX??p.x)-(player2.prevX??player2.x),sy2=(p.prevY??p.y)-(player2.prevY??player2.y),ex2=p.x-player2.x,ey2=p.y-player2.y,vx2=ex2-sx2,vy2=ey2-sy2,len2=vx2*vx2+vy2*vy2,t2=len2>0?Math.max(0,Math.min(1,-(sx2*vx2+sy2*vy2)/len2)):0;
+        if(Math.hypot(sx2+vx2*t2,sy2+vy2*t2)<player2.radius+14){p.dead=true;applyPowerup(p,player2);}
       }
     }
   });
@@ -2998,6 +2985,7 @@ function updateAndDraw() {
   ctx.globalAlpha = 1;
 
   if (!window.__AETHER3D_ACTIVE) player.draw();
+  if (player2) player2.draw();
 
   bullets = bullets.filter((b) => !b.dead);
   enemyBullets = enemyBullets.filter((eb) => !eb.dead);
@@ -3039,12 +3027,14 @@ function updateHUD() {
   document.getElementById("ui-score").textContent = state.score.toLocaleString("es-AR");
   updateCommercialUI();
   document.getElementById("ui-level").textContent = state.runMode === "survival" ? `${state.level}/∞` : `${state.level}/100`;
-  document.getElementById("ui-lives").textContent = player.lives;
+  document.getElementById("ui-lives").textContent = localCoopEnabled && player2 ? `${player.lives} / ${player2.lives}` : player.lives;
+  const coopHud=document.getElementById("coop-hud");if(coopHud)coopHud.textContent=localCoopEnabled&&player2?`P1 ${player.lives} ♥   ·   P2 ${player2.lives} ♥`:"";
   document.getElementById("ui-bombs").textContent = player.empBombs > 0 ? `${player.bombs} + ${player.empBombs} EMP` : player.bombs;
   document.getElementById("ui-sector-name").textContent = `${era.name} (MK-${player.getEvolutionTier()})`;
   const pct = Math.min(100, (state.levelProgress / state.levelTarget) * 100);
   document.getElementById("ui-progress").style.width = `${pct}%`;
   phonepadPublishStatus();
+  phonepad2PublishStatus();
 }
 
 function renderBuffTags() {
@@ -3132,6 +3122,9 @@ function startNewGame(savedData = null) {
     if (state.runMode === "daily") { player.lives = 2; player.bombs = 0; }
   }
 
+  player2 = localCoopEnabled && state.runMode !== "daily" ? new Player("viper", 2) : null;
+  if(player2){player2.bombs=1;addFloatingText(W*0.72,H*0.72,"PILOTO 2 · LISTO PARA EL COMBATE","#ffb347");}
+  phonepad2State.lastStatus="";
   state.levelProgress = savedData ? Math.max(0, Math.min(Number(savedData.progress) || 0, 14 + Math.floor(state.level * 1.4) - 1)) : 0;
   state.levelTarget = 18 + Math.floor(state.level * 1.9);
   state.mode = "PLAYING";
