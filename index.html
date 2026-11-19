@@ -132,6 +132,17 @@
               <button type="button" id="btn-cloud-logout" class="mini-btn">Salir online</button>
             </div>
           </div>
+          <section id="pilot-identity-panel" class="pilot-identity-panel hidden">
+            <div class="pilot-identity-heading"><div><span class="section-kicker">AETHER NOVA ID</span><strong id="pilot-public-id">NOVA-------</strong></div><button type="button" id="btn-pilot-id-copy" class="mini-btn">COPIAR ID</button></div>
+            <p class="pilot-identity-copy">Este identificador público permite que otros pilotos te encuentren sin compartir tu correo.</p>
+            <div class="pilot-privacy-options">
+              <label><input type="checkbox" id="pilot-pref-is_discoverable" checked> Aparecer en búsquedas de pilotos</label>
+              <label><input type="checkbox" id="pilot-pref-allow_friend_requests" checked> Permitir solicitudes de amistad</label>
+              <label><input type="checkbox" id="pilot-pref-show_presence" checked> Mostrar mi estado de conexión</label>
+              <label><input type="checkbox" id="pilot-pref-allow_invites" checked> Permitir invitaciones a partidas</label>
+            </div>
+            <small id="pilot-identity-status" class="local-note">Cargando identidad NOVA…</small>
+          </section>
         </div>
           <div class="cloud-login">
             <span class="section-kicker">CUENTA ONLINE OPCIONAL</span>
