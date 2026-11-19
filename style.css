@@ -1371,3 +1371,19 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 .pilot-privacy-options input{accent-color:#00d9ef;width:16px;height:16px;flex:0 0 auto}
 #pilot-identity-status{display:block;margin-top:10px}
 @media(max-width:560px){.pilot-privacy-options{grid-template-columns:1fr}.pilot-identity-heading strong{font-size:1.05rem}}
+
+
+/* AETHER NOVA — red social de pilotos */
+.friend-network-panel{margin-top:15px;padding-top:13px;border-top:1px solid rgba(132,165,205,.2);display:grid;gap:10px}
+.friend-search-row{display:flex;gap:8px;align-items:center}
+.friend-search-row input{min-width:0;flex:1}
+.friend-list{display:grid;gap:7px}
+.friend-group-title{font-size:.66rem;font-weight:800;letter-spacing:.12em;color:#83eaf4;margin-top:7px}
+.friend-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid rgba(117,157,198,.18);border-radius:10px;background:rgba(4,12,27,.42)}
+.friend-row-info{display:grid;gap:3px;min-width:0}
+.friend-row-info strong{font-size:.8rem;color:#edf7ff}
+.friend-row-info small,.friend-empty{font-size:.68rem;color:#93a8c3}
+.friend-row-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.friend-action{font-size:.62rem!important;padding:7px 9px!important;white-space:nowrap}
+.friend-muted{opacity:.8}
+@media(max-width:560px){.friend-search-row{align-items:stretch}.friend-row{align-items:flex-start}.friend-row-actions{max-width:48%}}
