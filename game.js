@@ -3847,15 +3847,20 @@ async function uploadCloudSave() {
     }
     if (!backupCloudMigration(localSnapshot, remoteSnapshot)) return;
     const merged = remoteSnapshot ? mergeCloudSaveData(localSnapshot, remoteSnapshot) : localSnapshot;
-    commercialData = { ...commercialData, ...merged.commercialData };
+    const client = await coopGetClient();
+    const { data: persisted, error: persistError } = await client.rpc("merge_pilot_save", {
+      p_pilot_name: activeProfile?.name || "Comandante",
+      p_save_data: merged
+    });
+    if (persistError) throw persistError;
+    if (!persisted || typeof persisted !== "object" || !persisted.commercialData) {
+      throw new Error("La nube no confirmó la sincronización. Tu copia local permanece intacta.");
+    }
+    commercialData = { ...commercialData, ...persisted.commercialData };
     state.selectedShip = Object.prototype.hasOwnProperty.call(SHIP_TYPES, commercialData.selectedShip) ? commercialData.selectedShip : "valkyrie";
     state.difficulty = ["easy", "normal", "hard"].includes(commercialData.difficulty) ? commercialData.difficulty : "normal";
     localStorage.setItem(COMMERCIAL_KEY, JSON.stringify(commercialData));
-    if (merged.runSave) localStorage.setItem(`aether_save_${key}`, JSON.stringify(merged.runSave));
-    await cloudFetch("pilot_saves?on_conflict=user_id", {
-      method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify({ user_id: cloudSession.user.id, pilot_name: activeProfile?.name || "Comandante", save_data: merged, updated_at: new Date().toISOString() })
-    });
+    if (persisted.runSave) localStorage.setItem(`aether_save_${key}`, JSON.stringify(persisted.runSave));
     checkSavedRun(); renderHangar(); updateCommercialUI();
     armCloudProgressSync();
     cloudSetStatus(remoteSnapshot
