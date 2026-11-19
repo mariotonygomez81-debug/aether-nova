@@ -3805,7 +3805,23 @@ function mergeCloudSaveData(localSave, remoteSave) {
     Number(lc.upgrades?.[upgrade.id]) || 0, Number(rc.upgrades?.[upgrade.id]) || 0));
   mergedCommercial.achievements = [...new Set([...(Array.isArray(rc.achievements) ? rc.achievements : []), ...(Array.isArray(lc.achievements) ? lc.achievements : [])].filter(x => typeof x === "string"))];
   mergedCommercial.bossTrophies = [...new Set([...(Array.isArray(rc.bossTrophies) ? rc.bossTrophies : []), ...(Array.isArray(lc.bossTrophies) ? lc.bossTrophies : [])].filter(x => typeof x === "string"))].slice(-20);
-  mergedCommercial.missions = { ...(rc.missions && typeof rc.missions === "object" && !Array.isArray(rc.missions) ? rc.missions : {}), ...(lc.missions && typeof lc.missions === "object" && !Array.isArray(lc.missions) ? lc.missions : {}) };
+  const localMissions = lc.missions && typeof lc.missions === "object" && !Array.isArray(lc.missions) ? lc.missions : {};
+  const remoteMissions = rc.missions && typeof rc.missions === "object" && !Array.isArray(rc.missions) ? rc.missions : {};
+  const mergeMissionBucket = (localBucket, remoteBucket) => {
+    const localKey = String(localBucket?.key || "");
+    const remoteKey = String(remoteBucket?.key || "");
+    if (!localKey) return remoteBucket || localBucket || {};
+    if (!remoteKey) return localBucket || remoteBucket || {};
+    if (localKey !== remoteKey) return localKey > remoteKey ? localBucket : remoteBucket;
+    const progress = {};
+    for (const id of ["kills","bosses","sectors"]) progress[id] = Math.max(0, Number(localBucket?.progress?.[id]) || 0, Number(remoteBucket?.progress?.[id]) || 0);
+    return { ...remoteBucket, ...localBucket, key: localKey, progress,
+      claimed: [...new Set([...(Array.isArray(remoteBucket?.claimed) ? remoteBucket.claimed : []), ...(Array.isArray(localBucket?.claimed) ? localBucket.claimed : [])])] };
+  };
+  mergedCommercial.missions = {
+    daily: mergeMissionBucket(localMissions.daily, remoteMissions.daily),
+    weekly: mergeMissionBucket(localMissions.weekly, remoteMissions.weekly)
+  };
   mergedCommercial.difficulty = ["easy", "normal", "hard"].includes(mergedCommercial.difficulty) ? mergedCommercial.difficulty : "normal";
   mergedCommercial.selectedShip = Object.prototype.hasOwnProperty.call(SHIP_TYPES, mergedCommercial.selectedShip) ? mergedCommercial.selectedShip : "valkyrie";
   const lr = cloudRunSaveIsValid(local.runSave) ? local.runSave : null;
