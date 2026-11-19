@@ -2508,8 +2508,51 @@ async function startPhonepadPairing(){
     });
   }catch(error){console.error("Phonepad pairing:",error);phonepadStatus(error.message||"NO SE PUDO VINCULAR",false);}
 }
+async function startPhonepad2Pairing(){
+  try{
+    if(!cloudConfigured())throw new Error("La conexión online no está configurada.");
+    if(phonepad2State.channel&&phonepad2State.client)await phonepad2State.client.removeChannel(phonepad2State.channel);
+    const bytes=new Uint8Array(6);crypto.getRandomValues(bytes);
+    const code=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+    const sdk=await import("https://esm.sh/@supabase/supabase-js@2");
+    const client=sdk.createClient(CLOUD_CFG.supabaseUrl,CLOUD_CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:25}}});
+    const channel=client.channel("aether-phone-"+code,{config:{private:false,broadcast:{ack:false,self:false}}})
+      .on("broadcast",{event:"input"},({payload})=>{
+        if(!payload||typeof payload!=="object")return;
+        const now=Date.now();if(payload.t&&Math.abs(now-Number(payload.t))>5000)return;
+        phonepad2State.left=payload.l===true;phonepad2State.right=payload.r===true;
+        const bomb=payload.b===true,emp=payload.e===true,pause=payload.p===true;
+        if(bomb&&!phonepad2State.bomb)triggerSuperBomb("supernova",player2);
+        if(emp&&!phonepad2State.emp)triggerSuperBomb("emp",player2);
+        if(pause&&!phonepad2State.pause)togglePause();
+        phonepad2State.bomb=bomb;phonepad2State.emp=emp;phonepad2State.pause=pause;
+        phonepad2State.lastAt=now;phonepad2State.connected=true;
+        phonepadStatus("JUGADOR 2 CONECTADO",true);
+      });
+    phonepad2State.client=client;phonepad2State.channel=channel;phonepad2State.code=code;phonepad2State.lastAt=Date.now();
+    const link=new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/");
+    link.searchParams.set("code",code);link.searchParams.set("player","2");
+    const codeEl=document.getElementById("phonepad2-code");if(codeEl)codeEl.textContent=code;
+    const linkEl=document.getElementById("phonepad2-link");if(linkEl){linkEl.href=link.href;linkEl.textContent=link.href;}
+    const qr=document.getElementById("phonepad2-qr");
+    if(qr){qr.innerHTML="";const appLink="aethernova://connect?code="+encodeURIComponent(code)+"&player=2";if(window.QRCode)new QRCode(qr,{text:appLink,width:150,height:150,colorDark:"#07111f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});else qr.textContent="Abrí el enlace HTTPS para el Jugador 2.";}
+    document.getElementById("phonepad2-pairing")?.classList.remove("hidden");
+    phonepadStatus("CÓDIGO JUGADOR 2 GENERADO · CONECTANDO…",false);
+    await new Promise((resolve,reject)=>{
+      const timeout=setTimeout(()=>reject(new Error("El canal del Jugador 2 tardó demasiado en conectar.")),12000);
+      channel.subscribe(s=>{if(s==="SUBSCRIBED"){clearTimeout(timeout);phonepadStatus("JUGADOR 2 LISTO · ESCANEÁ EL QR",false);phonepad2PublishStatus();resolve(s);}else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){clearTimeout(timeout);reject(new Error("Realtime no aceptó el canal del Jugador 2."));}});
+    });
+  }catch(error){console.error("Phonepad P2:",error);phonepadStatus(error.message||"NO SE PUDO VINCULAR JUGADOR 2",false);}
+}
+function pollPhonepad2Timeout(){
+  if(phonepad2State.connected&&Date.now()-phonepad2State.lastAt>1800){
+    phonepad2State.connected=false;phonepad2State.left=phonepad2State.right=false;
+    phonepadStatus("JUGADOR 2 DESCONECTADO · REINTENTÁ EL QR",false);
+  }
+}
 function pollPhonepadTimeout(){
   if(phonepadState.connected&&Date.now()-phonepadState.lastAt>1800){phonepadState.connected=false;phonepadRelease();phonepadStatus("CELULAR DESCONECTADO · ESCANEÁ EL QR PARA REINTENTAR",false);}
+  pollPhonepad2Timeout();
 }
 function controllerStatus(message,connected=false){
   const el=document.getElementById("controller-status");if(!el)return;
@@ -3835,6 +3878,7 @@ function bindHold(id, dirKey) {
 bindHold("btn-left", "Left");
 bindHold("btn-right", "Right");
 bindTap("btn-phonepad-pair", startPhonepadPairing);
+bindTap("btn-phonepad2-pair", startPhonepad2Pairing);
 bindTap("btn-phonepad-copy",()=>{if(phonepadState.code)navigator.clipboard?.writeText(new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/?code="+phonepadState.code).href).catch(()=>{});});
 
 window.addEventListener("keydown", (e) => {
