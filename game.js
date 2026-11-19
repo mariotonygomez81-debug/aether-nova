@@ -2663,6 +2663,7 @@ function updateAndDraw() {
       selectedShip: state.selectedShip, type: player.type, color: player.color, accent: player.accent,
       invulnerable: player.invuln > 0 && Math.floor(player.invuln / 5) % 2 === 0,
       shield: player.buffs.shield > 0, playing: state.mode === "PLAYING",
+      coopPlayer2: player2 && player2.lives > 0 ? {x:player2.x,y:player2.y,tilt:player2.tilt,color:player2.color,invulnerable:player2.invuln>0&&Math.floor(player2.invuln/5)%2===0,shield:player2.buffs.shield>0} : null,
       enemyShots: enemyBullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "enemy-shot-" + Math.random().toString(36).slice(2)),
         x: b.x, y: b.y, vx: b.vx, vy: b.vy, color: b.color || "#ff4d6d"
@@ -2983,7 +2984,7 @@ function updateAndDraw() {
   ctx.globalAlpha = 1;
 
   if (!window.__AETHER3D_ACTIVE) player.draw();
-  if (player2) player2.draw();
+  if (player2 && !window.__AETHER3D_ACTIVE) player2.draw();
 
   bullets = bullets.filter((b) => !b.dead);
   enemyBullets = enemyBullets.filter((eb) => !eb.dead);
