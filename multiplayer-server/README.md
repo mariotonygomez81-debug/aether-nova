@@ -18,7 +18,7 @@ npm run check
 npm test
 SUPABASE_URL="https://TU-PROYECTO.supabase.co" SUPABASE_PUBLISHABLE_KEY="TU_CLAVE_PUBLICA" npm start
 ``
-La ruta `/health` devuelve un JSON de estado para monitorización.
+La ruta `/health` devuelve un JSON de estado para monitorización. Para comprobar el servicio desplegado desde una terminal: `AETHER_BATTLE_SERVER_URL=https://aether-nova-battle-server.onrender.com npm run smoke:health`.
 
 ## Seguridad y autoridad
 - El servidor valida el access token consultando Supabase Auth.
