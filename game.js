@@ -2498,7 +2498,7 @@ function phonepadStatus(message,connected=false){
   if(el){el.textContent=message;el.classList.toggle("connected",connected);}
 }
 function phonepadRelease(){
-  phonepadState.left=phonepadState.right=phonepadState.bomb=phonepadState.emp=phonepadState.pause=false;
+  phonepadState.left=phonepadState.right=phonepadState.bomb=phonepadState.emp=phonepadState.cluster=phonepadState.singularity=phonepadState.pause=false;
   refreshHorizontalInput();
 }
 async function startPhonepadPairing(){
@@ -2576,7 +2576,7 @@ async function startPhonepad2Pairing(){
 }
 function pollPhonepad2Timeout(){
   if(phonepad2State.connected&&Date.now()-phonepad2State.lastAt>1800){
-    phonepad2State.connected=false;phonepad2State.left=phonepad2State.right=phonepad2State.bomb=phonepad2State.emp=phonepad2State.pause=false;
+    phonepad2State.connected=false;phonepad2State.left=phonepad2State.right=phonepad2State.bomb=phonepad2State.emp=phonepad2State.cluster=phonepad2State.singularity=phonepad2State.pause=false;
     phonepadStatus("JUGADOR 2 DESCONECTADO · REINTENTÁ EL QR",false);
   }
 }
@@ -2649,10 +2649,12 @@ window.addEventListener("gamepaddisconnected",e=>{
   if(gamepadState.index===e.gamepad.index){gamepadState.index=null;gamepadState.connected=false;gamepadState.buttons=[];gamepadState.left=gamepadState.right=false;refreshHorizontalInput();controllerStatus("MANDO DESCONECTADO",false);}
 });
 
+let phonepadTelemetryClock=0;
 function updateAndDraw() {
   requestAnimationFrame(updateAndDraw);
   pollGamepad();
   pollPhonepadTimeout();
+  if(++phonepadTelemetryClock%12===0){phonepadPublishStatus();phonepad2PublishStatus();}
 
   const era = ERAS[Math.min(9, Math.floor((state.level - 1) / 10))];
   paintEraBackground(era);
