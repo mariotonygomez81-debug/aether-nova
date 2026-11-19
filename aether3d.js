@@ -88,7 +88,7 @@ for(let layer=0;layer<3;layer++){
 
 // Alpha 4: sin planetas ni estación orbital. Fondo profundo y limpio.
 const ship = new THREE.Group(); scene.add(ship);
-const shipModel = new THREE.Group(); ship.add(shipModel);
+const shipModel = new THREE.Group(); shipModel.name="valkyrie"; ship.add(shipModel);
 const hullMat = new THREE.MeshPhysicalMaterial({ color: 0x9eb7c9, metalness: .94, roughness: .22, clearcoat: .8, clearcoatRoughness: .2 });
 const darkMat = new THREE.MeshStandardMaterial({ color: 0x101c2c, metalness: .88, roughness: .3 });
 const panelMat = new THREE.MeshStandardMaterial({ color: 0x31485d, metalness: .9, roughness: .34 });
@@ -144,7 +144,7 @@ const variantMats = {
   white: new THREE.MeshStandardMaterial({color:0xe8eaff,metalness:.96,roughness:.16,emissive:0x443a9a,emissiveIntensity:.45})
 };
 function makeVariant(id, build) {
-  const group=new THREE.Group(); group.visible=false; ship.add(group);
+  const group=new THREE.Group(); group.name=id; group.visible=false; ship.add(group);
   const part=(geo,mat,pos,rot=[0,0,0],scale=null)=>{const m=new THREE.Mesh(geo,mat);m.position.set(...pos);m.rotation.set(...rot);if(scale)m.scale.set(...scale);group.add(m);return m;};
   const wing=(side,x,z,w,d,mat,angle=0)=>part(new THREE.BoxGeometry(w,.16,d),mat,[side*x,-.08,z],[0,side*angle,side*-.08]);
   const nose=(mat=variantMats.hull,len=4.2,r=.55)=>part(new THREE.ConeGeometry(r,len,10),mat,[0,0,-.55],[Math.PI/2,0,0]);
@@ -279,7 +279,7 @@ shield.visible = false; ship.add(shield);
 // Nave del segundo piloto: modelo 3D duplicado, materiales propios y firma naranja.
 const ship2 = ship.clone(true);
 ship2.visible = false;
-ship2.scale.setScalar(.78);
+ship2.scale.setScalar(1);
 ship2.traverse(part=>{
   if(!part.isMesh||!part.material)return;
   const copyMaterial=mat=>{
@@ -890,11 +890,12 @@ function animate(now) {
     const p2=data.coopPlayer2;
     if(p2){
       ship2.visible=true;
-      if(ship2.children[0])ship2.children[0].visible=true;
-      const p2Target=worldPos(p2.x,p2.y,data.width,data.height,-10.7);
+      const p2ShipId=p2.selectedShip||"viper";
+      ship2.children.forEach(child=>{if(child.name==="valkyrie"||shipVariants[child.name])child.visible=child.name===p2ShipId;});
+      const p2Target=worldPos(p2.x,p2.y,data.width,data.height,-10);
       ship2.position.x=THREE.MathUtils.damp(ship2.position.x,p2Target.x,16,dt);
       ship2.position.y=THREE.MathUtils.damp(ship2.position.y,p2Target.y,16,dt);
-      ship2.position.z=THREE.MathUtils.damp(ship2.position.z,-10.7,16,dt);
+      ship2.position.z=THREE.MathUtils.damp(ship2.position.z,-10,16,dt);
       ship2.rotation.z=THREE.MathUtils.damp(ship2.rotation.z,-(p2.x-data.width/2)/(data.width/2)*.22,7,dt);
       ship2.rotation.x=THREE.MathUtils.damp(ship2.rotation.x,Math.sin(now*.002+.8)*.018,3,dt);
       ship2.traverse(part=>{
