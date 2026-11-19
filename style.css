@@ -1276,3 +1276,12 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 .phonepad-qr{width:166px;min-width:166px;min-height:166px;padding:8px;background:#fff;border-radius:8px;display:grid;place-items:center}.phonepad-qr img{max-width:150px}
 .phonepad-details{display:grid;justify-items:start;gap:7px;min-width:0}.phonepad-details small{font-size:9px;letter-spacing:.12em;color:#8baec4}.phonepad-details strong{font-size:25px;letter-spacing:.22em;color:#7ceaff}.phonepad-details a{font-size:12px;color:#8fe9ff;overflow-wrap:anywhere}.phonepad-details span{font-size:10px;color:#a6c1d0;letter-spacing:.08em}.phonepad-details span.connected{color:#6effc6}
 @media(max-width:560px){.phonepad-launch{align-items:flex-start;flex-direction:column}.phonepad-pairing{align-items:center;flex-direction:column}}
+
+/* COOPERATIVO LOCAL · DOS PILOTOS */
+.coop-hud{margin-top:5px;padding:5px 10px;border:1px solid rgba(255,179,71,.55);border-radius:9px;background:linear-gradient(90deg,rgba(0,240,255,.12),rgba(255,179,71,.14));color:#dff8ff;font:800 10px/1.4 system-ui,sans-serif;letter-spacing:.08em;text-align:center;text-shadow:0 0 9px rgba(255,179,71,.35)}
+#btn-local-coop{width:100%;margin-top:8px;border-color:rgba(255,179,71,.7);color:#ffe1ad}
+#btn-local-coop.active{background:linear-gradient(135deg,#0b806d,#b45b24);border-color:#7effd2;color:#fff;box-shadow:0 0 18px rgba(92,255,196,.25)}
+.coop-local-launch{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,179,71,.2)}
+#phonepad2-launch{margin-top:8px}
+#phonepad2-pairing{border-color:rgba(255,179,71,.55)}
+#phonepad2-pairing .phonepad-qr{box-shadow:0 0 22px rgba(255,179,71,.18)}
