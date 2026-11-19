@@ -6,5 +6,7 @@
 window.AETHER_CLOUD_CONFIG = Object.freeze({
   enabled: true,
   supabaseUrl: "https://gmwlcfprhsarxlbgwsvf.supabase.co",
-  anonKey: "sb_publishable_X42q42dH1evVZY4NDZi6BQ_6dMP_wbr"
+  anonKey: "sb_publishable_X42q42dH1evVZY4NDZi6BQ_6dMP_wbr",
+  // Completar después de desplegar multiplayer-server en un host con WebSockets.
+  battleServerUrl: ""
 });
