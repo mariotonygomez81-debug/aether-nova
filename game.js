@@ -930,7 +930,7 @@ class Player {
       if (keys.Left) moveDir -= 1;
       if (keys.Right) moveDir += 1;
     }
-    if (state.gyroEnabled && Math.abs(state.gyroTilt) > 2) {
+    if (this.pilotId === 1 && state.gyroEnabled && Math.abs(state.gyroTilt) > 2) {
       moveDir = Math.max(-1.4, Math.min(1.4, state.gyroTilt / 16));
     }
 
@@ -3873,7 +3873,6 @@ bindHold("btn-right", "Right");
 bindTap("btn-phonepad-pair", startPhonepadPairing);
 bindTap("btn-phonepad2-pair", startPhonepad2Pairing);
 bindTap("btn-local-coop",()=>{localCoopEnabled=!localCoopEnabled;const b=document.getElementById("btn-local-coop");if(b){b.classList.toggle("active",localCoopEnabled);b.textContent=localCoopEnabled?"COOPERATIVO ACTIVADO · 2 JUGADORES":"ACTIVAR COOPERATIVO LOCAL";}document.getElementById("phonepad2-launch")?.classList.toggle("hidden",!localCoopEnabled);document.getElementById("coop-hud")?.classList.toggle("hidden",!localCoopEnabled);});
-bindTap("btn-phonepad2-pair", startPhonepad2Pairing);
 bindTap("btn-phonepad-copy",()=>{if(phonepadState.code)navigator.clipboard?.writeText(new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/?code="+phonepadState.code).href).catch(()=>{});});
 
 window.addEventListener("keydown", (e) => {
