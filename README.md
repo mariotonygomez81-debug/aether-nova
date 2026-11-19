@@ -32,3 +32,11 @@ La conexión online es opcional. Los archivos SQL conservan el historial de crea
 La numeración de esos archivos identifica migraciones históricas de base de datos; no representa la versión actual del videojuego. Consultar `CONFIGURACION_ACTUAL.md` para la puesta en marcha.
 
 Nunca colocar claves secretas ni `service_role` en archivos del cliente.
+
+
+## Arquitectura multiplataforma (fase inicial)
+- `platform-runtime.js` detecta el tipo de dispositivo y aplica un perfil de calidad adaptativo sin cambiar las reglas de juego.
+- PC web/PWA sigue siendo la distribución base; escritorio empaquetable y clientes móviles/Android TV se incorporarán como shells sobre el mismo núcleo.
+- El perfil adaptativo limita pixel ratio y frecuencia de renderizado según memoria, núcleos, ahorro de datos y clase de dispositivo.
+- Las cuentas serán obligatorias para el progreso sincronizado y el juego online; el modo invitado/local deberá retirarse gradualmente en la siguiente fase, preservando migración de partidas.
+- El esquema Supabase existente incluye perfiles, guardados, ranking, salas cooperativas y políticas RLS. El combate online sincronizado sigue siendo una fase pendiente.
