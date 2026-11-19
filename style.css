@@ -1387,3 +1387,8 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 .friend-action{font-size:.62rem!important;padding:7px 9px!important;white-space:nowrap}
 .friend-muted{opacity:.8}
 @media(max-width:560px){.friend-search-row{align-items:stretch}.friend-row{align-items:flex-start}.friend-row-actions{max-width:48%}}
+
+
+.friend-presence{color:#91a7c2;font-size:.65rem}
+.friend-presence.is-online{color:#71f0ad}
+.friend-presence.is-playing{color:#79dcff}
