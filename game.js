@@ -3484,6 +3484,7 @@ function renderCloudAccount() {
   const restore = document.getElementById("btn-cloud-restore");
   const logout = document.getElementById("btn-cloud-logout");
   const connected = !!cloudSession?.access_token;
+  document.getElementById("pilot-identity-panel")?.classList.toggle("hidden", !connected);
   if (label) label.textContent = connected ? `Cuenta online: ${cloudSession.user?.email || "Comandante"}` :
     (cloudConfigured() ? "Cuenta online no conectada" : "Backend online pendiente de configuración");
   [upload, restore, logout].forEach(el => { if (el) el.disabled = !connected; });
@@ -3564,7 +3565,7 @@ async function cloudSignIn() {
     const data = await cloudAuthRequest("token?grant_type=password", { email, password });
     cloudSetSession(data);
     cloudSetStatus("Sesión online iniciada. Tu progreso local permanece intacto.");
-    await cloudPostProfile(); await refreshOnlineRanking(); await loadGalacticEvents();
+    await cloudPostProfile(); await cloudLoadPilotIdentity(); await refreshOnlineRanking(); await loadGalacticEvents();
   } catch (error) { cloudSetStatus(error.message, true); }
   finally { cloudBusy = false; renderCloudAccount(); }
 }
