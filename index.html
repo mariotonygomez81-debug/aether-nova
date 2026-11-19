@@ -141,7 +141,18 @@
               <label><input type="checkbox" id="pilot-pref-show_presence" checked> Mostrar mi estado de conexión</label>
               <label><input type="checkbox" id="pilot-pref-allow_invites" checked> Permitir invitaciones a partidas</label>
             </div>
+
             <small id="pilot-identity-status" class="local-note">Cargando identidad NOVA…</small>
+            <div class="friend-network-panel">
+              <span class="section-kicker">RED DE PILOTOS</span>
+              <div class="friend-search-row">
+                <input id="friend-search-input" type="search" maxlength="24" placeholder="Buscar nombre o ID NOVA" autocomplete="off">
+                <button type="button" id="btn-friend-search" class="mini-btn">BUSCAR</button>
+              </div>
+              <div id="friend-search-results" class="friend-list"></div>
+              <div id="friend-network-list" class="friend-list"></div>
+              <small id="friend-network-status" class="local-note">Inicia sesión para administrar tus amistades.</small>
+            </div>
           </section>
         </div>
           <div class="cloud-login">
