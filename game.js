@@ -3566,7 +3566,7 @@ async function cloudSignIn() {
     const data = await cloudAuthRequest("token?grant_type=password", { email, password });
     cloudSetSession(data);
     cloudSetStatus("Sesión online iniciada. Tu progreso local permanece intacto.");
-    await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); await refreshOnlineRanking(); await loadGalacticEvents();
+    await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); await refreshOnlineRanking(); await loadGalacticEvents(); await uploadCloudSave();
   } catch (error) { cloudSetStatus(error.message, true); }
   finally { cloudBusy = false; renderCloudAccount(); }
 }
