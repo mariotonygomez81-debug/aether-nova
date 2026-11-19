@@ -4172,7 +4172,7 @@ async function restoreCloudSession() {
   try {
     await cloudRefreshSession();
     cloudSetStatus("Sesión online restaurada de forma segura.");
-    try { await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); } catch (profileError) { console.warn("No se pudo actualizar el perfil online; la sesión sigue activa.", profileError); }
+    try { await cloudPostProfile(); await cloudLoadPilotIdentity(); await cloudRefreshFriendNetwork(); await uploadCloudSave(); } catch (profileError) { console.warn("No se pudo actualizar el perfil online; la sesión sigue activa.", profileError); }
     void refreshOnlineRanking();
     void loadGalacticEvents();
   } catch (error) {
