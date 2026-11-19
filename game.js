@@ -155,6 +155,8 @@ let bossIntroTimer = 0;
 // Si se declara más abajo, la llamada inicial provoca un ReferenceError (TDZ)
 // y detiene toda la inicialización del juego y de los botones.
 let player = null;
+let player2 = null;
+let localCoopEnabled = false;
 let W = window.innerWidth;
 let H = window.innerHeight;
 let DPR = 1;
@@ -871,10 +873,12 @@ function showOverlay(id) {
 }
 
 class Player {
-  constructor(typeKey) {
+  constructor(typeKey, pilotId = 1) {
     const spec = SHIP_TYPES[typeKey] || SHIP_TYPES.valkyrie;
+    this.pilotId = pilotId;
+    this.isCoopPilot = pilotId === 2;
     this.type = typeKey;
-    this.x = W / 2;
+    this.x = pilotId === 2 ? W * 0.72 : W / 2;
     this.y = H - 185;
     this.radius = 20;
     const upgrades = commercialData.upgrades || {};
@@ -882,8 +886,8 @@ class Player {
     const shipFireBonus = typeKey === "valkyrie" ? 0.06 : 0;
     this.baseFireRate = Math.max(4, spec.fireRate * (1 - (upgrades.cannon || 0) * 0.045) * (1 - shipFireBonus));
     this.shipDamageBonus = Number(spec.damage) || 1;
-    this.color = spec.color;
-    this.accent = spec.accent;
+    this.color = pilotId === 2 ? "#ffb347" : spec.color;
+    this.accent = pilotId === 2 ? "#d9485f" : spec.accent;
     this.lives = Math.min(6, spec.lives + (upgrades.hull || 0));
     this.bombs = Math.min(5, 1 + (upgrades.bombBay || 0));
     this.empBombs = 0;
@@ -916,10 +920,16 @@ class Player {
   }
 
   update() {
+    if (this.lives <= 0) return;
     this.prevX = this.x; this.prevY = this.y;
     let moveDir = 0;
-    if (keys.Left) moveDir -= 1;
-    if (keys.Right) moveDir += 1;
+    if (this.pilotId === 2) {
+      if (keyboardInput2.left || phonepad2State.left) moveDir -= 1;
+      if (keyboardInput2.right || phonepad2State.right) moveDir += 1;
+    } else {
+      if (keys.Left) moveDir -= 1;
+      if (keys.Right) moveDir += 1;
+    }
     if (state.gyroEnabled && Math.abs(state.gyroTilt) > 2) {
       moveDir = Math.max(-1.4, Math.min(1.4, state.gyroTilt / 16));
     }
@@ -1083,11 +1093,14 @@ class Player {
     updateHUD();
 
     if (this.lives <= 0) {
-      endGame(false);
+      const teammateAlive = this.pilotId === 1 ? (player2 && player2.lives > 0) : (player && player.lives > 0);
+      if (localCoopEnabled && teammateAlive) addFloatingText(this.x, this.y - 46, `PILOTO ${this.pilotId} FUERA DE COMBATE`, "#ff9b78");
+      else endGame(false);
     }
   }
 
   draw() {
+    if (this.lives <= 0) return;
     if (this.invuln > 0 && Math.floor(this.invuln / 5) % 2 === 0) return;
     const mk = this.getEvolutionTier();
 
@@ -2078,13 +2091,13 @@ function addFloatingText(x, y, text, color = "#ffffff") {
   floatingTexts.push({ x, y, text, color, life: 55 });
 }
 
-function triggerSuperBomb(mode = "auto") {
-  if (state.mode !== "PLAYING" || !player) return;
-  const useEmp = mode === "emp" || (mode === "auto" && (player.empBombs || 0) > 0);
-  if (mode === "emp" && (player.empBombs || 0) <= 0) return;
-  if (mode === "supernova" && player.bombs <= 0) return;
-  if (useEmp && (player.empBombs || 0) > 0) {
-    player.empBombs--;
+function triggerSuperBomb(mode = "auto", pilot = player) {
+  if (state.mode !== "PLAYING" || !pilot || pilot.lives <= 0) return;
+  const useEmp = mode === "emp" || (mode === "auto" && (pilot.empBombs || 0) > 0);
+  if (mode === "emp" && (pilot.empBombs || 0) <= 0) return;
+  if (mode === "supernova" && pilot.bombs <= 0) return;
+  if (useEmp && (pilot.empBombs || 0) > 0) {
+    pilot.empBombs--;
     enemyBullets.forEach(b => { b.dead = true; });
     enemies.forEach(e => {
       if (e.dead) return;
@@ -2106,12 +2119,12 @@ function triggerSuperBomb(mode = "auto") {
     state.flash = Math.max(state.flash, .3);
     state.shake = Math.max(state.shake, 12);
     SoundFX.play("shieldHit");
-    addFloatingText(player.x, player.y - 42, "¡BOMBA DE PULSO EMP!", "#5eead4");
+    addFloatingText(pilot.x, pilot.y - 42, `¡PULSO EMP · PILOTO ${pilot.pilotId} !`, "#5eead4");
     updateHUD();
     return;
   }
-  if (player.bombs <= 0) return;
-  player.bombs--;
+  if (pilot.bombs <= 0) return;
+  pilot.bombs--;
   SoundFX.play("supernova");
   state.shake = 28;
   state.flash = 0.78;
@@ -2138,7 +2151,7 @@ function triggerSuperBomb(mode = "auto") {
     if (boss.hp <= 0) defeatBoss();
   }
 
-  addFloatingText(player.x, player.y - 40, "¡SUPER BOMBA DETONADA!", "#ff2a85");
+  addFloatingText(pilot.x, pilot.y - 40, `¡SUPERNOVA · PILOTO ${pilot.pilotId}!`, "#ff2a85");
   updateHUD();
 }
 
@@ -2422,7 +2435,9 @@ function paintEraBackground(era) {
 /* ALPHA 56 — GAMEPAD API: USB / BLUETOOTH / MANDOS EXPUESTOS POR WIFI */
 const gamepadState={index:null,buttons:[],left:false,right:false,up:false,down:false,connected:false,lastName:""};
 const keyboardInput={left:false,right:false};
+const keyboardInput2={left:false,right:false};
 const touchInput={left:false,right:false};
+const phonepad2State={left:false,right:false,bomb:false,emp:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
 const phonepadState={left:false,right:false,bomb:false,emp:false,pause:false,connected:false,lastAt:0,channel:null,client:null,code:"",lastStatus:""};
 function refreshHorizontalInput(){
   keys.Left=keyboardInput.left||touchInput.left||gamepadState.left||phonepadState.left;
@@ -2433,10 +2448,21 @@ function phonepadPublishStatus(){
   if(!channel||!player)return;
   const buffs={};
   ["triple","rapid","laser","plasma","spread","wingmen","missiles","shield"].forEach(id=>{if((player.buffs?.[id]||0)>0)buffs[id]=Math.ceil(player.buffs[id]/60);});
-  const snapshot={bombs:player.bombs||0,emp:player.empBombs||0,lives:player.lives||0,level:state.level||1,buffs};
+  const snapshot={player:1,bombs:player.bombs||0,emp:player.empBombs||0,lives:player.lives||0,level:state.level||1,buffs};
   const signature=JSON.stringify(snapshot);
   if(signature===phonepadState.lastStatus)return;
   phonepadState.lastStatus=signature;
+  channel.send({type:"broadcast",event:"game-status",payload:snapshot}).catch(()=>{});
+}
+function phonepad2PublishStatus(){
+  const channel=phonepad2State.channel,pilot=player2;
+  if(!channel||!pilot)return;
+  const buffs={};
+  Object.keys(pilot.buffs||{}).forEach(id=>{if(pilot.buffs[id]>0)buffs[id]=Math.ceil(pilot.buffs[id]/60);});
+  const snapshot={player:2,bombs:pilot.bombs||0,emp:pilot.empBombs||0,lives:pilot.lives||0,level:state.level||1,buffs};
+  const signature=JSON.stringify(snapshot);
+  if(signature===phonepad2State.lastStatus)return;
+  phonepad2State.lastStatus=signature;
   channel.send({type:"broadcast",event:"game-status",payload:snapshot}).catch(()=>{});
 }
 function phonepadStatus(message,connected=false){
@@ -2445,6 +2471,8 @@ function phonepadStatus(message,connected=false){
 }
 function phonepadRelease(){
   phonepadState.left=phonepadState.right=phonepadState.bomb=phonepadState.emp=phonepadState.pause=false;
+  phonepad2State.left=phonepad2State.right=phonepad2State.bomb=phonepad2State.emp=phonepad2State.pause=false;
+  keyboardInput2.left=keyboardInput2.right=false;
   refreshHorizontalInput();
 }
 async function startPhonepadPairing(){
