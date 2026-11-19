@@ -1,7 +1,7 @@
 /* AETHER NOVA: ECLIPSE — Service Worker */
 'use strict';
-const CACHE_NAME = "aether-nova-eclipse-coop-ship-select-smooth-1";
-const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=coop-ship-select-smooth-1', './aether3d.js?v=coop-ship-select-smooth-1', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html', './phone-controller.html'];
+const CACHE_NAME = "aether-nova-platform-runtime-1";
+const APP_SHELL = ['./', './index.html', './style.css', './game.js?v=coop-ship-select-smooth-1', './aether3d.js?v=coop-ship-select-smooth-1', './platform-runtime.js', './cloud-config.js', './manifest.json', './icon-512.png', './icon-192.png', './privacy.html', './phone-controller.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
