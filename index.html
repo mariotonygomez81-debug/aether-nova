@@ -20,6 +20,7 @@
   <title>AETHER NOVA: ECLIPSE</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./aether-visual-upgrade.css" />
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
@@ -98,7 +99,7 @@
         <div class="showcase-heading"><span>DIRECTIVA DE LA FLOTA</span><strong>EL DESTINO DE LA GALAXIA ESTÁ EN TUS MANOS</strong></div>
         <div class="showcase-grid">
           <article class="showcase-card showcase-sector"><span class="showcase-icon">✦</span><div><small>CAMPAÑA PRINCIPAL</small><strong>100 SECTORES</strong><p>Diez regiones, una travesía hacia el núcleo del Eclipse.</p></div><i class="sector-orbit"></i></article>
-          <article class="showcase-card showcase-boss"><span class="showcase-icon">⬡</span><div><small>AMENAZAS MAYORES</small><strong>JEFES DE SECTOR</strong><p>Enfrenta acorazados y patrones de ataque cada cinco sectores.</p></div><i class="boss-silhouette"></i></article>
+          <article class="showcase-card showcase-boss"><span class="showcase-icon">⬡</span><div><small>AMENAZAS MAYORES</small><strong>JEFES DE SECTOR</strong><p>Enfrenta acorazados y patrones de ataque cada diez sectores.</p></div><i class="boss-silhouette"></i></article>
           <article class="showcase-card showcase-fleet"><span class="showcase-icon">⌁</span><div><small>ARSENAL NOVA</small><strong>8 CLASES DE CAZA</strong><p>Elige tu nave, gana créditos y desbloquea nuevas configuraciones.</p></div><i class="fleet-silhouette"></i></article>
           <article class="showcase-card showcase-events"><span class="showcase-icon">◉</span><div><small>UNIVERSO DINÁMICO</small><strong>EVENTOS GALÁCTICOS</strong><p>Completa desafíos, mejora tu piloto y escala en los récords.</p></div><i class="event-singularity"></i></article>
         </div>
@@ -335,7 +336,7 @@
       <div class="manual-grid">
         <article><b>⌨ PC</b><p>← → o A / D para mover. ESPACIO o B para la super bomba. P o ESC para pausar. También admite joystick USB / Bluetooth: cruceta o stick para mover, A / ✕ para bomba y START para pausa.</p></article>
         <article><b>▣ MÓVIL</b><p>Usa los controles táctiles inferiores. El giroscopio puede activarse desde el HUD si tu dispositivo lo admite.</p></article>
-        <article><b>✦ COMBATE</b><p>Destruye asteroides y cazas, recoge módulos, encadena combos y derrota al acorazado cada cinco sectores.</p></article>
+        <article><b>✦ COMBATE</b><p>Destruye asteroides y cazas, recoge módulos, encadena combos y derrota al acorazado cada diez sectores.</p></article>
         <article><b>⬡ EVOLUCIÓN</b><p>Tu nave evoluciona cada diez sectores. Compra mejoras permanentes en el Hangar con créditos ganados al finalizar una partida.</p></article>
         <article><b>∞ MODOS DE JUEGO</b><p>Campaña: 100 sectores narrativos. Supervivencia: oleadas sin límite. Desafío diario: consigue el puntaje objetivo con dos puntos de casco y sin super bombas.</p></article>
       </div>
@@ -402,24 +403,3 @@
   <script type="module" src="./social-realtime.js"></script>
 </body>
 </html>
-
-
-/* ALPHA 35 — siluetas propias para las ocho clases de caza */
-#screen-menu .ship-opt:before{clip-path:polygon(50% 0,62% 24%,100% 74%,68% 67%,58% 100%,42% 100%,32% 67%,0 74%,38% 24%);}
-#screen-menu .ship-opt:nth-child(1):before{clip-path:polygon(50% 0,64% 34%,100% 78%,62% 69%,50% 100%,38% 69%,0 78%,36% 34%);}
-#screen-menu .ship-opt:nth-child(2):before{width:54px;height:62px;clip-path:polygon(50% 0,58% 35%,100% 88%,61% 75%,50% 100%,39% 75%,0 88%,42% 35%);}
-#screen-menu .ship-opt:nth-child(3):before{width:60px;height:52px;clip-path:polygon(50% 0,73% 20%,100% 63%,76% 75%,65% 100%,35% 100%,24% 75%,0 63%,27% 20%);}
-#screen-menu .ship-opt:nth-child(4):before{width:58px;height:60px;clip-path:polygon(50% 0,70% 32%,100% 48%,69% 61%,58% 100%,42% 100%,31% 61%,0 48%,30% 32%);}
-#screen-menu .ship-opt:nth-child(5):before{width:60px;height:56px;clip-path:polygon(50% 0,62% 25%,100% 42%,83% 72%,63% 66%,50% 100%,37% 66%,17% 72%,0 42%,38% 25%);}
-#screen-menu .ship-opt:nth-child(6):before{width:58px;height:58px;clip-path:polygon(50% 0,62% 25%,100% 100%,58% 76%,50% 100%,42% 76%,0 100%,38% 25%);}
-#screen-menu .ship-opt:nth-child(7):before{width:60px;height:58px;clip-path:polygon(50% 0,62% 28%,100% 58%,72% 72%,62% 100%,38% 100%,28% 72%,0 58%,38% 28%);}
-#screen-menu .ship-opt:nth-child(8):before{width:60px;height:62px;clip-path:polygon(50% 0,66% 29%,100% 70%,66% 63%,50% 100%,34% 63%,0 70%,34% 29%);}
-#screen-menu .ship-opt:after{content:"";position:absolute;left:34px;top:50%;width:3px;height:28px;transform:translateY(-50%);border-radius:4px;background:rgba(220,250,255,.8);box-shadow:0 0 9px currentColor;pointer-events:none}
-#screen-menu .ship-opt:nth-child(2):after{left:36px;height:36px;background:#b8ffe6}
-#screen-menu .ship-opt:nth-child(3):after{left:39px;height:24px;background:#fff0b2}
-#screen-menu .ship-opt:nth-child(4):after{left:40px;height:32px;background:#e8d4ff}
-#screen-menu .ship-opt:nth-child(5):after{left:40px;height:28px;background:#d4e8ff}
-#screen-menu .ship-opt:nth-child(6):after{left:39px;height:34px;background:#ffe0e5}
-#screen-menu .ship-opt:nth-child(7):after{left:40px;height:30px;background:#edffc2}
-#screen-menu .ship-opt:nth-child(8):after{left:40px;height:36px;background:#f2efff}
-@media(max-width:650px){#screen-menu .ship-opt:after{left:26px}}
