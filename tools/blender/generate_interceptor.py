@@ -155,12 +155,12 @@ def create_ship(M):
 
     # Long faceted cockpit canopy; no spherical bubble.
     loft("06_LONG_GOLD_TINTED_COCKPIT_CANOPY",[
-        (1.55,.20,.10,.70),(1.82,.40,.20,.76),(2.25,.49,.25,.79),
-        (3.05,.43,.23,.76),(3.72,.27,.16,.68),(4.02,.045,.055,.61)],glass,24)
-    beam_between("CANOPY_GOLD_PORT",(-.34,1.82,.78),(-.11,3.88,.68),.065,.055,amber)
-    beam_between("CANOPY_GOLD_STARBOARD",(.34,1.82,.78),(.11,3.88,.68),.065,.055,amber)
-    beam_between("CANOPY_REAR_ARMOR_BROW",(-.40,1.75,.82),(.40,1.75,.82),.075,.065,edge)
-    beam_between("CANOPY_FRONT_NOSE_RIDGE",(-.10,3.82,.69),(.10,3.82,.69),.045,.04,edge)
+        (1.62,.16,.075,.68),(1.88,.31,.13,.71),(2.30,.37,.16,.73),
+        (3.02,.33,.15,.71),(3.62,.21,.105,.65),(3.88,.035,.035,.59)],glass,24)
+    beam_between("CANOPY_GOLD_PORT",(-.29,1.88,.735),(-.045,3.78,.615),.035,.035,amber)
+    beam_between("CANOPY_GOLD_STARBOARD",(.29,1.88,.735),(.045,3.78,.615),.035,.035,amber)
+    beam_between("CANOPY_REAR_ARMOR_BROW",(-.32,1.82,.75),(.32,1.82,.75),.065,.05,dark)
+    beam_between("CANOPY_FRONT_NOSE_RIDGE",(-.055,3.78,.62),(.055,3.78,.62),.035,.03,edge)
 
     # Blue recessed ion apertures along each side of the central wing.
     for s,side in [(-1,"PORT"),(1,"STARBOARD")]:
@@ -265,7 +265,7 @@ def setup(out, hdri_path=""):
     armor=mat("02 Ceramic silver armor",(.34,.46,.57),.78,.27)
     edge=mat("03 Brushed platinum",(.62,.73,.80),.84,.22)
     dark=mat("04 Carbon graphite",(.009,.018,.03),.52,.31)
-    glass=mat("05 Sapphire canopy",(.006,.12,.20),.78,.12,(.0,.18,.32),.35)
+    glass=mat("05 Smoked amber aerospace canopy",(.16,.105,.038),.32,.16,(.22,.085,.012),.08)
     cyan=mat("06 Ion cyan",(.005,.48,.72),.35,.2,(.0,.55,1),3.2)
     amber=mat("07 Amber identifiers",(.95,.31,.035),.58,.24,(1,.19,.015),1.4)
     glow=mat("08 Reactor plasma",(.02,.35,.8),.2,.2,(.0,.38,1),4.0)
