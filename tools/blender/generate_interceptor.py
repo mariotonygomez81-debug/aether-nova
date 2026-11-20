@@ -122,8 +122,8 @@ def create_ship(M):
     aerofoil("02_FULL_SPAN_MANTA_WING",wing,-.16,.42,armor,.12)
 
     # Dark, raised upper wing panels, leaving silver leading edges visible.
-    panel=[(.92,1.65),(1.55,1.28),(4.92,-.83),(5.12,-1.70),
-           (4.45,-1.72),(2.58,-1.05),(1.30,-.45)]
+    panel=[(.72,1.72),(1.42,1.40),(4.92,-.72),(5.18,-1.58),
+           (4.72,-1.88),(3.92,-1.55),(2.62,-.98),(1.42,-.35)]
     for s,side in [(-1,"PORT"),(1,"STARBOARD")]:
         aerofoil(side+"_GRAPHITE_STEALTH_PANEL",[(s*x,y) for x,y in panel],.275,.075,dark,.045)
         beam_between(side+"_SILVER_LEADING_EDGE",(s*.82,2.22,.31),(s*5.12,-1.55,.31),.20,.12,edge)
@@ -132,6 +132,18 @@ def create_ship(M):
         cube(side+"_ION_LIGHT_RECESS",(s*1.12,-.15,.20),(.18,1.60,.30),dark,.14)
         cube(side+"_ION_BLUE_CORE",(s*1.22,-.15,.225),(.065,1.28,.17),cyan,.075)
         beam_between(side+"_TIP_CYAN_MARK",(s*5.12,-1.66,.30),(s*5.34,-1.98,.28),.07,.06,cyan)
+        # Layered armor islands and recessed service channels, following the reference silhouette.
+        aerofoil(side+"_OUTER_SHOULDER_ARMOR",[(s*1.48,1.10),(s*2.08,.68),(s*4.70,-.98),
+                 (s*4.86,-1.42),(s*4.28,-1.28),(s*2.35,-.42)],.355,.075,armor,.045)
+        beam_between(side+"_UPPER_GRAPHITE_RIDGE",(s*1.30,1.34,.43),(s*4.52,-.83,.43),.105,.065,dark)
+        beam_between(side+"_INNER_SILVER_RAIL",(s*.86,1.85,.40),(s*2.20,.48,.40),.13,.07,edge)
+        # Blue recessed energy aperture with a dark mechanical bezel.
+        cube(side+"_ENERGY_APERTURE_BEZEL",(s*1.38,-.02,.40),(.34,1.52,.20),dark,.15)
+        cube(side+"_ENERGY_APERTURE_LENS",(s*1.40,-.02,.425),(.12,1.22,.105),cyan,.095)
+        # Wingtip upturned endplate.
+        aerofoil(side+"_UPTURNED_WINGTIP",[(s*4.82,-1.34),(s*5.42,-1.70),
+                 (s*5.48,-2.24),(s*5.13,-2.04)],.20,.46,dark,.055)
+        beam_between(side+"_WINGTIP_LIGHT",(s*5.18,-1.83,.68),(s*5.40,-2.08,.68),.055,.045,cyan)
         # Three subtle surface panel seams.
         for k in range(3):
             beam_between(side+"_PANEL_SEAM_"+str(k),(s*(2.0+k*.52),.30-k*.25,.36),
@@ -173,6 +185,19 @@ def create_ship(M):
         beam_between(side+"_GEAR_FORK",(s*.82,-.48,-1.02),(s*.82,-.62,-1.15),.09,.09,dark)
         cylinder(side+"_LANDING_WHEEL",(s*.82,-.55,-1.13),.18,.14,dark,axis="X")
         cylinder(side+"_WHEEL_HUB",(s*.82,-.55,-1.13),.082,.155,edge,axis="X")
+
+    # Twin exposed precision cannons mounted beneath the wing shoulders.
+    for s,side in [(-1,"PORT"),(1,"STARBOARD")]:
+        beam_between(side+"_WING_CANNON_BARREL",(s*2.02,-.60,.02),(s*2.48,-1.62,.02),.105,.105,dark)
+        cylinder(side+"_CANNON_MUZZLE",(s*2.48,-1.62,.02),.105,.16,edge,axis="Y")
+        beam_between(side+"_CANNON_HOUSING",(s*1.92,-.42,.13),(s*2.22,-.98,.13),.24,.20,armor)
+
+    # Raised dorsal blade panels and fine parallel grooves.
+    for s,side in [(-1,"PORT"),(1,"STARBOARD")]:
+        beam_between(side+"_DORSAL_BLADE",(s*.22,-1.82,.94),(s*.34,1.72,.94),.105,.09,edge)
+        for k in range(3):
+            beam_between(side+"_DORSAL_MICRO_GROOVE_"+str(k),
+                         (s*(.38+k*.07),-.90,.91),(s*(.38+k*.07),1.15,.91),.018,.016,dark)
 
     # Rear canted fins and ventral stabilizers, visibly separate from the wing.
     for s,side in [(-1,"PORT"),(1,"STARBOARD")]:
@@ -218,12 +243,17 @@ def setup(out):
     light("Cool key",(1,4,10),1700,8,(.55,.76,1))
     light("Cyan rim",(-7,1,4),1300,6,(.08,.48,1))
     light("Warm edge",(5,-5,3),950,5,(1,.38,.16))
-    scene=bpy.context.scene; scene.render.engine="BLENDER_WORKBENCH"
-    scene.display.shading.light="STUDIO"; scene.display.shading.studio_light="paint.sl"
-    scene.display.shading.color_type="MATERIAL"; scene.display.shading.show_shadows=True
-    scene.display.shading.show_cavity=True; scene.display.shading.cavity_type="BOTH"
-    scene.display.shading.show_specular_highlight=True
-    scene.render.resolution_x=1400; scene.render.resolution_y=1050; scene.render.resolution_percentage=100
+    scene=bpy.context.scene
+    # Studio floor and physically lit presentation render, matching the cool blue reference studio.
+    floor_mat=mat("09 Studio blue-grey floor",(.105,.19,.29),.18,.48)
+    bpy.ops.mesh.primitive_plane_add(size=200,location=(0,0,-1.42))
+    floor=bpy.context.object; floor.name="STUDIO_GROUND"; floor.data.materials.append(floor_mat)
+    scene.render.engine="BLENDER_EEVEE_NEXT"
+    scene.render.resolution_x=1600; scene.render.resolution_y=1200; scene.render.resolution_percentage=100
+    scene.render.image_settings.file_format="PNG"; scene.render.film_transparent=False
+    scene.render.image_settings.color_mode="RGBA"
+    scene.view_settings.view_transform="AgX"
+    scene.view_settings.look="AgX - Medium High Contrast"
     scene.render.image_settings.file_format="PNG"; scene.render.film_transparent=False
     os.makedirs(out,exist_ok=True)
     scene.render.filepath=os.path.join(out,"aether-nova-interceptor-preview.png")
