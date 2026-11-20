@@ -269,3 +269,23 @@
   #screen-menu::before,
   .menu-cinematic-hero::before { animation: none !important; }
 }
+
+/* ALPHA 35 — siluetas propias para las ocho clases de caza */
+#screen-menu .ship-opt:before{clip-path:polygon(50% 0,62% 24%,100% 74%,68% 67%,58% 100%,42% 100%,32% 67%,0 74%,38% 24%);}
+#screen-menu .ship-opt:nth-child(1):before{clip-path:polygon(50% 0,64% 34%,100% 78%,62% 69%,50% 100%,38% 69%,0 78%,36% 34%);}
+#screen-menu .ship-opt:nth-child(2):before{width:54px;height:62px;clip-path:polygon(50% 0,58% 35%,100% 88%,61% 75%,50% 100%,39% 75%,0 88%,42% 35%);}
+#screen-menu .ship-opt:nth-child(3):before{width:60px;height:52px;clip-path:polygon(50% 0,73% 20%,100% 63%,76% 75%,65% 100%,35% 100%,24% 75%,0 63%,27% 20%);}
+#screen-menu .ship-opt:nth-child(4):before{width:58px;height:60px;clip-path:polygon(50% 0,70% 32%,100% 48%,69% 61%,58% 100%,42% 100%,31% 61%,0 48%,30% 32%);}
+#screen-menu .ship-opt:nth-child(5):before{width:60px;height:56px;clip-path:polygon(50% 0,62% 25%,100% 42%,83% 72%,63% 66%,50% 100%,37% 66%,17% 72%,0 42%,38% 25%);}
+#screen-menu .ship-opt:nth-child(6):before{width:58px;height:58px;clip-path:polygon(50% 0,62% 25%,100% 100%,58% 76%,50% 100%,42% 76%,0 100%,38% 25%);}
+#screen-menu .ship-opt:nth-child(7):before{width:60px;height:58px;clip-path:polygon(50% 0,62% 28%,100% 58%,72% 72%,62% 100%,38% 100%,28% 72%,0 58%,38% 28%);}
+#screen-menu .ship-opt:nth-child(8):before{width:60px;height:62px;clip-path:polygon(50% 0,66% 29%,100% 70%,66% 63%,50% 100%,34% 63%,0 70%,34% 29%);}
+#screen-menu .ship-opt:after{content:"";position:absolute;left:34px;top:50%;width:3px;height:28px;transform:translateY(-50%);border-radius:4px;background:rgba(220,250,255,.8);box-shadow:0 0 9px currentColor;pointer-events:none}
+#screen-menu .ship-opt:nth-child(2):after{left:36px;height:36px;background:#b8ffe6}
+#screen-menu .ship-opt:nth-child(3):after{left:39px;height:24px;background:#fff0b2}
+#screen-menu .ship-opt:nth-child(4):after{left:40px;height:32px;background:#e8d4ff}
+#screen-menu .ship-opt:nth-child(5):after{left:40px;height:28px;background:#d4e8ff}
+#screen-menu .ship-opt:nth-child(6):after{left:39px;height:34px;background:#ffe0e5}
+#screen-menu .ship-opt:nth-child(7):after{left:40px;height:30px;background:#edffc2}
+#screen-menu .ship-opt:nth-child(8):after{left:40px;height:36px;background:#f2efff}
+@media(max-width:650px){#screen-menu .ship-opt:after{left:26px}}
