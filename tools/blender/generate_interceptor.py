@@ -199,6 +199,15 @@ def create_ship(M):
             beam_between(side+"_DORSAL_MICRO_GROOVE_"+str(k),
                          (s*(.38+k*.07),-.90,.91),(s*(.38+k*.07),1.15,.91),.018,.016,dark)
 
+    # Large restrained aircraft identification marking on the starboard wing.
+    mark_curve=bpy.data.curves.new("VALKYRIE_UNIT_MARKING_FONT","FONT")
+    mark_curve.body="05"; mark_curve.size=.72; mark_curve.extrude=.004
+    mark_curve.align_x="CENTER"; mark_curve.align_y="CENTER"
+    mark=bpy.data.objects.new("STARBOARD_WING_UNIT_MARKING_05",mark_curve)
+    bpy.context.collection.objects.link(mark)
+    mark.location=(4.22,-.38,.39); mark.rotation_euler[2]=math.radians(78)
+    mark.data.materials.append(edge)
+
     # Rear canted fins and ventral stabilizers, visibly separate from the wing.
     for s,side in [(-1,"PORT"),(1,"STARBOARD")]:
         aerofoil(side+"_REAR_CANTED_FIN",[(s*.58,-2.05),(s*1.32,-3.62),
