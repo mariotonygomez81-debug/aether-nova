@@ -257,7 +257,7 @@ def setup(out):
     floor_mat=mat("09 Studio blue-grey floor",(.105,.19,.29),.18,.48)
     bpy.ops.mesh.primitive_plane_add(size=200,location=(0,0,-1.42))
     floor=bpy.context.object; floor.name="STUDIO_GROUND"; floor.data.materials.append(floor_mat)
-    scene.render.engine="BLENDER_EEVEE_NEXT"
+    scene.render.engine="BLENDER_EEVEE"
     scene.render.resolution_x=1600; scene.render.resolution_y=1200; scene.render.resolution_percentage=100
     scene.render.image_settings.file_format="PNG"; scene.render.film_transparent=False
     scene.render.image_settings.color_mode="RGBA"
