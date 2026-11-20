@@ -46,3 +46,17 @@ This workflow does not modify game.js, aether3d.js, the Joystick repository, Sup
 ## Cost and limitations
 
 The workflow uses GitHub-hosted CPU runners and Blender EEVEE software rendering. It does not provision a paid GPU or cloud machine. GitHub Actions usage and limits depend on the account and current GitHub policy. The Poly Haven HDRI is downloaded at 1K to limit network and memory use.
+
+
+## Valkyrie visual redesign — iteration 2
+
+The procedural ship generator now replaces the fragmented prototype silhouette with a unified design pass:
+- wider continuous armored fuselage with a tapered nose and broad shoulders;
+- thick, sculpted manta/delta wing with integrated graphite armor panels;
+- elongated faceted gold-tinted cockpit instead of a spherical canopy;
+- recessed cyan ion apertures, restrained panel seams and aft cooling ribs;
+- twin integrated rear nacelles with reactor cores;
+- integrated side cannons and three-point landing gear;
+- smaller canted stabilizers so the primary wing remains visually dominant.
+
+This is a geometry redesign, not an approved in-game replacement. The new Blender workflow must complete and the preview must be reviewed before the GLB is integrated into the game.
