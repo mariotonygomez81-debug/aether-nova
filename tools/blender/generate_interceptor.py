@@ -313,7 +313,7 @@ def setup(out, hdri_path=""):
     bpy.ops.object.select_all(action="DESELECT")
     for o in scene.objects:
         if o.type=="MESH" and o.name!="STUDIO_GROUND": o.select_set(True)
-    active_body = bpy.data.objects.get("01_CONTINUOUS_STEALTH_FUSELAGE")
+    active_body = bpy.data.objects.get("01_WIDE_CONTINUOUS_ARMORED_FUSELAGE")
     if active_body is None:
         raise RuntimeError("Expected Valkyrie body mesh was not created")
     bpy.context.view_layer.objects.active = active_body
