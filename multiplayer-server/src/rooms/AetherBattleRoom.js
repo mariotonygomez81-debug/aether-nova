@@ -1,12 +1,10 @@
 import { Room, ServerError } from "colyseus";
 import { randomUUID } from "node:crypto";
 import { AetherBattleState, PilotState, EnemyState, ShotState } from "../state/AetherBattleState.js";
+import { getWeaponSpec, isAllowedShip, normalizeBattleInput } from "../battle-contract.js";
 
 const WORLD = Object.freeze({ width: 1000, height: 600 });
-const SHIP_IDS = new Set(["valkyrie","viper","titan","wraith","bastion","phoenix","singularity","omega"]);
-const WEAPONS = new Set(["supernova","emp","cluster","singularity","cryo","gravity"]);
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const isBoolean = value => typeof value === "boolean";
 
 async function supabaseRequest(path, token) {
   const base = process.env.SUPABASE_URL;
@@ -32,7 +30,8 @@ export class AetherBattleRoom extends Room {
     await this.setMatchmaking({ unlisted: true });
     this.inputs = new Map();
     this.lastInputAt = new Map();
-    this.lastFireAt = new Map();
+    this.lastShotAt = new Map();
+    this.lastWeaponAt = new Map();
     this.spawnClock = 0;
     this.lastTickAt = Date.now();
     this.state.phase = "waiting";
@@ -69,7 +68,7 @@ export class AetherBattleRoom extends Room {
     if (!members?.length || !rooms?.length) throw new ServerError(403, "Tu cuenta no pertenece a esta sala.");
     if (rooms[0].status !== "playing") throw new ServerError(409, "La sala todavía no inició la misión.");
     this.maxClients = clamp(Number(rooms[0].max_players) || 2, 2, 4);
-    if (!SHIP_IDS.has(members[0].ship_id)) throw new ServerError(400, "La nave elegida no es válida.");
+    if (!isAllowedShip(members[0].ship_id)) throw new ServerError(400, "La nave elegida no es válida.");
 
     const pilot = new PilotState();
     pilot.userId = auth.userId;
@@ -92,39 +91,37 @@ export class AetherBattleRoom extends Room {
     }
     this.inputs.delete(client.sessionId);
     this.lastInputAt.delete(client.sessionId);
-    this.lastFireAt.delete(client.sessionId);
+    this.lastShotAt.delete(client.sessionId);
+    this.lastWeaponAt.delete(client.sessionId);
     if (this.state.players.size < 2 && this.state.phase === "active") this.state.phase = "waiting";
   }
 
   receiveInput(client, message) {
-    if (!this.state.players.has(client.sessionId) || !message || typeof message !== "object") return;
+    if (!this.state.players.has(client.sessionId)) return;
+    const input = normalizeBattleInput(message);
+    if (!input) return;
     const now = Date.now();
     const previous = this.lastInputAt.get(client.sessionId) || 0;
     if (now - previous < 20) return;
     this.lastInputAt.set(client.sessionId, now);
-    this.inputs.set(client.sessionId, {
-      left: isBoolean(message.left) && message.left,
-      right: isBoolean(message.right) && message.right,
-      up: isBoolean(message.up) && message.up,
-      down: isBoolean(message.down) && message.down,
-      fire: isBoolean(message.fire) && message.fire
-    });
+    this.inputs.set(client.sessionId, input);
   }
 
   useWeapon(client, message) {
     const pilot = this.state.players.get(client.sessionId);
-    const type = String(message?.type || "");
-    if (!pilot || !WEAPONS.has(type) || pilot.bombs <= 0) return;
+    const type = message?.type;
+    const weapon = getWeaponSpec(type);
+    if (!pilot || !weapon || pilot.bombs <= 0) return;
     const now = Date.now();
-    const previous = this.lastFireAt.get(client.sessionId) || 0;
+    const previous = this.lastWeaponAt.get(client.sessionId) || 0;
     if (now - previous < 500) return;
-    this.lastFireAt.set(client.sessionId, now);
+    this.lastWeaponAt.set(client.sessionId, now);
     pilot.bombs -= 1;
-    const damage = ({ supernova: 5, emp: 1, cluster: 2, singularity: 4, cryo: 1, gravity: 2 })[type];
+    const damage = weapon.damage;
     for (const enemy of this.state.enemies.values()) {
       enemy.hp -= damage;
-      if (type === "cryo") enemy.speed *= 0.55;
-      if (type === "gravity") enemy.x += (WORLD.width / 2 - enemy.x) * 0.25;
+      if (weapon.speedMultiplier) enemy.speed *= weapon.speedMultiplier;
+      if (weapon.pull) enemy.x += (WORLD.width / 2 - enemy.x) * weapon.pull;
     }
     this.removeDestroyedEnemies();
     this.broadcast("weapon-fired", { type, pilot: pilot.pilotName });
@@ -171,8 +168,8 @@ export class AetherBattleRoom extends Room {
       pilot.y = clamp(pilot.y + dy / length * speed * dt, 35, WORLD.height - 35);
       if (input.fire) {
         const now = Date.now();
-        if (now - (this.lastFireAt.get(sessionId) || 0) > 220) {
-          this.lastFireAt.set(sessionId, now);
+        if (now - (this.lastShotAt.get(sessionId) || 0) > 220) {
+          this.lastShotAt.set(sessionId, now);
           const shot = new ShotState();
           shot.id = randomUUID();
           shot.ownerId = sessionId;
