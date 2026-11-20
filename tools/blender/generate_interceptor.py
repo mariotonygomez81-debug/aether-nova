@@ -259,7 +259,7 @@ def setup(out):
     scene.render.filepath=os.path.join(out,"aether-nova-interceptor-preview.png")
     bpy.ops.object.select_all(action="DESELECT")
     for o in scene.objects:
-        if o.type=="MESH": o.select_set(True)
+        if o.type=="MESH" and o.name!="STUDIO_GROUND": o.select_set(True)
     active_body = bpy.data.objects.get("01_CONTINUOUS_STEALTH_FUSELAGE")
     if active_body is None:
         raise RuntimeError("Expected Valkyrie body mesh was not created")
