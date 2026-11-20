@@ -112,7 +112,6 @@ def create_ship(M):
         x=s*.62
         # tapered engine nacelles
         cone(label+"_ENGINE_NACELLE",(x,-2.65,-.12),.38,.29,1.8,dark)
-        cylinder(label+"_EXHAUST_OUTER_RIM",(x,-3.62,-.12),. thirty if False else . thirty, .1, edge)
         cylinder(label+"_EXHAUST_RIM",(x,-3.66,-.12),.30,.16,edge)
         cylinder(label+"_THRUSTER_CORE",(x,-3.77,-.12),.205,.10,glow)
         sphere(label+"_PLASMA_GLOW",(x,-3.84,-.12),(.19,.07,.19),cyan)
@@ -124,7 +123,7 @@ def create_ship(M):
 
     # Twin forward pulse cannons integrated into the nose shoulders.
     for s,label in [(-1,"PORT"),(1,"STARBOARD")]:
-        x=s*. forty if False else s*.43
+        x=s*.43
         cylinder(label+"_PULSE_CANNON",(x,2.0,-.20),.105,.95,dark)
         cylinder(label+"_MUZZLE_RING",(x,2.49,-.20),.13,.12,edge)
         sphere(label+"_MUZZLE_ENERGY",(x,2.57,-.20),(.085,.07,.085),cyan)
