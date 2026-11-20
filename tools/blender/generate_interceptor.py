@@ -297,6 +297,7 @@ def setup(out, hdri_path=""):
         env=world_nodes.new("ShaderNodeTexEnvironment"); env.name="Poly Haven Studio Small 03 HDRI"
         env.image=bpy.data.images.load(hdri_path,check_existing=True)
         env.interpolation="Linear"
+        env.image.pack()
         world_links.new(env.outputs["Color"],background.inputs["Color"])
         background.inputs["Strength"].default_value=.28
     # Camera now looks toward the nose, showing the cockpit and forward silhouette.
