@@ -1,0 +1,95 @@
+name: Blender asset prototype
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, assets/blender-prototype-phase-1]
+    paths:
+      - "tools/blender/**"
+      - ".github/workflows/blender-assets.yml"
+      - "BLENDER_ASSET_PIPELINE_PHASE_1.md"
+  push:
+    branches: [main]
+    paths:
+      - "tools/blender/**"
+      - ".github/workflows/blender-assets.yml"
+
+concurrency:
+  group: blender-asset-prototype-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  generate-interceptor:
+    name: Generate Valkyrie interceptor prototype
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Blender and headless rendering dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender python3-numpy libegl1 libgl1-mesa-dri libglx-mesa0 xvfb
+
+      - name: Verify Blender Python and software rendering
+        run: |
+          blender --version
+          blender --background --python-expr "import numpy; print('NumPy available:', numpy.__version__)"
+
+      - name: Download licensed Poly Haven studio HDRI
+        run: |
+          mkdir -p .cache/hdri
+          python3 - <<'PY'
+          import json, urllib.request
+          api = "https://api.polyhaven.com/files/studio_small_03"
+          request = urllib.request.Request(api, headers={"User-Agent": "AETHER-NOVA-Asset-Pipeline/1.0"})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              files = json.load(response)
+          asset = files["hdri"]["1k"]["hdr"]
+          request = urllib.request.Request(asset["url"], headers={"User-Agent": "AETHER-NOVA-Asset-Pipeline/1.0"})
+          with urllib.request.urlopen(request, timeout=60) as response, open(".cache/hdri/studio_small_03_1k.hdr", "wb") as output:
+              output.write(response.read())
+          print("Downloaded Poly Haven Studio Small 03 HDRI:", asset["size"], "bytes")
+          PY
+          test -s .cache/hdri/studio_small_03_1k.hdr
+
+      - name: Generate Blender project and GLB
+        run: |
+          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 blender --background --python-exit-code 1 --python tools/blender/generate_interceptor.py -- --output-dir dist --hdri .cache/hdri/studio_small_03_1k.hdr
+          echo "Generated files:"
+          find dist -maxdepth 1 -type f -printf '%f %s bytes\n'
+
+      - name: Install glTF optimization and validation tools
+        run: |
+          npm install --no-save @gltf-transform/cli gltf-validator
+
+      - name: Optimize game-ready GLB
+        run: |
+          npx --yes gltf-transform optimize dist/aether-nova-interceptor.glb dist/aether-nova-interceptor-optimized.glb --texture-compress webp
+          test -s dist/aether-nova-interceptor-optimized.glb
+
+      - name: Validate optimized GLB with Khronos validator
+        run: |
+          node tools/blender/validate_glb.cjs dist/aether-nova-interceptor-optimized.glb dist/gltf-validation-report.json
+          test -s dist/gltf-validation-report.json
+
+      - name: Verify generated assets
+        run: |
+          test -s dist/aether-nova-interceptor.blend
+          test -s dist/aether-nova-interceptor.glb
+          test -s dist/aether-nova-interceptor-optimized.glb
+          test -s dist/aether-nova-interceptor-preview.png
+          test -s dist/gltf-validation-report.json
+          file dist/*
+
+      - name: Upload generated assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: aether-nova-interceptor-prototype
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
