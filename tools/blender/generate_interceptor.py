@@ -69,71 +69,106 @@ def beam_between(name,a,b,width,depth,m):
 
 def create_ship(M):
     hull,armor,edge,dark,glass,cyan,amber,glow=M
-    # Long, sculpted central fuselage: nose points +Y.
-    rings=[(-4.0,.42,.38),(-3.1,.67,.52),(-1.5,.82,.62),(0.4,.76,.57),(2.1,.53,.42),(3.7,.20,.22),(4.25,.035,.06)]
-    profile=[(0,1),(.72,.58),(1,0),(.72,-.58),(0,-1),(-.72,-.58),(-1,0),(-.72,.58)]
-    v=[(x*rx,y,z*rz) for y,rx,rz in rings for x,z in profile]
-    f=[]
+
+    # Reference silhouette: broad stealth lifting-body, needle nose and swept manta wings.
+    # Nose points +Y; top is +Z.
+    rings=[(-4.35,.32,.30),(-3.65,.68,.43),(-2.5,1.05,.58),(-1.0,1.22,.67),
+           (.25,1.12,.72),(1.55,.82,.67),(2.75,.53,.48),(3.75,.26,.28),(4.25,.035,.08)]
+    profile=[(0,1),(.5,.88),(.88,.55),(1,0),(.88,-.55),(.5,-.88),(0,-1),
+             (-.5,-.88),(-.88,-.55),(-1,0),(-.88,.55),(-.5,.88)]
+    verts=[(x*rx,y,z*rz) for y,rx,rz in rings for x,z in profile]
+    faces=[]
     for r in range(len(rings)-1):
-        for i in range(8): f.append((r*8+i,r*8+(i+1)%8,(r+1)*8+(i+1)%8,(r+1)*8+i))
-    f.extend([tuple(range(7,-1,-1)),tuple(range((len(rings)-1)*8,len(rings)*8))])
-    me=bpy.data.meshes.new("ValkyrieFuselageMesh"); me.from_pydata(v,[],f); me.materials.append(hull); me.update()
-    ob=bpy.data.objects.new("01_MONOCOQUE_TITANIUM_FUSELAGE",me); bpy.context.collection.objects.link(ob)
-    bevel=ob.modifiers.new("Hull edge glints","BEVEL"); bevel.width=.035; bevel.segments=3
-    ob.modifiers.new("Hull weighted normals","WEIGHTED_NORMAL")
+        for i in range(len(profile)):
+            a=r*len(profile)+i; b=r*len(profile)+(i+1)%len(profile)
+            faces.append((a,b,b+len(profile),a+len(profile)))
+    faces.extend([tuple(range(len(profile)-1,-1,-1)),
+                  tuple(range((len(rings)-1)*len(profile),len(rings)*len(profile)))])
+    me=bpy.data.meshes.new("Valkyrie_LiftingBody_Mesh"); me.from_pydata(verts,[],faces)
+    me.materials.append(hull); me.update()
+    body=bpy.data.objects.new("01_STEALTH_LIFTING_BODY",me); bpy.context.collection.objects.link(body)
+    body.modifiers.new("Precision hull normals","WEIGHTED_NORMAL")
 
-    # Swept, sharply tapered wings with real thickness and layered armor.
-    wing=[(.48,2.35),(1.0,1.75),(4.65,-1.45),(4.95,-2.55),(4.35,-2.45),(1.15,-1.45),(.62,-.55)]
+    # Wide, integrated swept wings; their silhouette is deliberately close to the supplied reference.
+    wing=[(.58,2.15),(1.18,2.55),(2.45,2.12),(4.55,1.05),(5.35,-.55),
+          (5.05,-1.85),(4.35,-2.12),(2.45,-1.55),(1.20,-1.12),(.62,-.25)]
     for s,label in [(-1,"PORT"),(1,"STARBOARD")]:
-        prism(label+"_DELTA_AEROFOIL",[(s*x,y) for x,y in wing],-.16,.16,armor,.075)
-        # Root shoulder and segmented upper armor.
-        prism(label+"_SHOULDER_PLATE",[(s*x,y) for x,y in [(.65,1.45),(1.45,.9),(2.45,-.1),(1.35,-.65),(.72,.05)]],.17,.25,hull,.045)
-        # Outer swept leading-edge rail.
-        beam_between(label+"_LEADING_EDGE_RAIL",(s*.78,1.95,.20),(s*4.7,-1.55,.18),.11,.09,edge)
-        # Weapon pod, flush-mounted, not oversized bricks.
-        podx=s*2.25
-        cube(label+"_UNDERWING_WEAPON_POD",(podx,-.92,-.28),(.38,1.5,.30),dark,.13)
-        cone(label+"_POD_NOSE",(podx,-.10,-.28),.16,.02,.28,edge)
-        # Fine illuminated wing strip and wingtip position lights.
-        beam_between(label+"_ION_INLAY",(s*1.55,-.28,.265),(s*3.75,-1.95,.235),.035,.025,cyan)
-        sphere(label+"_NAV_LIGHT",(s*4.42,-2.18,.22),(.12,.16,.075),amber)
-        # Small control-surface segmentation.
-        beam_between(label+"_AILERON_SEAM",(s*2.55,-1.18,.19),(s*4.2,-2.12,.19),.025,.018,dark)
+        pts=[(s*x,y) for x,y in wing]
+        prism(label+"_MONOWING_AEROFOIL",pts,-.10,.22,armor,.11)
+        # Dark upper wing panels and stepped silver leading-edge armor.
+        panel=[(.88,1.78),(1.42,2.12),(4.72,.75),(5.02,-.58),(4.40,-.40),(2.10,.68),(1.05,.32)]
+        prism(label+"_GRAPHITE_TOP_PANEL",[(s*x,y) for x,y in panel],.225,.29,dark,.065)
+        beam_between(label+"_SILVER_LEADING_EDGE",(s*.86,2.18,.27),(s*4.95,-.55,.30),.14,.10,edge)
+        beam_between(label+"_OUTER_WING_RIB",(s*2.0,1.45,.31),(s*4.78,-1.25,.31),.075,.045,armor)
+        # Blue recessed ion window on the shoulder, matching the luminous flank in the reference.
+        cube(label+"_BLUE_ION_RECESS",(s*1.18,-.12,.22),(.12,1.42,.30),dark,.13)
+        cube(label+"_BLUE_ION_CORE",(s*1.255,-.12,.235),(.045,1.12,.16),cyan,.075)
+        # Small blue edge markers.
+        beam_between(label+"_WINGTIP_LIGHT",(s*4.86,-1.35,.32),(s*5.03,-1.68,.30),.055,.05,cyan)
+        # Surface panel seams.
+        for j in range(3):
+            beam_between(label+"_PANEL_SEAM_"+str(j),(s*(2.0+j*.58),.95-j*.35,.305),
+                         (s*(2.65+j*.58),.35-j*.38,.305),.025,.018,dark)
+        # Integrated side weapon hardpoint and slim cannon.
+        cube(label+"_FLUSH_WEAPON_BAY",(s*2.55,-.75,-.19),(.38,1.05,.18),dark,.09)
+        cylinder(label+"_WING_CANNON",(s*2.65,-.02,-.23),.075,.82,edge)
+        sphere(label+"_WING_MUZZLE",(s*2.65,.40,-.23),(.085,.08,.085),cyan)
 
-    # Raised dorsal spine and cockpit with angular armored surround.
-    prism("DORSAL_SPINE", [(-.32,-2.05),(.32,-2.05),(.42,.72),(.28,1.8),(-.28,1.8),(-.42,.72)],.48,.68,edge,.06)
-    sphere("COCKPIT_ARMORED_COLLAR",(0,1.12,.62),(.56,1.12,.35),dark)
-    sphere("PANORAMIC_POLARIZED_CANOPY",(0,1.22,.73),(.46,.91,.285),glass)
-    # Canopy center divider and forward sensor.
-    cube("CANOPY_SPINE",(0,1.22,1.005),(.035,1.42,.025),cyan,.012)
-    sphere("NOSE_SENSOR",(0,3.52,.20),(.13,.19,.12),amber)
-    # Twin side intakes, turbine rings and deep luminous exhausts.
-    for s,label in [(-1,"PORT"),(1,"STARBOARD")]:
-        x=s*.62
-        # tapered engine nacelles
-        cone(label+"_ENGINE_NACELLE",(x,-2.65,-.12),.38,.29,1.8,dark)
-        cylinder(label+"_EXHAUST_RIM",(x,-3.66,-.12),.30,.16,edge)
-        cylinder(label+"_THRUSTER_CORE",(x,-3.77,-.12),.205,.10,glow)
-        sphere(label+"_PLASMA_GLOW",(x,-3.84,-.12),(.19,.07,.19),cyan)
-        # Intake lips toward the nose.
-        cylinder(label+"_SIDE_INTAKE",(s*.83,1.25,-.02),.22,.12,edge)
-        sphere(label+"_INTAKE_DARK",(s*.83,1.32,-.02),(.15,.055,.15),dark)
-        # Ventral landing/armor fins.
-        prism(label+"_VENTRAL_FIN",[(s*.72,-2.0),(s*1.05,-2.55),(s*.92,-3.35),(s*.65,-3.05)],-.58,-.20,hull,.04)
+    # Raised dorsal spine with layered ceramic armor.
+    prism("DORSAL_CERAMIC_SPINE",[(-.36,-2.55),(.36,-2.55),(.55,-.55),(.43,1.45),
+          (.28,2.55),(-.28,2.55),(-.43,1.45),(-.55,-.55)],.60,.79,edge,.075)
+    prism("DORSAL_GRAPHITE_INLAY",[(-.22,-2.15),(.22,-2.15),(.30,-.25),(.22,1.72),
+          (-.22,1.72),(-.30,-.25)],.79,.84,dark,.035)
+    for i in range(6):
+        cube("SPINE_HEAT_EXTRACTOR_"+str(i),((i-2.5)*.105,-1.65,.87),(.045,.48,.035),edge,.012)
 
-    # Twin forward pulse cannons integrated into the nose shoulders.
-    for s,label in [(-1,"PORT"),(1,"STARBOARD")]:
-        x=s*.43
-        cylinder(label+"_PULSE_CANNON",(x,2.0,-.20),.105,.95,dark)
-        cylinder(label+"_MUZZLE_RING",(x,2.49,-.20),.13,.12,edge)
-        sphere(label+"_MUZZLE_ENERGY",(x,2.57,-.20),(.085,.07,.085),cyan)
+    # Forward cockpit: long yellow-tinted panoramic canopy with deep dark cockpit well.
+    sphere("COCKPIT_RECESSED_WELL",(0,2.12,.58),(.52,1.18,.36),dark)
+    sphere("PANORAMIC_GOLD_SAPPHIRE_CANOPY",(0,2.28,.77),(.405,.98,.285),glass)
+    beam_between("CANOPY_LEFT_GOLD_SEAL",(-.37,1.42,.77),(-.20,3.05,.88),.045,.035,amber)
+    beam_between("CANOPY_RIGHT_GOLD_SEAL",(.37,1.42,.77),(.20,3.05,.88),.045,.035,amber)
+    beam_between("CANOPY_CENTER_RIDGE",(0,1.48,1.02),(0,3.05,.99),.035,.025,edge)
+    # Nose armor and sensor details.
+    prism("NOSE_LOWER_ARMOR",[(-.25,3.05),(.25,3.05),(.16,4.12),(-.16,4.12)],-.02,.16,dark,.035)
+    sphere("NOSE_TARGETING_SENSOR",(0,3.72,.22),(.11,.20,.09),amber)
 
-    # Tail fins and dorsal engine vents.
+    # Distinctive high shoulder pods / engine shoulders and rear twin propulsion units.
     for s,label in [(-1,"PORT"),(1,"STARBOARD")]:
-        prism(label+"_TAIL_FIN",[(s*.48,-2.0),(s*1.12,-3.35),(s*.72,-3.05),(s*.40,-2.35)],.12,.82,hull,.045)
-        beam_between(label+"_FIN_LIGHT",(s*.62,-2.45,.72),(s*.88,-3.03,.52),.035,.03,cyan)
-    for i in range(5):
-        cube("DORSAL_HEAT_VENT_%02d"%i,((i-2)*.115,-1.75,.70),(.055,.46,.035),dark,.012)
+        x=s*.78
+        # Raised side shoulder fairing.
+        prism(label+"_SHOULDER_FAIRING",[(s*.48,1.35),(s*1.08,.95),(s*1.48,-.65),
+              (s*1.12,-2.25),(s*.62,-2.55),(s*.82,-.65)],.25,.58,hull,.08)
+        # Twin turbine housing, metallic rim, recessed dark nozzle and luminous core.
+        cone(label+"_ENGINE_COWL",(x,-2.78,-.12),.46,.34,1.48,dark)
+        cylinder(label+"_ENGINE_REAR_RING",(x,-3.55,-.12),.37,.20,edge)
+        cylinder(label+"_ENGINE_NOZZLE_DARK",(x,-3.68,-.12),.285,.12,dark)
+        cylinder(label+"_ENGINE_PLASMA_CORE",(x,-3.77,-.12),.205,.10,glow)
+        sphere(label+"_ENGINE_ION_GLOW",(x,-3.83,-.12),(.19,.06,.19),cyan)
+        # Intake mouths and layered lips.
+        cylinder(label+"_FORWARD_INTAKE_RIM",(s*.91,1.12,-.08),.245,.15,edge)
+        sphere(label+"_INTAKE_BLACK_CORE",(s*.91,1.20,-.08),(.18,.055,.18),dark)
+        # Small landing gear: articulated strut and twin wheel.
+        beam_between(label+"_LANDING_STRUT",(s*.70,-.35,-.48),(s*.82,-.48,-1.05),.12,.12,edge)
+        cylinder(label+"_LANDING_WHEEL",(s*.82,-.48,-1.08),.17,.13,dark,axis="X")
+        cylinder(label+"_WHEEL_HUB",(s*.82,-.48,-1.08),.075,.145,edge,axis="X")
+
+    # Ventral stabilizers and rear canted fins.
+    for s,label in [(-1,"PORT"),(1,"STARBOARD")]:
+        prism(label+"_VENTRAL_STABILIZER",[(s*.62,-1.55),(s*1.20,-2.05),(s*1.02,-3.45),(s*.55,-3.10)],-.62,-.20,dark,.055)
+        prism(label+"_REAR_CANTED_FIN",[(s*.62,-2.15),(s*1.25,-3.45),(s*.83,-3.18),(s*.48,-2.55)],.10,.82,hull,.055)
+        beam_between(label+"_FIN_CYAN_EDGE",(s*.72,-2.55,.83),(s*1.08,-3.18,.58),.045,.035,cyan)
+
+    # Underside armor and two small forward pulse emitters.
+    prism("VENTRAL_CENTER_ARMOR",[(-.48,-2.55),(.48,-2.55),(.36,1.1),(-.36,1.1)],-.72,-.48,dark,.05)
+    for s,label in [(-1,"PORT"),(1,"STARBOARD")]:
+        cylinder(label+"_NOSE_PULSE_EMITTER",(s*.40,2.80,-.18),.095,.72,dark)
+        cylinder(label+"_NOSE_EMITTER_RIM",(s*.40,3.17,-.18),.12,.10,edge)
+        sphere(label+"_NOSE_EMITTER_CORE",(s*.40,3.23,-.18),(.07,.06,.07),cyan)
+
+    # Small white unit markings on wing top (kept as geometry, not texture text).
+    for s,label in [(-1,"PORT"),(1,"STARBOARD")]:
+        for k in range(3):
+            cube(label+"_IDENT_MARK_"+str(k),(s*(3.75+k*.16),-.10-k*.20,.315),(.07,.34,.025),edge,.012)
 
 def setup(out):
     bpy.ops.object.select_all(action="SELECT"); bpy.ops.object.delete(use_global=False)
