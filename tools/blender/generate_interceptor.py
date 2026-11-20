@@ -209,7 +209,10 @@ def setup(out):
     bpy.ops.object.select_all(action="DESELECT")
     for o in scene.objects:
         if o.type=="MESH": o.select_set(True)
-    bpy.context.view_layer.objects.active=next(o for o in scene.objects if o.name=="01_MONOCOQUE_TITANIUM_FUSELAGE")
+    active_body = bpy.data.objects.get("01_STEALTH_LIFTING_BODY")
+    if active_body is None:
+        raise RuntimeError("Expected Valkyrie body mesh was not created")
+    bpy.context.view_layer.objects.active = active_body
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out,"aether-nova-interceptor.blend"))
     bpy.ops.export_scene.gltf(filepath=os.path.join(out,"aether-nova-interceptor.glb"),export_format="GLB",use_selection=True,export_apply=True)
     bpy.ops.render.render(write_still=True)
