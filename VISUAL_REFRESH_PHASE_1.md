@@ -6,6 +6,8 @@ Fecha: 2026-11-19
 - Se incorpora `aether-visual-upgrade.css` como una capa visual aislada y cargada después de `style.css`.
 - Se mejora la profundidad visual del menú, el panel cinematográfico, la jerarquía tipográfica, los paneles de información, los estados de selección y las interacciones de botones.
 - Se reorganiza la cuadrícula de características para pantallas medianas y móviles, manteniendo el contenido y los identificadores DOM existentes.
+- Se trasladan las siluetas CSS de las ocho naves a la hoja de estilos dedicada; `index.html` termina correctamente en `</html>`.
+- Se corrige el texto del menú y del manual para indicar jefes cada diez sectores, coherente con la lógica existente de `game.js` (`state.level % 10 === 0`).
 - Se respeta `prefers-reduced-motion`.
 - Se incluye el nuevo CSS en la caché del Service Worker y se incrementa la versión de caché para que la actualización llegue a instalaciones PWA.
 
