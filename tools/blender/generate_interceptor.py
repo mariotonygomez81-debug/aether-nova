@@ -7,7 +7,7 @@ from mathutils import Vector
 
 def arguments():
     argv=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
-    p=argparse.ArgumentParser(); p.add_argument("--output-dir",default="dist")
+    p=argparse.ArgumentParser(); p.add_argument("--output-dir",default="dist"); p.add_argument("--hdri",default="")
     return p.parse_args(argv)
 
 def mat(name,color,metal=0.0,rough=.35,emission=None,strength=0):
@@ -17,6 +17,20 @@ def mat(name,color,metal=0.0,rough=.35,emission=None,strength=0):
     b.inputs["Roughness"].default_value=rough
     if emission:
         b.inputs["Emission Color"].default_value=(*emission,1); b.inputs["Emission Strength"].default_value=strength
+    # Subtle procedural micro-roughness and normal breakup for close-up aerospace surfaces.
+    # Keep glass and emissive materials clean; only apply to metallic hull/armor families.
+    if metal >= 0.70 and rough <= 0.30:
+        nodes=m.node_tree.nodes; links=m.node_tree.links
+        noise=nodes.new("ShaderNodeTexNoise"); noise.name="AETHER Micro Surface Grain"
+        noise.inputs["Scale"].default_value=185.0
+        noise.inputs["Detail"].default_value=2.0
+        noise.inputs["Roughness"].default_value=0.72
+        bump=nodes.new("ShaderNodeBump"); bump.name="AETHER Subtle Machined Texture"
+        bump.inputs["Strength"].default_value=0.12
+        bump.inputs["Distance"].default_value=0.012
+        links.new(noise.outputs["Fac"],bump.inputs["Height"])
+        links.new(bump.outputs["Normal"],b.inputs["Normal"])
+        noise.location=(-420,-180); bump.location=(-180,-180); b.location=(80,80)
     return m
 
 def finish(obj,name,material,bevel=0.04,smooth=False):
@@ -225,7 +239,7 @@ def create_ship(M):
         for k in range(3):
             cube(side+"_IDENTIFICATION_MARK_"+str(k),(s*(3.78+k*.15),-.22-k*.18,.37),(.065,.30,.025),edge,.012)
 
-def setup(out):
+def setup(out, hdri_path=""):
     bpy.ops.object.select_all(action="SELECT"); bpy.ops.object.delete(use_global=False)
     hull=mat("01 Deep aerospace titanium",(0.055,.095,.15),.82,.25)
     armor=mat("02 Ceramic silver armor",(.34,.46,.57),.78,.27)
@@ -238,8 +252,17 @@ def setup(out):
     create_ship((hull,armor,edge,dark,glass,cyan,amber,glow))
 
     world=bpy.data.worlds.new("AETHER NOVA | Deep space studio"); bpy.context.scene.world=world
-    world.use_nodes=True; world.node_tree.nodes["Background"].inputs[0].default_value=(.006,.014,.032,1)
-    world.node_tree.nodes["Background"].inputs[1].default_value=.35
+    world.use_nodes=True
+    world_nodes=world.node_tree.nodes; world_links=world.node_tree.links
+    background=world_nodes.get("Background")
+    background.inputs[0].default_value=(.006,.014,.032,1)
+    background.inputs[1].default_value=.35
+    if hdri_path and os.path.isfile(hdri_path):
+        env=world_nodes.new("ShaderNodeTexEnvironment"); env.name="Poly Haven Studio Small 03 HDRI"
+        env.image=bpy.data.images.load(hdri_path,check_existing=True)
+        env.interpolation="Linear"
+        world_links.new(env.outputs["Color"],background.inputs["Color"])
+        background.inputs["Strength"].default_value=.28
     # Camera now looks toward the nose, showing the cockpit and forward silhouette.
     bpy.ops.object.camera_add(location=(10,12,9))
     cam=bpy.context.object; cam.name="VALKYRIE_HERO_CAMERA"
@@ -278,4 +301,4 @@ def setup(out):
     bpy.ops.render.render(write_still=True)
 
 if __name__=="__main__":
-    a=arguments(); setup(os.path.abspath(a.output_dir)); print("Valkyrie refined asset generated")
+    a=arguments(); setup(os.path.abspath(a.output_dir),os.path.abspath(a.hdri) if a.hdri else ""); print("Valkyrie refined asset generated")
