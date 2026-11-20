@@ -3,7 +3,7 @@ name: Blender asset prototype
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, assets/blender-prototype-phase-1]
     paths:
       - "tools/blender/**"
       - ".github/workflows/blender-assets.yml"
