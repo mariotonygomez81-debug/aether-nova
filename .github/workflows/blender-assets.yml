@@ -14,6 +14,10 @@ on:
       - "tools/blender/**"
       - ".github/workflows/blender-assets.yml"
 
+concurrency:
+  group: blender-asset-prototype-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
