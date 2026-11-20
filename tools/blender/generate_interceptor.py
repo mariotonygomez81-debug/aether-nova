@@ -40,7 +40,7 @@ def sphere(name,loc,scale,m):
     return finish(o,name,m,0,True)
 
 def cylinder(name,loc,radius,depth,m,axis="Y",vertices=32):
-    rot=(math.pi/2,0,0) if axis=="Y" else (0,0,0)
+    rot=(math.pi/2,0,0) if axis=="Y" else ((0,math.pi/2,0) if axis=="X" else (0,0,0))
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices,radius=radius,depth=depth,location=loc,rotation=rot)
     return finish(bpy.context.object,name,m,.025,True)
 
@@ -189,7 +189,7 @@ def setup(out):
     bpy.ops.object.camera_add(location=(10,12,9))
     cam=bpy.context.object; cam.name="VALKYRIE_HERO_CAMERA"
     cam.rotation_euler=(Vector((0,0,0))-cam.location).to_track_quat("-Z","Y").to_euler()
-    cam.data.type="ORTHO"; cam.data.ortho_scale=11.8; bpy.context.scene.camera=cam
+    cam.data.type="ORTHO"; cam.data.ortho_scale=12.8; bpy.context.scene.camera=cam
     def light(name,loc,power,size,color):
         bpy.ops.object.light_add(type="AREA",location=loc); o=bpy.context.object; o.name=name
         o.data.energy=power; o.data.shape="DISK"; o.data.size=size; o.data.color=color
