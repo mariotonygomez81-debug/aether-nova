@@ -1,0 +1,46 @@
+name: Blender asset prototype
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "tools/blender/**"
+      - ".github/workflows/blender-assets.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  generate-interceptor:
+    name: Generate Valkyrie interceptor prototype
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender
+
+      - name: Generate Blender project and GLB
+        run: |
+          blender --version
+          blender --background --python tools/blender/generate_interceptor.py -- --output-dir dist
+
+      - name: Verify generated assets
+        run: |
+          test -s dist/aether-nova-interceptor.blend
+          test -s dist/aether-nova-interceptor.glb
+          test -s dist/aether-nova-interceptor-preview.png
+          file dist/*
+
+      - name: Upload generated assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: aether-nova-interceptor-prototype
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
