@@ -25,15 +25,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Blender
+      - name: Install Blender and exporter dependency
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender
+          sudo apt-get install -y blender python3-numpy
+
+      - name: Verify Blender Python dependencies
+        run: |
+          blender --version
+          blender --background --python-expr "import numpy; print('NumPy available:', numpy.__version__)"
 
       - name: Generate Blender project and GLB
         run: |
-          blender --version
-          blender --background --python tools/blender/generate_interceptor.py -- --output-dir dist
+          blender --background --python-exit-code 1 --python tools/blender/generate_interceptor.py -- --output-dir dist
+          echo "Generated files:"
+          find . -maxdepth 3 -type f -name 'aether-nova-interceptor*' -print
 
       - name: Verify generated assets
         run: |
