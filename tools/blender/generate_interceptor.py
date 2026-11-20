@@ -125,6 +125,40 @@ def create_ship(M):
             ob.modifiers.new("Aerofoil weighted normals","WEIGHTED_NORMAL")
         return ob
 
+    def add_geometry_nodes_ribs():
+        # Geometry Nodes creates a repeatable set of machined armor ribs.
+        group=bpy.data.node_groups.new("AETHER | Procedural Armor Ribs","GeometryNodeTree")
+        group.interface.new_socket(name="Geometry",in_out="INPUT",socket_type="NodeSocketGeometry")
+        group.interface.new_socket(name="Geometry",in_out="OUTPUT",socket_type="NodeSocketGeometry")
+        nodes=group.nodes; links=group.links
+        gi=nodes.new("NodeGroupInput"); gi.location=(-520,120)
+        go=nodes.new("NodeGroupOutput"); go.location=(520,120)
+        line=nodes.new("GeometryNodeMeshLine"); line.location=(-520,-100)
+        line.inputs["Count"].default_value=6
+        line.inputs["Start Location"].default_value=(0,0,0)
+        line.inputs["Offset"].default_value=(.34,0,0)
+        block=nodes.new("GeometryNodeMeshCube"); block.location=(-520,-320)
+        block.inputs["Size"].default_value=(.022,.52,.024)
+        inst=nodes.new("GeometryNodeInstanceOnPoints"); inst.location=(-220,-100)
+        realize=nodes.new("GeometryNodeRealizeInstances"); realize.location=(0,-100)
+        setmat=nodes.new("GeometryNodeSetMaterial"); setmat.location=(220,-100)
+        setmat.inputs["Material"].default_value=edge
+        join=nodes.new("GeometryNodeJoinGeometry"); join.location=(400,120)
+        links.new(line.outputs["Mesh"],inst.inputs["Points"])
+        links.new(block.outputs["Mesh"],inst.inputs["Instance"])
+        links.new(inst.outputs["Instances"],realize.inputs["Geometry"])
+        links.new(realize.outputs["Geometry"],setmat.inputs["Geometry"])
+        links.new(setmat.outputs["Geometry"],join.inputs["Geometry"])
+        links.new(gi.outputs["Geometry"],join.inputs["Geometry"])
+        links.new(join.outputs["Geometry"],go.inputs["Geometry"])
+        mesh=bpy.data.meshes.new("AETHER_GN_RIBS_EMPTY")
+        obj=bpy.data.objects.new("GN_PROCEDURAL_ARMOR_RIBS",mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.location=(2.0,-.62,.405)
+        mod=obj.modifiers.new("Geometry Nodes | Machined Armor Ribs","NODES")
+        mod.node_group=group
+        return obj
+
     loft_body()
 
     # Main broad swept wing. The outer tips sweep aft like the supplied craft.
@@ -162,6 +196,8 @@ def create_ship(M):
         for k in range(3):
             beam_between(side+"_PANEL_SEAM_"+str(k),(s*(2.0+k*.52),.30-k*.25,.36),
                          (s*(2.55+k*.52),-.22-k*.28,.36),.026,.018,edge)
+
+    add_geometry_nodes_ribs()
 
     # Dorsal spine, layered aerodynamic ridges and aft heat vents.
     aerofoil("03_RAISED_DORSAL_SPINE",[(-.52,-2.65),(.52,-2.65),(.43,.85),(.30,2.60),
