@@ -200,3 +200,14 @@ After these checks, extend sector-specific environments and convert the validate
 - Asteroides y naves comienzan a profundidades mayores y reducen esa distancia gradualmente para reforzar la sensación de aproximación desde el espacio profundo.
 - Se conservan las coordenadas 2D como plano de colisión; esta fase es una proyección 3D de aproximación, no una migración completa del simulador a física 3D.
 - Verificación automática de sintaxis y salvaguardas adaptativas; quedan pendientes pruebas de combate para revisar alineación visual con impactos, trayectorias de armas especiales y rendimiento.
+
+
+## Fase 16 — perspectiva de profundidad para armamento y objetos
+- Los disparos del jugador se representan desde la tobera hacia un punto de fuga central situado a gran distancia sobre el eje Z.
+- La progresión del proyectil se expresa visualmente como desplazamiento en profundidad y reducción de escala, no como traslación vertical sobre la pantalla.
+- La geometría ovalada de plasma orienta su eje longitudinal hacia el fondo (-Z); el daño y la detección de impactos siguen utilizando las coordenadas reales del motor de combate.
+- Los cazas enemigos usan escala física estable por clase. Su tamaño aparente aumenta al acercarse por perspectiva, en vez de compensarse para mantener tamaño constante en píxeles.
+- Los asteroides usan un radio físico basado en una distancia de referencia; su proyección aumenta naturalmente al aproximarse.
+- No se modifican las velocidades, cadencias, daño, hitboxes ni recompensas del combate.
+- La simulación lógica sigue siendo 2D en esta fase; el eje Z se aplica al recorrido y a la proyección visual. Una migración de colisiones y navegación a 3D requiere una etapa separada.
+- Validación pendiente de pruebas manuales de legibilidad, convergencia visual y rendimiento en GPU integrada.
