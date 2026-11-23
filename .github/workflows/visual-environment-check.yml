@@ -31,4 +31,5 @@ jobs:
           grep -q 'cosmicDust' aether3d.js
           grep -q 'enemySensor' aether3d.js
           grep -q 'bossVent' aether3d.js
+          grep -q 'bossShield' aether3d.js
           echo "Adaptive planetary environment checks passed."
