@@ -172,3 +172,12 @@ After these checks, extend sector-specific environments and convert the validate
 - Los detalles de cráteres y vetas siguen compartiendo geometrías y materiales; la lógica de colisiones, daño y recompensas permanece en game.js.
 - Fase 12: superficie terrestre, máscara de nubes independiente y mapa de luces nocturnas de Solar System Scope (CC BY 4.0). Las texturas conservan color real y no reciben tintado de las paletas de era.
 - Validación pendiente de inspección visual y FPS en hardware integrado; el mapa externo requiere conexión y conserva fallback procedural.
+
+
+## Fase 14 — identidad planetaria por progresión de campaña
+- Cada bloque de diez sectores selecciona un cuerpo celeste distinto: Tierra, Marte, Júpiter, Saturno, Venus, Urano, Neptuno, Mercurio, Tierra y Luna.
+- Las texturas 2K de Solar System Scope se cargan de forma diferida al entrar en cada era y se almacenan en caché; no se descargan todas al iniciar.
+- Se activan nubes y luces nocturnas únicamente para la Tierra, y los anillos únicamente para Saturno.
+- Si una descarga falla, se conserva el último mapa disponible y el juego continúa sin bloquear la simulación.
+- La progresión, enemigos, colisiones, daño y recompensas no cambian; la variación es exclusivamente visual.
+- Los mapas se distribuyen bajo CC BY 4.0; se mantiene la atribución a Solar System Scope.
