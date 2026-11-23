@@ -10,11 +10,13 @@ def arguments():
     p=argparse.ArgumentParser(); p.add_argument("--output-dir",default="dist"); p.add_argument("--hdri",default="")
     return p.parse_args(argv)
 
-def mat(name,color,metal=0.0,rough=.35,emission=None,strength=0):
+def mat(name,color,metal=0.0,rough=.35,emission=None,strength=0,transmission=0.0,ior=1.45):
     m=bpy.data.materials.new(name); m.diffuse_color=(*color,1); m.use_nodes=True
     b=m.node_tree.nodes.get("Principled BSDF")
     b.inputs["Base Color"].default_value=(*color,1); b.inputs["Metallic"].default_value=metal
     b.inputs["Roughness"].default_value=rough
+    if "Transmission" in b.inputs: b.inputs["Transmission"].default_value=transmission
+    if "IOR" in b.inputs: b.inputs["IOR"].default_value=ior
     if emission:
         b.inputs["Emission Color"].default_value=(*emission,1); b.inputs["Emission Strength"].default_value=strength
     # Subtle procedural micro-roughness and normal breakup for close-up aerospace surfaces.
@@ -101,13 +103,13 @@ def create_ship(M):
             ob.modifiers.new("Weighted aerospace normals","WEIGHTED_NORMAL")
         return ob
 
-    def loft(name, sections, material, sides=32):
+    def loft(name, sections, material, sides=32, x_center=0.0):
         # Smooth elliptical loft; each section is (y, half_width, half_height, z_center).
         verts=[]; faces=[]
         for y,rx,rz,zc in sections:
             for i in range(sides):
                 a=2*math.pi*i/sides
-                verts.append((rx*math.cos(a),y,zc+rz*math.sin(a)))
+                verts.append((x_center+rx*math.cos(a),y,zc+rz*math.sin(a)))
         for j in range(len(sections)-1):
             for i in range(sides):
                 a=j*sides+i; b=j*sides+(i+1)%sides
@@ -162,6 +164,17 @@ def create_ship(M):
     beam_between("CANOPY_REAR_ARMOR_BROW",(-.32,1.82,.75),(.32,1.82,.75),.065,.05,dark)
     beam_between("CANOPY_FRONT_NOSE_RIDGE",(-.055,3.78,.62),(.055,3.78,.62),.035,.03,edge)
 
+    # Visible cockpit interior beneath the transmissive canopy.
+    cube("COCKPIT_RECESSED_INSTRUMENT_BAY",(0,2.54,.48),(.52,1.06,.12),dark,.055)
+    cube("COCKPIT_PILOT_SEAT_BASE",(0,2.34,.27),(.34,.42,.13),dark,.045)
+    cube("COCKPIT_PILOT_SEAT_BACK",(0,2.08,.47),(.34,.16,.48),hull,.065)
+    cube("COCKPIT_HEADREST",(0,2.02,.72),(.28,.13,.15),edge,.045)
+    cube("COCKPIT_FORWARD_DASHBOARD",(0,3.15,.48),(.50,.18,.16),dark,.045)
+    for side_sign,side_name in [(-1,"PORT"),(1,"STARBOARD")]:
+        cube(side_name+"_COCKPIT_SIDE_CONSOLE",(side_sign*.235,2.65,.48),(.075,.68,.16),hull,.025)
+        cube(side_name+"_COCKPIT_HOLOGRAPHIC_DISPLAY",(side_sign*.17,3.02,.575),(.12,.025,.025),cyan,.012)
+    sphere("COCKPIT_PILOT_HELMET",(0,2.18,.66),(.115,.13,.14),dark)
+
     # Blue recessed ion apertures along each side of the central wing.
     for s,side in [(-1,"PORT"),(1,"STARBOARD")]:
         solid(side+"_ION_APERTURE_BEZEL",
@@ -207,13 +220,20 @@ def create_ship(M):
     bpy.context.collection.objects.link(ribs); ribs.location=(0,-2.15,.72)
     mod=ribs.modifiers.new("Geometry Nodes | Cooling ribs","NODES"); mod.node_group=group
 
+    # Fine maintenance hatches and flush fasteners on the upper armor.
+    for side_sign,side_name in [(-1,"PORT"),(1,"STARBOARD")]:
+        for idx,(yy,xx) in enumerate([(-1.15,1.05),(-.58,1.28),(.02,1.38)]):
+            cube(side_name+"_SERVICE_HATCH_"+str(idx),(side_sign*xx,yy,.455),(.32,.22,.035),edge,.025)
+        for idx in range(3):
+            sphere(side_name+"_ARMOR_FASTENER_"+str(idx),(side_sign*(1.62+idx*.16),-.92-idx*.18,.47),(.028,.028,.018),edge)
+
     # Twin integrated engine nacelles, nozzles and luminous reactor cores.
     for s,side in [(-1,"PORT"),(1,"STARBOARD")]:
         x=s*1.03
         loft(side+"_ARMORED_ENGINE_NACELLE",[
             (-4.28,.36,.30,-.03),(-3.92,.53,.40,-.02),
             (-3.18,.57,.43,.00),(-2.30,.48,.36,.02),
-            (-1.78,.32,.25,.04)],hull,24)
+            (-1.78,.32,.25,.04)],hull,24,x_center=x)
         cylinder(side+"_PLATINUM_NOZZLE_RIM",(x,-4.18,-.03),.36,.16,edge,axis="Y")
         cylinder(side+"_CARBON_NOZZLE",(x,-4.29,-.03),.275,.12,dark,axis="Y")
         cylinder(side+"_BLUE_REACTOR_CORE",(x,-4.37,-.03),.18,.10,glow,axis="Y")
@@ -265,7 +285,7 @@ def setup(out, hdri_path=""):
     armor=mat("02 Ceramic silver armor",(.34,.46,.57),.78,.27)
     edge=mat("03 Brushed platinum",(.62,.73,.80),.84,.22)
     dark=mat("04 Carbon graphite",(.009,.018,.03),.52,.31)
-    glass=mat("05 Smoked amber aerospace canopy",(.16,.105,.038),.32,.16,(.22,.085,.012),.08)
+    glass=mat("05 Optically transmissive smoked amber canopy",(.24,.115,.035),.04,.075,(.10,.035,.006),.035,transmission=.82,ior=1.46)
     cyan=mat("06 Ion cyan",(.005,.48,.72),.35,.2,(.0,.55,1),3.2)
     amber=mat("07 Amber identifiers",(.95,.31,.035),.58,.24,(1,.19,.015),1.4)
     glow=mat("08 Reactor plasma",(.02,.35,.8),.2,.2,(.0,.38,1),4.0)
