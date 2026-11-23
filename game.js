@@ -2077,7 +2077,7 @@ function spawnPowerup() {
   }
   if (!item) return;
   const x = 34 + Math.random() * Math.max(1, W - 68);
-  powerups.push({ x, y: -24, vy: 2.0 + Math.random() * 0.55, vx: (Math.random() - 0.5) * 0.8, meteor: true, ...item });
+  powerups.push({ x, y: H*.24+Math.random()*H*.28, vy: 0, vx: 0, depth: 58+Math.random()*24, meteor: true, ...item });
 }
 
 function awardCombatCredits(amount, x, y, label) {
@@ -2090,7 +2090,7 @@ function awardCombatCredits(amount, x, y, label) {
 
 function spawnCreditCoin(x, y, amount) {
   creditCoins.push({
-    x, y, amount: Math.max(1, Math.floor(amount)),
+    x, y, depth: 52+Math.random()*20, amount: Math.max(1, Math.floor(amount)),
     vx: (Math.random() - 0.5) * 2.8,
     vy: -2.8 - Math.random() * 1.8,
     gravity: 0.075,
@@ -2827,6 +2827,8 @@ function updateAndDraw() {
         x: boss.x, y: boss.y, radius: boss.radius, variant: boss.variant,
         phase: boss.phase, hp: boss.hp, maxHp: boss.maxHp, weakAngle: boss.weakAngle
       } : null,
+      powerups: powerups.filter(p => !p.dead).map(p => ({id:p.aether3dId||(p.aether3dId="power-"+Math.random().toString(36).slice(2)),x:p.x,y:p.y,depth:Number.isFinite(p.depth)?p.depth:42,color:p.color,label:p.label})),
+      creditCoins: creditCoins.filter(c => !c.dead).map(c => ({id:c.aether3dId||(c.aether3dId="credit-"+Math.random().toString(36).slice(2)),x:c.x,y:c.y,depth:Number.isFinite(c.depth)?c.depth:46,amount:c.amount,spin:c.spin})),
       phenomena: phenomena.filter(ph => !ph.dead).map(ph => ({
         id: ph.aether3dId || (ph.aether3dId = "phenomenon-" + Math.random().toString(36).slice(2)),
         kind: ph.kind, x: ph.x, y: ph.y, radius: ph.radius,
@@ -3008,10 +3010,10 @@ function updateAndDraw() {
   });
 
   creditCoins.forEach((coin) => {
-    coin.x += coin.vx;
-    coin.y += coin.vy;
-    coin.vy = Math.min(5.2, coin.vy + (coin.gravity || 0.075));
-    coin.vx *= 0.992;
+    coin.x += coin.vx*.08;
+    coin.y += coin.vy*.08;
+    coin.depth = Math.max(9,(coin.depth||52)-.014);
+    coin.spin += 0.16;
     coin.spin += 0.16;
     coin.life--;
     if (coin.y > H + 24 || coin.life <= 0) coin.dead = true;
@@ -3041,6 +3043,8 @@ function updateAndDraw() {
     ctx.fillText(String(coin.amount), 0, 0);
     ctx.restore();
 
+    const coinShot=bullets.find(b=>!b.dead&&Math.hypot(b.x-coin.x,b.y-coin.y)<22);
+    if(coinShot&&!coin.dead){coinShot.dead=true;coin.dead=true;awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");SoundFX.play("powerup");addFloatingText(coin.x,coin.y-20,`+${coin.amount} CRÉDITOS`,"#ffd34e");}
     if (!coin.dead && (Math.hypot(coin.x-player.x,coin.y-player.y)<player.radius+15 || (player2&&player2.lives>0&&Math.hypot(coin.x-player2.x,coin.y-player2.y)<player2.radius+15))) {
       coin.dead=true;awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");SoundFX.play("powerup");addFloatingText(coin.x,coin.y-20,`+${coin.amount} CRÉDITOS`,"#ffd34e");
     }
@@ -3048,9 +3052,10 @@ function updateAndDraw() {
 
   powerups.forEach((p) => {
     p.prevX = p.x; p.prevY = p.y;
-    p.y += p.vy;
-    p.x += (p.vx || 0);
-    // Sin atracción magnética: los potenciadores mantienen su trayectoria de caída.
+    // Las esferas permanecen suspendidas en profundidad y derivan suavemente en 3D.
+    p.x += Math.sin((p.aether3dPhase||(p.aether3dPhase=Math.random()*6.28))+performance.now()*.00055)*.34;
+    p.y += Math.cos((p.aether3dPhase||0)+performance.now()*.00042)*.22;
+    p.depth = Math.max(8,(p.depth||58)-.018);
     if (p.y > H + 30) p.dead = true;
 
     if (p.meteor) {
@@ -3090,7 +3095,9 @@ function updateAndDraw() {
       const lengthSq = vx * vx + vy * vy;
       const t = lengthSq > 0 ? Math.max(0, Math.min(1, -(sx * vx + sy * vy) / lengthSq)) : 0;
       const closest = Math.hypot(sx + vx * t, sy + vy * t);
-      if (closest < player.radius + 14) {p.dead=true;applyPowerup(p,player);}
+      const plasmaHit=bullets.find(b=>!b.dead&&Math.hypot(b.x-p.x,b.y-p.y)<p.radius+18);
+      if(plasmaHit){plasmaHit.dead=true;p.dead=true;applyPowerup(p,player);addFloatingText(p.x,p.y-24,p.text||"PODER ADQUIRIDO",p.color||"#55eaff");SoundFX.play("powerup");}
+      else if (closest < player.radius + 14) {p.dead=true;applyPowerup(p,player);}
       else if(player2&&player2.lives>0){
         const sx2=(p.prevX??p.x)-(player2.prevX??player2.x),sy2=(p.prevY??p.y)-(player2.prevY??player2.y),ex2=p.x-player2.x,ey2=p.y-player2.y,vx2=ex2-sx2,vy2=ey2-sy2,len2=vx2*vx2+vy2*vy2,t2=len2>0?Math.max(0,Math.min(1,-(sx2*vx2+sy2*vy2)/len2)):0;
         if(Math.hypot(sx2+vx2*t2,sy2+vy2*t2)<player2.radius+14){p.dead=true;applyPowerup(p,player2);}
