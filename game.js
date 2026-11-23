@@ -2890,6 +2890,7 @@ function updateAndDraw() {
   });
 
   asteroids.forEach((a) => {
+    a.prevX=a.x;a.prevY=a.y;
     a.update();
     if (!window.__AETHER3D_ACTIVE) a.draw();
 
@@ -2900,12 +2901,24 @@ function updateAndDraw() {
     }
 
     bullets.forEach((b) => {
-      if (!b.dead && !a.dead && Math.hypot(b.x - a.x, b.y - a.y) < a.radius + (b.type === "laser" ? 12 : b.type === "plasma" ? 10 : 6)) {
-        if (b.pierce > 0) b.pierce--; else b.dead = true;
-        a.hp -= b.dmg;
-        a.hitFlash = 12;
-        publishAether3DImpact(b.x,b.y,a.kind==="magnetic"?"#70e7ff":"#ffd27a","asteroid-hit",-5-(Number.isFinite(a.depth)?a.depth:12));
-        spawnImpactBurst(b.x, b.y, a.kind === "magnetic" ? "#70e7ff" : "#ffd27a", IS_LOW_POWER ? 3 : 6);
+      if(b.dead||a.dead)return;
+      const bx0=Number.isFinite(b.prevX)?b.prevX:b.x,by0=Number.isFinite(b.prevY)?b.prevY:b.y;
+      const ax0=Number.isFinite(a.prevX)?a.prevX:a.x,ay0=Number.isFinite(a.prevY)?a.prevY:a.y;
+      const rx=(b.x-bx0)-(a.x-ax0),ry=(b.y-by0)-(a.y-ay0),sx=bx0-ax0,sy=by0-ay0;
+      const len2=rx*rx+ry*ry;
+      const t=len2>0?Math.max(0,Math.min(1,-(sx*rx+sy*ry)/len2)):0;
+      const closestX=sx+rx*t,closestY=sy+ry*t;
+      const hitRadius=a.radius+(b.type==="laser"?12:b.type==="plasma"?10:6);
+      if(Math.hypot(closestX,closestY)<hitRadius){
+        if(b.pierce>0)b.pierce--;else b.dead=true;
+        a.hp-=b.dmg;
+        a.hitFlash=12;
+        const travelX=bx0+(b.x-bx0)*t,travelY=by0+(b.y-by0)*t;
+        const nx=travelX-a.x,ny=travelY-a.y,norm=Math.max(.001,Math.hypot(nx,ny));
+        const contactX=a.x+nx/norm*a.radius*.9,contactY=a.y+ny/norm*a.radius*.9;
+        const hitColor=a.kind==="magnetic"?"#70e7ff":"#ffd27a";
+        publishAether3DImpact(contactX,contactY,hitColor,"asteroid-hit",-5-(Number.isFinite(a.depth)?a.depth:12));
+        spawnImpactBurst(contactX,contactY,hitColor,IS_LOW_POWER?4:8);
         SoundFX.play("targetHit");
         if (a.hp <= 0) {
           a.dead = true;
@@ -2952,8 +2965,12 @@ function updateAndDraw() {
       if (distance < e.radius + (b.missile ? 13 : b.type === "laser" ? 18 : b.type === "plasma" ? 14 : 11)) {
         if (b.pierce > 0) b.pierce--; else b.dead = true;
         e.hp -= b.dmg;
-        publishAether3DImpact(b.x,b.y,e.variant==="carrier"?"#b18aff":e.variant==="bomber"?"#ffbd65":"#ff6f9d","enemy-hit",-7-(Number.isFinite(e.depth)?e.depth:5));
-        spawnImpactBurst(b.x, b.y, "#ff8bc8", IS_LOW_POWER ? 3 : 6);
+        const travelX=bx0+(b.x-bx0)*t,travelY=by0+(b.y-by0)*t;
+        const nx=travelX-e.x,ny=travelY-e.y,norm=Math.max(.001,Math.hypot(nx,ny));
+        const contactX=e.x+nx/norm*e.radius*.88,contactY=e.y+ny/norm*e.radius*.88;
+        const hitColor=e.variant==="carrier"?"#b18aff":e.variant==="bomber"?"#ffbd65":"#ff6f9d";
+        publishAether3DImpact(contactX,contactY,hitColor,"enemy-hit",-7-(Number.isFinite(e.depth)?e.depth:5));
+        spawnImpactBurst(contactX,contactY,hitColor,IS_LOW_POWER?4:8);
         SoundFX.play("targetHit");
         if (e.hp <= 0) {
           e.dead = true;
