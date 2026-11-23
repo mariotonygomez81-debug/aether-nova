@@ -25,7 +25,7 @@ jobs:
         run: node --input-type=module --check < aether3d.js
       - name: Verify adaptive environment safeguards
         run: |
-          grep -q 'qualityTier==="low"?24' aether3d.js
+          grep -q 'qualityTier==="low"?40' aether3d.js
           grep -q 'qualityTier!=="low"' aether3d.js
           grep -q 'AETHER_PLANETARY_BACKDROP' aether3d.js
           grep -q 'cosmicDust' aether3d.js
