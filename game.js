@@ -2798,7 +2798,7 @@ function updateAndDraw() {
   // colisiones, armas, progresión y guardado siguen perteneciendo al motor original.
   if (window.__AETHER3D_ACTIVE) {
     window.__AETHER3D_STATE = {
-      x: player.x, y: player.y, width: W, height: H, level: state.level, tilt: player.tilt,
+      x: player.x, y: player.y, aimX:playerAim.x, aimY:playerAim.y, width: W, height: H, level: state.level, tilt: player.tilt,
       selectedShip: state.selectedShip, type: player.type, color: player.color, accent: player.accent,
       invulnerable: player.invuln > 0 && Math.floor(player.invuln / 5) % 2 === 0,
       shield: player.buffs.shield > 0, playing: state.mode === "PLAYING",
@@ -2809,7 +2809,8 @@ function updateAndDraw() {
       })),
       shots: bullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "shot-" + Math.random().toString(36).slice(2)),
-        x: b.x, y: b.y, color: b.color || "#39eaff", missile: !!b.missile, type: b.type || "bolt"
+        x: b.x, y: b.y, vx:b.vx, vy:b.vy, originX:b.originX, originY:b.originY, aimDistance:b.aimDistance,
+        color: b.color || "#39eaff", missile: !!b.missile, type: b.type || "bolt"
       })),
       asteroids: asteroids.filter(a => !a.dead).map(a => ({
         id: a.aether3dId, x: a.x, y: a.y, radius: a.radius, kind: a.kind,
