@@ -263,3 +263,12 @@ After these checks, extend sector-specific environments and convert the validate
 - Los cazas enemigos nacen dentro del campo visible a profundidad y se aproximan con movimiento lateral/vertical, con una escala visual mayor para distinguirlos desde la cabina.
 - Verificación automática: workflow Visual environment quality checks del commit 83d86e783e27a4ba0e59414acd07b34e818eb873 completado con éxito. Despliegue Render dep-dc1rbhutlv9c73ct4m1g en estado live.
 - Pendiente: prueba manual de adquisición de cada tipo de recompensa y de combate contra escuadrones en PC y móvil.
+
+
+## Fase 8 — impactos legibles, cazas ampliados y cápsulas de poder
+- Cola acotada de eventos 3D para impactos contra asteroides/enemigos y recolección de créditos/poderes.
+- El renderer muestra destello de contacto, anillos expansivos y partículas en la posición del objeto.
+- Cazas enemigos ampliados para mejorar su lectura desde la cabina.
+- Esferas 3D de créditos y poderes ampliadas; se ocultan los dibujos Canvas duplicados cuando el renderer 3D está activo.
+- Se conservan recompensas, applyPowerup, daño, cadencia, economía, balance y progresión.
+- Pendiente validación automática y comprobación visual/rendimiento.
