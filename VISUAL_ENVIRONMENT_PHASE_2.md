@@ -43,3 +43,14 @@ After these checks, extend sector-specific environments and convert the validate
 - Source change committed to the existing development branch.
 - Automated GitHub Actions syntax and visual safeguard checks have not yet been observed for this commit.
 - Manual review remains required on desktop, Android TV and mobile to confirm framing, draw-call cost and combat readability.
+
+## Phase 4 — AEGIS shield presentation
+- Upgraded the player shield from a single wireframe sphere to a layered energy envelope with two orbital plasma rings.
+- Added restrained scale, rotation and opacity pulses to communicate an active shield without changing its gameplay duration or absorption logic.
+- Mirrored the visual state for cooperative player two using the existing `coopPlayer2.shield` state; each pilot receives independent visibility and animation.
+- Geometry density follows the existing low/medium/high quality tier. No new lights, textures, external assets or runtime dependencies were introduced.
+- Gameplay damage, shield charges, invulnerability, multiplayer payload shape and control contracts remain unchanged; only the already-published shield boolean is consumed.
+
+## Phase 4 validation status
+- Source update committed to the existing development branch.
+- Automated syntax checks and manual visual/performance checks on desktop, Android TV and mobile are still required; no successful run is claimed here.
