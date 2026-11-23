@@ -52,7 +52,11 @@ jobs:
           grep -q 'pickupGlowTexture' aether3d.js
           grep -q 'kind==="credit"?.54:.68' aether3d.js
           grep -q 'kind==="credit"?1.02:1.18' aether3d.js
-          grep -q 'projectile-contact-alignment-v1' index.html
+          grep -q 'projectile-depth-hitfx-v2' index.html
+          grep -q 'const depth=-10.4-progress*62' aether3d.js
+          grep -q 'function spawn3DHitEffect' aether3d.js
+          grep -q 'if(fx.compact)' aether3d.js
+          grep -q 'spawn3DHitEffect(impactPosition' aether3d.js
           grep -q 'contactX=e.x+nx/norm' game.js
           grep -q 'contactX=a.x+nx/norm' game.js
           grep -q 'const ahead=worldPos(nextX,nextY,width,height,depth)' aether3d.js
