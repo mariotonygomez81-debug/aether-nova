@@ -132,3 +132,13 @@ After these checks, extend sector-specific environments and convert the validate
 - Se mantiene el planeta como elemento ambiental sin colisiones ni cambios de gameplay.
 - El cambio responde directamente a la captura del usuario: el planeta anterior se veía pixelado, sin continentes definidos y con coloración uniforme.
 - Pendiente: comprobar visualmente la composición y el coste de arranque en navegador, especialmente con Intel UHD 600.
+
+
+## Fase 10 — plasma ovalado, asteroides geológicos y planeta refinado
+- Proyectiles propios de plasma: se eliminó la construcción cilíndrica/cónica y el aro mecánico; ahora usan núcleo elipsoidal, envolvente luminosa, halo y cola de flujo. En perfiles no bajos se agregan dos filamentos curvos de plasma.
+- Proyectiles enemigos: se reemplazaron los pequeños cuerpos y cuentas separadas por un óvalo energético con halo y estela.
+- Asteroides: silueta irregular con fracturas de varias escalas, sombreado facetado, tonos minerales menos metálicos y más cráteres de mayor tamaño.
+- Planeta: máscara de continentes suavizada para evitar bordes dentados; océanos más profundos, costas turquesas, regiones verdes/forestales, tierras altas, zonas frías y nubes.
+- Resolución planetaria adaptativa: low 192×96, medium 320×160, high/ultra 512×256.
+- No se modificaron física, daño, colisiones, puntuación ni progresión.
+- Pendiente de validación visual manual y comprobación de FPS en hardware Intel UHD 600.
