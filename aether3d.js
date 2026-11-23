@@ -15,6 +15,16 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.24;
 
 const scene = new THREE.Scene();
+// Mira holográfica: posición independiente controlada por las cuatro direcciones.
+const aimReticle = new THREE.Group();
+const aimReticleMat = new THREE.MeshBasicMaterial({color:0x53f5ff,transparent:true,opacity:.92,depthTest:false});
+const aimReticleRing = new THREE.Mesh(new THREE.TorusGeometry(.58,.018,5,40),aimReticleMat);
+aimReticle.add(aimReticleRing);
+for(const axis of [0,Math.PI/2]){
+ const tick=new THREE.Mesh(new THREE.BoxGeometry(axis===0?.22:.018,axis===0?.018:.22,.012),aimReticleMat);
+ tick.rotation.z=axis;aimReticle.add(tick);
+}
+aimReticle.renderOrder=20;scene.add(aimReticle);
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 300);
 function worldPos(x,y,width,height,z=-10){
   const depth=camera.position.z-z;
@@ -1399,6 +1409,13 @@ function animate(now) {
   const dt=Math.min(frameDelta,.05); last=now;
   const data=window.__AETHER3D_STATE;
   if (data && data.playing) {
+    // Mira móvil de cuatro ejes; el jugador puede seleccionar cualquier punto del campo.
+    const aimX=Number.isFinite(data.aimX)?data.aimX:data.width*.5;
+    const aimY=Number.isFinite(data.aimY)?data.aimY:data.height*.38;
+    aimReticle.position.copy(worldPos(aimX,aimY,data.width,data.height,-8.4));
+    const aimPulse=1+Math.sin(now*.006)*.045;
+    aimReticle.scale.setScalar(aimPulse);
+    aimReticle.visible=true;
     // Cada bloque de diez sectores cambia la paleta del mundo sin reconstruir geometría.
     applyWorldEra(data.level||1);
     // Parallax ambiental sutil: da escala y profundidad sin competir con el combate.
