@@ -5,6 +5,7 @@ on:
     paths:
       - "aether3d.js"
       - "game.js"
+      - "index.html"
       - "platform-runtime.js"
       - ".github/workflows/visual-environment-check.yml"
   workflow_dispatch:
