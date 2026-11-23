@@ -15,16 +15,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.24;
 
 const scene = new THREE.Scene();
-// Mira holográfica: posición independiente controlada por las cuatro direcciones.
-const aimReticle = new THREE.Group();
-const aimReticleMat = new THREE.MeshBasicMaterial({color:0x53f5ff,transparent:true,opacity:.92,depthTest:false});
-const aimReticleRing = new THREE.Mesh(new THREE.TorusGeometry(.88,.026,6,56),aimReticleMat);
-aimReticle.add(aimReticleRing);
-for(const axis of [0,Math.PI/2]){
- const tick=new THREE.Mesh(new THREE.BoxGeometry(axis===0?.34:.026,axis===0?.026:.34,.016),aimReticleMat);
- tick.rotation.z=axis;aimReticle.add(tick);
-}
-aimReticle.renderOrder=20;scene.add(aimReticle);
+// Retículo central retirado: el campo de combate queda despejado.
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 300);
 function worldPos(x,y,width,height,z=-10){
   const depth=camera.position.z-z;
@@ -1094,12 +1085,12 @@ function pickupMaterials(color){
  if(pickupMaterialCache.has(key))return pickupMaterialCache.get(key);
  const tint=new THREE.Color(key);
  const materials={
-  shell:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.2,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),
-  core:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.98,blending:THREE.AdditiveBlending,depthWrite:false}),
-  nucleus:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.98,blending:THREE.AdditiveBlending,depthWrite:false}),
-  halo:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.105,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),
-  ring:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}),
-  ringFine:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.62,blending:THREE.AdditiveBlending,depthWrite:false})
+  shell:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.DoubleSide}),
+  core:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  nucleus:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  halo:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.DoubleSide}),
+  ring:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  ringFine:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.76,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false})
  };
  pickupMaterialCache.set(key,materials);return materials;
 }
@@ -1132,6 +1123,8 @@ function makePickupSphere(kind,color,label){
  glyph.scale.set(1.12,1.12,1);glyph.position.set(0,0,1.08);glyph.renderOrder=18;
  ring.rotation.x=Math.PI*.34;ringFine.rotation.set(Math.PI*.34,.72,.35);ringOuter.rotation.set(-Math.PI*.28,.42,-.5);
  group.add(halo,shell,core,nucleus,ring,ringFine,ringOuter,glyph);
+ for(const part of group.children){part.renderOrder=18;if(part.material){part.material.depthTest=false;part.material.depthWrite=false;}}
+ group.frustumCulled=false;
  group.userData={ring,ringFine,ringOuter,core,nucleus,halo,shell,glyph,kind};
  scene.add(group);return group;
 }
@@ -1147,7 +1140,7 @@ function syncPickups(powerups,coins,width,height,now){
   // Orbes deliberadamente grandes: deben leerse como cápsulas energéticas, no como iconos 2D.
   const near=THREE.MathUtils.clamp(1.18-itemDepth/260,.82,1.22);
   const pulse=1+Math.sin(now*.004+(item.spin||0))*.075;
-  mesh.scale.setScalar((kind==="credit"?2.05:2.65)*near*pulse);
+  mesh.scale.setScalar((kind==="credit"?2.8:3.65)*near*pulse);
   mesh.rotation.set(0,0,0);
   mesh.userData.shell.rotation.y=now*.0009+(item.spin||0);
   mesh.userData.core.rotation.x=now*.0015;
@@ -1182,7 +1175,7 @@ function syncEnemies(items,width,height){
    const previousHp=mesh.userData.lastHp;
    if(previousHp!==undefined&&item.hp<previousHp){
     const hitColor=item.variant==="carrier"||item.variant==="weaver"?0xb18aff:item.variant==="bomber"?0xffbd65:0x66eaff;
-    spawn3DBurst(mesh.position.clone(),hitColor,1.0);
+    spawn3DBurst(mesh.position.clone(),hitColor,1.85);
     mesh.userData.hitPulse=1;
    }
    mesh.userData.lastHp=item.hp;
@@ -1207,10 +1200,10 @@ function syncEnemies(items,width,height){
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
   // Escala física estable: la cámara hace que un caza lejano se vea pequeño
   // y que crezca naturalmente al acercarse, sin compensación de tamaño por píxel.
-  const visualScale = item.variant==='carrier' ? 1.32 : item.variant==='bomber' ? 1.12 : item.variant==='weaver' ? 1.04 : .96;
+  const visualScale = item.variant==='carrier' ? 2.15 : item.variant==='bomber' ? 1.95 : item.variant==='weaver' ? 1.9 : 1.82;
   mesh.scale.setScalar(visualScale);
  }
- for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,1.15);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
+ for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,2.05);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
 }
 
 const bossGroup=new THREE.Group();scene.add(bossGroup);bossGroup.visible=false;
@@ -1501,13 +1494,6 @@ function animate(now) {
   const dt=Math.min(frameDelta,.05); last=now;
   const data=window.__AETHER3D_STATE;
   if (data && data.playing) {
-    // Mira móvil de cuatro ejes; el jugador puede seleccionar cualquier punto del campo.
-    // La mira queda anclada al centro del parabrisas; el piloto gira la nave,
-    // no arrastra el punto de disparo por la pantalla.
-    aimReticle.position.copy(worldPos(data.width*.5,data.height*.43,data.width,data.height,-8.4));
-    const aimPulse=1+Math.sin(now*.006)*.045;
-    aimReticle.scale.setScalar(aimPulse);
-    aimReticle.visible=false;
     // Cada bloque de diez sectores cambia la paleta del mundo sin reconstruir geometría.
     applyWorldEra(data.level||1);
     // Cabina despejada: ningún cuerpo planetario debe entrar en el parabrisas durante combate.
@@ -1531,8 +1517,9 @@ function animate(now) {
       const pending=impactQueue.splice(0,qualityTier==="low"?3:8);
       for(const hit of pending){
         const tint=new THREE.Color(hit.color||"#7cefff");
-        const impactDepth=hit.kind==="powerup-collected"||hit.kind==="credit-collected"?-15:-9;
-        const burstScale=hit.kind==="enemy-hit"?1.05:hit.kind==="powerup-collected"||hit.kind==="credit-collected"?1.35:1.12;
+        const fallbackDepth=hit.kind==="powerup-collected"||hit.kind==="credit-collected"?-15:-9;
+        const impactDepth=Number.isFinite(hit.depth)?hit.depth:fallbackDepth;
+        const burstScale=hit.kind==="enemy-hit"?2.0:hit.kind==="asteroid-hit"?1.65:hit.kind==="powerup-collected"||hit.kind==="credit-collected"?1.55:1.35;
         spawn3DBurst(worldPos(hit.x,hit.y,data.width,data.height,impactDepth),tint,burstScale);
       }
     }
