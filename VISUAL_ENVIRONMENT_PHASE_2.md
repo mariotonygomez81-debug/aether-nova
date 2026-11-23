@@ -142,3 +142,13 @@ After these checks, extend sector-specific environments and convert the validate
 - Resolución planetaria adaptativa: low 192×96, medium 320×160, high/ultra 512×256.
 - No se modificaron física, daño, colisiones, puntuación ni progresión.
 - Pendiente de validación visual manual y comprobación de FPS en hardware Intel UHD 600.
+
+
+## Fase 11 — planeta monumental y dinámico
+- El planeta deja de ser una esfera pequeña y aislada: se amplía aproximadamente al doble y se desplaza hacia el lateral del encuadre, con parte de su presencia visual integrada al horizonte.
+- Se añade una capa de nubes procedural independiente, de bajo coste, que rota a una velocidad distinta de la superficie para crear parallax atmosférico.
+- La atmósfera se amplía y los anillos orbitales pasan a una escala monumental, inclinados y con rotación lenta.
+- El cuerpo tiene una oscilación vertical muy sutil y el fondo reduce su desplazamiento horizontal para que el planeta no parezca perseguir al jugador.
+- La textura de nubes se genera una sola vez al inicio; durante el juego solo se actualizan rotaciones y posiciones, sin crear geometría ni texturas por frame.
+- Se mantiene el cambio cromático por eras y el carácter decorativo del cuerpo celeste.
+- Pendiente de inspección visual en navegador y medición de FPS en hardware Intel UHD 600.
