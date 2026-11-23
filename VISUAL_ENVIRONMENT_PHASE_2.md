@@ -312,3 +312,14 @@ After these checks, extend sector-specific environments and convert the validate
 - El workflow visual ahora también se activa cuando cambia index.html.
 - Esta corrección resuelve la entrega de scripts obsoletos en clientes que respetan los parámetros de URL como clave de caché. No equivale a desplegar la rama en Render ni a verificar visualmente el resultado.
 - La versión de producción y main permanecen sin cambios.
+
+
+## Fase 13 — combate legible, impactos alineados y recompensas visibles
+- Se eliminó el retículo central dibujado en el cristal de cabina y se retiró el objeto holográfico de mira del renderizador 3D; no se alteró la lógica de apuntado ni la entrada del teclado.
+- Los cazas enemigos aumentan su escala visual aproximadamente al doble (con ajuste por clase), manteniendo intactos sus hitboxes y reglas de daño.
+- Los eventos de impacto ahora transportan la profundidad real del objetivo. Las ráfagas se dibujan en el mismo plano 3D del enemigo/asteroide, evitando destellos desfasados respecto del casco.
+- Se amplificó la lectura del daño: ráfagas de mayor radio, pulso emisivo del blindaje y explosiones más grandes al destruir cazas.
+- Los orbes de poderes y créditos ahora tienen mayor tamaño, prioridad de renderizado y materiales aditivos sin prueba de profundidad para que no queden ocultos detrás de geometría ambiental.
+- Se conservan las geometrías/materiales compartidos y los límites adaptativos; no se crean luces ni recursos nuevos por fotograma.
+- Se invalidó la caché de ambos scripts del motor/renderizador con una nueva versión de recursos.
+- Validación automática de sintaxis y salvaguardas pendiente. La comprobación visual en navegador y FPS en PC Intel UHD 600 sigue siendo obligatoria antes de integrar en `main`.
