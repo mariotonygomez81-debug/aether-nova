@@ -397,7 +397,7 @@ for(let i=0;i<8;i++){
 bossArena.visible=false;scene.add(bossArena);
 
 // Modelo 3D del jugador y catálogo de naves seleccionables.
-const ship = new THREE.Group(); scene.add(ship);
+const ship = new THREE.Group(); ship.visible = false; scene.add(ship); // Cámara de cabina: la nave queda detrás del punto de vista del piloto.
 const shipModel = new THREE.Group(); shipModel.name="valkyrie"; ship.add(shipModel);
 const hullMat = new THREE.MeshPhysicalMaterial({ color: 0x9eb7c9, metalness: .94, roughness: .22, clearcoat: .8, clearcoatRoughness: .2 });
 const darkMat = new THREE.MeshStandardMaterial({ color: 0x101c2c, metalness: .88, roughness: .3 });
