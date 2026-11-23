@@ -2083,9 +2083,9 @@ function spawnPowerup() {
   powerups.push({
     ...item, x, y, prevX:x, prevY:y,
     aether3dId: "power-" + Math.random().toString(36).slice(2,12),
-    aether3dPhase:phase, depth:104 + Math.random() * 24,
-    depthSpeed:.18 + Math.random() * .08,
-    driftX:(Math.random()-.5)*.12, driftY:(Math.random()-.5)*.1,
+    aether3dPhase:phase, depth:78 + Math.random() * 18,
+    depthSpeed:.34 + Math.random() * .12,
+    driftX:(Math.random()-.5)*.24, driftY:(Math.random()-.5)*.2,
     spin:phase, life:2100, dead:false
   });
 }
@@ -2836,7 +2836,7 @@ function updateAndDraw() {
         x: boss.x, y: boss.y, radius: boss.radius, variant: boss.variant,
         phase: boss.phase, hp: boss.hp, maxHp: boss.maxHp, weakAngle: boss.weakAngle
       } : null,
-      powerups: powerups.filter(p => !p.dead).map(p => ({id:p.aether3dId||(p.aether3dId="power-"+Math.random().toString(36).slice(2)),x:p.x,y:p.y,depth:Number.isFinite(p.depth)?p.depth:42,color:p.color,label:p.label})),
+      powerups: powerups.filter(p => !p.dead).map(p => ({id:p.aether3dId||(p.aether3dId="power-"+Math.random().toString(36).slice(2)),x:p.x,y:p.y,depth:Number.isFinite(p.depth)?p.depth:42,color:p.color,label:p.label,spin:p.spin})),
       creditCoins: creditCoins.filter(c => !c.dead).map(c => ({id:c.aether3dId||(c.aether3dId="credit-"+Math.random().toString(36).slice(2)),x:c.x,y:c.y,depth:Number.isFinite(c.depth)?c.depth:46,amount:c.amount,spin:c.spin})),
       phenomena: phenomena.filter(ph => !ph.dead).map(ph => ({
         id: ph.aether3dId || (ph.aether3dId = "phenomenon-" + Math.random().toString(36).slice(2)),
