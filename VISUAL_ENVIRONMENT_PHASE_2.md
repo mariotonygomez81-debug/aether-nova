@@ -152,3 +152,13 @@ After these checks, extend sector-specific environments and convert the validate
 - La textura de nubes se genera una sola vez al inicio; durante el juego solo se actualizan rotaciones y posiciones, sin crear geometría ni texturas por frame.
 - Se mantiene el cambio cromático por eras y el carácter decorativo del cuerpo celeste.
 - Pendiente de inspección visual en navegador y medición de FPS en hardware Intel UHD 600.
+
+
+## Fase 12 — sustitución de superficie procedural por texturas planetarias reales
+- Se incorporan mapas equirectangulares Earth Day Map y Earth Clouds de Solar System Scope, con licencia Creative Commons Attribution 4.0.
+- Los mapas se descargan de forma asíncrona desde el CDN público; el juego no bloquea el arranque y conserva la textura procedural como fallback ante errores de red/CORS.
+- Se aumenta la resolución de la textura procedural de respaldo y la segmentación de la esfera (40/72/112) para reducir el facetado en los perfiles bajo/medio/alto.
+- Se configuran mipmaps, filtrado lineal y anisotropía limitada por la GPU.
+- Atribución: Solar System Scope, https://www.solarsystemscope.com/textures/ — CC BY 4.0, https://creativecommons.org/licenses/by/4.0/.
+- La carga de mapas requiere conexión al CDN; para una distribución comercial robusta se recomienda empaquetar los archivos licenciados en el propio repositorio con su atribución.
+- Pendiente: validar CORS/carga real en Render, comprobar nitidez y FPS en Intel UHD 600 y probar el fallback sin conexión.
