@@ -1086,12 +1086,12 @@ function pickupMaterials(color){
  if(pickupMaterialCache.has(key))return pickupMaterialCache.get(key);
  const tint=new THREE.Color(key);
  const materials={
-  shell:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.DoubleSide}),
-  core:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
-  nucleus:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
-  halo:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.DoubleSide}),
-  ring:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
-  ringFine:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.76,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false})
+  shell:new THREE.MeshPhongMaterial({color:tint,emissive:tint,emissiveIntensity:.22,shininess:92,specular:0xffffff}),
+  core:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  nucleus:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.92,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  halo:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.DoubleSide}),
+  ring:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.62,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  ringFine:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false})
  };
  pickupMaterialCache.set(key,materials);return materials;
 }
@@ -1135,7 +1135,7 @@ function makePickupSphere(kind,color,label){
  const ringFine=new THREE.Mesh(pickupGeometry.ringFine,m.ringFine);
  const ringOuter=new THREE.Mesh(pickupGeometry.ringOuter,m.ringFine);
  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlowTexture(color),transparent:true,opacity:.9,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));
- glow.scale.set(.78,.78,1);glow.position.set(0,0,-.18);glow.renderOrder=17;
+ glow.scale.set(1.05,1.05,1);glow.position.set(0,0,-.32);glow.renderOrder=17;
  const glyph=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlyphTexture(label,color),transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));
  glyph.scale.set(.34,.34,1);glyph.position.set(0,0,.38);glyph.renderOrder=19;
  ring.rotation.x=Math.PI*.34;ringFine.rotation.set(Math.PI*.34,.72,.35);ringOuter.rotation.set(-Math.PI*.28,.42,-.5);
@@ -1154,12 +1154,12 @@ function syncPickups(powerups,coins,width,height,now){
   if(!mesh){mesh=makePickupSphere(kind,color,glyph);pickupMeshes.set(key,mesh);}
   const itemDepth=Number.isFinite(item.depth)?item.depth:(kind==="credit"?46:42);
   mesh.position.copy(worldPos(item.x,item.y,width,height,-8-itemDepth));
-  // Esferas pequeñas de energía: el núcleo esférico domina y el halo queda pegado al contorno.
-  const near=THREE.MathUtils.clamp(1.04-itemDepth/520,.94,1.08);
+  // Orbes equilibrados: carcasa brillante y sólida, núcleo luminoso y halo suave.
+  const near=THREE.MathUtils.clamp(1.06-itemDepth/620,.96,1.08);
   const pulse=1+Math.sin(now*.004+(item.spin||0))*.09;
-  mesh.scale.setScalar((kind==="credit"?.28:.34)*near*pulse);
+  mesh.scale.setScalar((kind==="credit"?.54:.68)*near*pulse);
   mesh.userData.glow.material.opacity=.72+.2*(.5+.5*Math.sin(now*.006+(item.spin||0)));
-  mesh.userData.glow.scale.setScalar((kind==="credit"?.66:.78)*near);
+  mesh.userData.glow.scale.setScalar((kind==="credit"?1.02:1.18)*near);
   mesh.rotation.set(0,0,0);
   mesh.userData.shell.rotation.y=now*.0009+(item.spin||0);
   mesh.userData.core.rotation.x=now*.0015;
@@ -1168,7 +1168,7 @@ function syncPickups(powerups,coins,width,height,now){
   
   mesh.userData.core.scale.setScalar(1+Math.sin(now*.006+(item.spin||0))*.16);
   mesh.userData.nucleus.scale.setScalar(.82+Math.sin(now*.009)*.16);
-  mesh.userData.halo.scale.setScalar(1.22+Math.sin(now*.005+(item.spin||0))*.12);
+  mesh.userData.halo.scale.setScalar(.72+Math.sin(now*.005+(item.spin||0))*.035);
   
   mesh.visible=true;
  };
