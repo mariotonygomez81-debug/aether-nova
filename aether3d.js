@@ -445,6 +445,7 @@ const rockDetailMaterials = {
   ice: new THREE.MeshStandardMaterial({color:0x63dfff,emissive:0x0b5878,emissiveIntensity:.7,roughness:.32,metalness:.24}),
   ore: new THREE.MeshStandardMaterial({color:0xffa15b,emissive:0x6e260b,emissiveIntensity:.42,roughness:.68,metalness:.3})
 };
+Object.values(rockDetailGeometry).forEach(geometry=>{geometry.userData.sharedGeometry=true;});
 function addRockSurfaceDetails(mesh,item){
   const detail=new THREE.Group();
   detail.name="asteroid-surface-details";
@@ -520,7 +521,7 @@ function syncAsteroids(items, width, height, dt) {
     mesh.visible = true;
   }
   for (const [id, mesh] of asteroidMeshes) {
-    if (!alive.has(id)) { spawn3DBurst(mesh.position.clone(),0xffbd68,Math.max(.65,mesh.scale.x*.55)); scene.remove(mesh); mesh.geometry.dispose(); if (mesh.children.length) mesh.children.forEach(child=>child.geometry?.dispose()); asteroidMeshes.delete(id); }
+    if (!alive.has(id)) { spawn3DBurst(mesh.position.clone(),0xffbd68,Math.max(.65,mesh.scale.x*.55)); scene.remove(mesh); mesh.geometry.dispose(); if (mesh.children.length) mesh.children.forEach(child=>{if(child.geometry&&!child.geometry.userData.sharedGeometry)child.geometry.dispose();}); asteroidMeshes.delete(id); }
   }
 }
 
