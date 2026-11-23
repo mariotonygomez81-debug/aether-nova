@@ -162,3 +162,13 @@ After these checks, extend sector-specific environments and convert the validate
 - Atribución: Solar System Scope, https://www.solarsystemscope.com/textures/ — CC BY 4.0, https://creativecommons.org/licenses/by/4.0/.
 - La carga de mapas requiere conexión al CDN; para una distribución comercial robusta se recomienda empaquetar los archivos licenciados en el propio repositorio con su atribución.
 - Pendiente: validar CORS/carga real en Render, comprobar nitidez y FPS en Intel UHD 600 y probar el fallback sin conexión.
+
+
+## Fase 13 — materiales geológicos para asteroides
+- Se genera una textura mineral compartida de albedo y relieve (bump) una sola vez al iniciar el renderer.
+- Los materiales normal, explosivo y magnético reutilizan esos mapas con rugosidad y respuesta metálica diferenciadas.
+- Se suavizan las normales de la geometría irregular para que el relieve y la iluminación aporten volumen en lugar de una apariencia de poliedro plano.
+- Resolución de textura: 256×128 en perfil bajo y 512×256 en perfiles superiores; no se generan mapas ni geometrías durante la animación.
+- Los detalles de cráteres y vetas siguen compartiendo geometrías y materiales; la lógica de colisiones, daño y recompensas permanece en game.js.
+- Fase 12: superficie terrestre, máscara de nubes independiente y mapa de luces nocturnas de Solar System Scope (CC BY 4.0). Las texturas conservan color real y no reciben tintado de las paletas de era.
+- Validación pendiente de inspección visual y FPS en hardware integrado; el mapa externo requiere conexión y conserva fallback procedural.
