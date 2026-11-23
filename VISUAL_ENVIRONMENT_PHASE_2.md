@@ -350,3 +350,12 @@ After these checks, extend sector-specific environments and convert the validate
 - Se conserva la mecánica existente de impacto de proyectiles: al disparar y acertar sobre un potenciador se aplica el poder; al acertar sobre un crédito se suman los créditos. No se modifican las recompensas ni el balance.
 - Se actualiza la versión de caché de los scripts para forzar la carga de la presentación nueva.
 - Validación de CI y prueba visual posterior al despliegue pendientes.
+
+
+## Fase 17 — acabado visual refinado de orbes
+- Se corrige el aspecto excesivamente pequeño y plano de la fase anterior: poderes a escala base 0.68 y créditos 0.54, con variación moderada por profundidad.
+- La carcasa pasa de material aditivo translúcido a acabado Phong brillante y sólido, con reflejo especular y emisión tenue; el núcleo conserva luminosidad de color y centro blanco.
+- Se atenúa el halo esférico y se usa un resplandor radial más suave y proporcionado. El aro queda como detalle fino, sin grandes anillos ni símbolos flotantes.
+- Se mantiene intacta la mecánica de disparo/recogida, los valores de recompensa y el resto del combate.
+- Caché de scripts actualizada a pickup-energy-spheres-v3.
+- Requiere revisión visual en preview para ajustar proporción final según la captura real.
