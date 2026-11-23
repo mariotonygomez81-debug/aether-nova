@@ -1106,7 +1106,7 @@ function syncPickups(powerups,coins,width,height,now){
   mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
   const near=THREE.MathUtils.clamp(1-(Number.isFinite(item.depth)?item.depth:42)/115,.42,1.18);
   const pulse=1+Math.sin(now*.004+(item.spin||0))*0.075;
-  const size=(item.pickupKind==="credit"?.72:1.05)*near*pulse;
+  const size=(item.pickupKind==="credit"?1.02:1.38)*near*pulse;
   mesh.scale.setScalar(size);
   mesh.rotation.y=now*.0008+(item.spin||0);mesh.rotation.z=now*.00045;
   if(mesh.userData.ring)mesh.userData.ring.rotation.z=-now*.0012;
@@ -1132,7 +1132,7 @@ function syncEnemies(items,width,height){
    const previousHp=mesh.userData.lastHp;
    if(previousHp!==undefined&&item.hp<previousHp){
     const hitColor=item.variant==="carrier"||item.variant==="weaver"?0xb18aff:item.variant==="bomber"?0xffbd65:0x66eaff;
-    spawn3DBurst(mesh.position.clone(),hitColor,.38);
+    spawn3DBurst(mesh.position.clone(),hitColor,1.0);
     mesh.userData.hitPulse=1;
    }
    mesh.userData.lastHp=item.hp;
@@ -1157,7 +1157,7 @@ function syncEnemies(items,width,height){
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
   // Escala física estable: la cámara hace que un caza lejano se vea pequeño
   // y que crezca naturalmente al acercarse, sin compensación de tamaño por píxel.
-  const visualScale = item.variant==='carrier' ? .92 : item.variant==='bomber' ? .76 : .64;
+  const visualScale = item.variant==='carrier' ? 1.32 : item.variant==='bomber' ? 1.12 : item.variant==='weaver' ? 1.04 : .96;
   mesh.scale.setScalar(visualScale);
  }
  for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,1.15);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
@@ -1476,6 +1476,17 @@ function animate(now) {
     camera.lookAt(Math.sin(yaw)*7, pitch*6, -7);
     worldBody.rotation.y+=dt*.0011;
     cosmicDust.rotation.z+=dt*.0007;
+    const impactQueue=window.__AETHER3D_IMPACTS;
+    if(Array.isArray(impactQueue)&&impactQueue.length){
+      const pending=impactQueue.splice(0,qualityTier==="low"?3:8);
+      for(const hit of pending){
+        const tint=new THREE.Color(hit.color||"#7cefff");
+        const impactDepth=hit.kind==="powerup-collected"||hit.kind==="credit-collected"?-15:-9;
+        const burstScale=hit.kind==="enemy-hit"?1.05:hit.kind==="powerup-collected"||hit.kind==="credit-collected"?1.35:1.12;
+        spawn3DBurst(worldPos(hit.x,hit.y,data.width,data.height,impactDepth),tint,burstScale);
+      }
+    }
+
     const impact=window.__AETHER3D_IMPACT;
     if(impact && impact.serial!==lastImpactSerial){lastImpactSerial=impact.serial;spawn3DBurst(worldPos(impact.x,impact.y,data.width,data.height,-8),impact.color==="#55eaff"?0x55eaff:0xff684d,1.35);}
     // Usar la misma proyección perspectiva que asteroides, enemigos y proyectiles.
