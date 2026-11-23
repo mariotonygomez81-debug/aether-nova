@@ -177,7 +177,7 @@ const cosmicDust=new THREE.Points(dustGeometry,new THREE.PointsMaterial({
 }));
 environment.add(cosmicDust);
 
-// Alpha 4: sin planetas ni estación orbital. Fondo profundo y limpio.
+// Modelo 3D del jugador y catálogo de naves seleccionables.
 const ship = new THREE.Group(); scene.add(ship);
 const shipModel = new THREE.Group(); shipModel.name="valkyrie"; ship.add(shipModel);
 const hullMat = new THREE.MeshPhysicalMaterial({ color: 0x9eb7c9, metalness: .94, roughness: .22, clearcoat: .8, clearcoatRoughness: .2 });
