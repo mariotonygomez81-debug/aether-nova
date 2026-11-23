@@ -244,7 +244,7 @@ function applyWorldEra(level){
   planetMaterial.emissiveMap=era===0?planetNightTexture:null;
   planetMaterial.emissiveIntensity=era===0&&planetNightTexture ? .34 : 0;
   if(planetClouds)planetClouds.visible=era===0;
-  if(planetRingMesh)planetRingMesh.visible=era===3;
+  if(planetRingMesh)planetRingMesh.visible=false;
   atmosphere.material.color.setHex(colors[1]);
   if(planetRingMaterial)planetRingMaterial.color.setHex(colors[2]);
   sectorAccentMaterial.color.setHex(colors[1]);
@@ -253,7 +253,7 @@ const planet=new THREE.Mesh(new THREE.SphereGeometry(16.5,planetSegments,Math.ma
 planet.position.set(-68,27,-174);planet.scale.setScalar(2.02);worldBody.add(planet);
 // Capa nubosa independiente: deriva a otra velocidad para dar profundidad y movimiento.
 planetClouds=new THREE.Mesh(new THREE.SphereGeometry(16.78,planetSegments,Math.max(16,planetSegments/2)),planetCloudMaterial);
-planetClouds.position.copy(planet.position);planetClouds.scale.copy(planet.scale).multiplyScalar(1.012);worldBody.add(planetClouds);
+planetClouds.position.copy(planet.position);planetClouds.scale.copy(planet.scale).multiplyScalar(1.012);planetClouds.visible=false;planet.visible=false;worldBody.add(planetClouds);
 // Estación orbital distante: pieza ambiental sin colisión ni interacción con la simulación.
 if(qualityTier!=="low"){
   const station=new THREE.Group();
@@ -299,7 +299,7 @@ const atmosphere=new THREE.Mesh(
   new THREE.SphereGeometry(17.15,planetSegments,Math.max(16,planetSegments/2)),
   new THREE.MeshBasicMaterial({color:0x42bfff,transparent:true,opacity:.105,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
 );
-atmosphere.position.copy(planet.position);atmosphere.scale.copy(planet.scale).multiplyScalar(1.045);worldBody.add(atmosphere);
+atmosphere.position.copy(planet.position);atmosphere.scale.copy(planet.scale).multiplyScalar(1.045);atmosphere.visible=false;worldBody.add(atmosphere);
 if(qualityTier!=="low"){
   const ring=new THREE.Mesh(
     new THREE.TorusGeometry(20.1,.82,6,qualityTier==="medium"?64:112),
@@ -310,12 +310,12 @@ if(qualityTier!=="low"){
     new THREE.SphereGeometry(4.1,qualityTier==="medium"?20:32,16),
     new THREE.MeshStandardMaterial({color:0x8995a6,roughness:.96,metalness:.02})
   );
-  moon.position.set(25,-18,-153);worldBody.add(moon);
+  moon.position.set(25,-18,-153);moon.visible=false;worldBody.add(moon);
   const moonRim=new THREE.Mesh(
     new THREE.SphereGeometry(4.28,qualityTier==="medium"?20:32,16),
     new THREE.MeshBasicMaterial({color:0x789bc0,transparent:true,opacity:.07,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
   );
-  moonRim.position.copy(moon.position);worldBody.add(moonRim);
+  moonRim.position.copy(moon.position);moonRim.visible=false;worldBody.add(moonRim);
 }
 // Polvo espacial en profundidad: pocos puntos y sin luces individuales.
 const dustCount=qualityTier==="low"?48:qualityTier==="medium"?96:160;
