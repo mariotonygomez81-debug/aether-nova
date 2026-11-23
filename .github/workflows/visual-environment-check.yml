@@ -1,0 +1,32 @@
+name: Visual environment quality checks
+
+on:
+  pull_request:
+    paths:
+      - "aether3d.js"
+      - "platform-runtime.js"
+      - ".github/workflows/visual-environment-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visual-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate 3D renderer JavaScript syntax
+        run: node --input-type=module --check < aether3d.js
+      - name: Verify adaptive environment safeguards
+        run: |
+          grep -q 'qualityTier==="low"?24' aether3d.js
+          grep -q 'qualityTier!=="low"' aether3d.js
+          grep -q 'AETHER_PLANETARY_BACKDROP' aether3d.js
+          grep -q 'cosmicDust' aether3d.js
+          echo "Adaptive planetary environment checks passed."
