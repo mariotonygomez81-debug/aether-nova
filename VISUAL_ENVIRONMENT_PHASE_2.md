@@ -243,3 +243,12 @@ After these checks, extend sector-specific environments and convert the validate
 - Se mantienen el renderer adaptativo, las geometrías compartidas y el límite de FPS existente.
 - La rotación de cámara es una capa visual sobre la simulación actual; la física de vuelo y las colisiones no se convierten en una simulación 6DoF.
 - Verificación manual pendiente: comprobar respuesta de giro, centrado de disparo y rendimiento en PC, Android TV y móvil.
+
+
+## Fase 20 — plasma volumétrico y mira de respuesta rápida
+- Se amplía la retícula central (anillo y brazos) para facilitar adquisición de objetivos desde la cabina.
+- Se incrementa la respuesta de yaw/pitch de la cámara a los controles direccionales, con mayor recorrido visual y menor sensación de retardo.
+- Los proyectiles propios ganan volumen, longitud y halo; la estela de plasma se extiende para leerse como un flujo energético y no como pequeñas cápsulas.
+- Se fuerza la ocultación del cuerpo planetario, capa nubosa, atmósfera y anillos en cada actualización de combate; no deben reaparecer al cambiar de sector.
+- Se conservan las trayectorias, colisiones, daño y cadencia del sistema de armas.
+- Pruebas automáticas de la rama aprobadas. Validación visual en navegador y prueba de rendimiento en hardware modesto pendientes.
