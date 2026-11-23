@@ -941,12 +941,12 @@ function syncShots(items, width, height, playerX, playerY) {
     mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
     const apparent=1-progress*.18;
     // Proyectiles de plasma más contundentes y legibles desde la cabina.
-    mesh.scale.setScalar(apparent*3.15);
-    // Orientación 3D según el vector real de movimiento del proyectil.
+    mesh.scale.setScalar(apparent*(item.type==="laser"?1.85:1.65));
+    // Mantener la dirección sobre el plano de combate: añadir una inclinación
+    // artificial en Z hacía que los disparos parecieran pasar por encima de los objetivos.
     const nextX=item.x+(Number(item.vx)||0)*2;
     const nextY=item.y+(Number(item.vy)||-1)*2;
-    const nextDepth=depth-1.8;
-    const ahead=worldPos(nextX,nextY,width,height,nextDepth);
+    const ahead=worldPos(nextX,nextY,width,height,depth);
     const travelDirection=ahead.clone().sub(mesh.position).normalize();
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),travelDirection);
     mesh.visible=true;
@@ -1538,7 +1538,7 @@ function animate(now) {
         const tint=new THREE.Color(hit.color||"#7cefff");
         const fallbackDepth=hit.kind==="powerup-collected"||hit.kind==="credit-collected"?-15:-9;
         const impactDepth=Number.isFinite(hit.depth)?hit.depth:fallbackDepth;
-        const burstScale=hit.kind==="enemy-hit"?2.0:hit.kind==="asteroid-hit"?1.65:hit.kind==="powerup-collected"||hit.kind==="credit-collected"?1.55:1.35;
+        const burstScale=hit.kind==="enemy-hit"?1.15:hit.kind==="asteroid-hit"?1.05:hit.kind==="powerup-collected"||hit.kind==="credit-collected"?1.35:1.0;
         spawn3DBurst(worldPos(hit.x,hit.y,data.width,data.height,impactDepth),tint,burstScale);
       }
     }
