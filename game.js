@@ -3011,7 +3011,6 @@ function updateAndDraw() {
     coin.y += coin.vy*.08;
     coin.depth = Math.max(9,(coin.depth||52)-.014);
     coin.spin += 0.16;
-    coin.spin += 0.16;
     coin.life--;
     if (coin.y > H + 24 || coin.life <= 0) coin.dead = true;
 
@@ -3092,7 +3091,7 @@ function updateAndDraw() {
       const lengthSq = vx * vx + vy * vy;
       const t = lengthSq > 0 ? Math.max(0, Math.min(1, -(sx * vx + sy * vy) / lengthSq)) : 0;
       const closest = Math.hypot(sx + vx * t, sy + vy * t);
-      const plasmaHit=bullets.find(b=>!b.dead&&Math.hypot(b.x-p.x,b.y-p.y)<p.radius+18);
+      const plasmaHit=bullets.find(b=>!b.dead&&Math.hypot(b.x-p.x,b.y-p.y)<22);
       if(plasmaHit){plasmaHit.dead=true;p.dead=true;applyPowerup(p,player);addFloatingText(p.x,p.y-24,p.text||"PODER ADQUIRIDO",p.color||"#55eaff");SoundFX.play("powerup");}
       else if (closest < player.radius + 14) {p.dead=true;applyPowerup(p,player);}
       else if(player2&&player2.lives>0){
