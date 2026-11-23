@@ -29,4 +29,6 @@ jobs:
           grep -q 'qualityTier!=="low"' aether3d.js
           grep -q 'AETHER_PLANETARY_BACKDROP' aether3d.js
           grep -q 'cosmicDust' aether3d.js
+          grep -q 'enemySensor' aether3d.js
+          grep -q 'bossVent' aether3d.js
           echo "Adaptive planetary environment checks passed."
