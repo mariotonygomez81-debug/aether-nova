@@ -50,6 +50,9 @@ jobs:
           grep -q 'depthTest:false' aether3d.js
           grep -q 'hit.depth' aether3d.js
           grep -q 'pickupGlowTexture' aether3d.js
+          grep -q 'kind==="credit"?1.08:1.32' aether3d.js
+          grep -q 'kind==="credit"?2.65:3.15' aether3d.js
+          grep -q 'pickup-orbs-balanced-v1' index.html
           grep -q 'powerup-collected",-8-' game.js
           ! grep -q 'aimReticle' aether3d.js
           ! grep -q 'cx="960" cy="405"' index.html
