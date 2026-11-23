@@ -775,8 +775,12 @@ function syncAsteroids(items, width, height, dt) {
     const viewW = viewH * camera.aspect;
     const centerY = camera.position.y + (z-camera.position.z) * ((-3.4)/23);
     mesh.position.set(((item.x/width)-.5)*viewW, centerY + (.5-item.y/height)*viewH, z);
-    const unit = viewH / height;
-    const r = Math.max(.08, item.radius * unit);
+    // Radio físico calculado a una distancia de referencia; al acercarse,
+    // la proyección de cámara aumenta su tamaño aparente de forma natural.
+    const referenceDepth = camera.position.z + 48;
+    const referenceViewH = 2 * tanHalf * referenceDepth;
+    const unit = referenceViewH / height;
+    const r = Math.max(.12, item.radius * unit);
     mesh.scale.set(r*(item.sx || 1), r*(item.sy || 1), r*(item.sz || 1));
     mesh.rotation.set(item.rot*.7, item.rot, item.rot*.42);
     if (mesh.userData.surfaceDetails) {
@@ -930,12 +934,16 @@ function syncShots(items, width, height, playerX, playerY) {
     // Su coordenada 2D sigue controlando el impacto; esta trayectoria es solo visual.
     const progress=THREE.MathUtils.clamp((playerY-item.y)/Math.max(1,playerY-42),0,1);
     const start=worldPos(playerX,playerY-23,width,height,-10.4);
-    const targetZ=-88;
-    const target=worldPos(item.x,42,width,height,targetZ);
+    const targetZ=-112;
+    // Punto de fuga fijo: el proyectil avanza hacia la profundidad, no hacia el borde superior.
+    const target=worldPos(width*.5,height*.43,width,height,targetZ);
     mesh.position.copy(start).lerp(target,progress);
-    const apparent=1-progress*.84;
+    const apparent=1-progress*.76;
     mesh.scale.setScalar(apparent);
-    mesh.rotation.set(0,0,0);
+    // El eje longitudinal del plasma apunta alejándose de la cámara (-Z).
+    const travelDirection=target.clone().sub(start).normalize();
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),travelDirection);
+    mesh.visible = true;
     mesh.visible = true;
   }
   for (const [id, mesh] of shotMeshes) {
@@ -1092,8 +1100,9 @@ function syncEnemies(items,width,height){
   // El modelo 3D respeta el tamaño del hitbox 2D; antes era mucho más ancho
   // que su radio lógico y daba la impresión de que los disparos lo atravesaban.
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
-  const targetWidth = item.radius * 2 * 1.42;
-  const visualScale = THREE.MathUtils.clamp((targetWidth*enemyWorldPerPixel)/modelWidth,.18,.82);
+  // Escala física estable: la cámara hace que un caza lejano se vea pequeño
+  // y que crezca naturalmente al acercarse, sin compensación de tamaño por píxel.
+  const visualScale = item.variant==='carrier' ? .72 : item.variant==='bomber' ? .56 : .43;
   mesh.scale.setScalar(visualScale);
  }
  for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,1.15);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
