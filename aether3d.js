@@ -691,6 +691,7 @@ function createShotMesh(item){
     );
     volume.scale.set(radius,radius*1.12,radius);
     volume.position.y=offset;
+    volume.userData.shotTrail={radius,index:i};
     group.add(volume);
   }
   // Brillo difuso central que une visualmente el orbe y la estela.
@@ -776,6 +777,13 @@ function syncShots(items, width, height) {
     const mesh = shotMeshes.get(item.id) || createShotMesh(item);
     mesh.position.copy(worldPos(item.x, item.y, width, height, -7.5));
     mesh.rotation.set(0, 0, 0);
+    // La estela respira con un pulso corto sin crear geometría ni materiales nuevos.
+    mesh.userData.trailPulse=(mesh.userData.trailPulse||0)+.16;
+    const pulse=1+.075*Math.sin(mesh.userData.trailPulse+(item.age||0)*.08);
+    mesh.traverse(part=>{
+      const trail=part.userData.shotTrail;
+      if(trail)part.scale.set(trail.radius*pulse,trail.radius*1.12*(1+(pulse-1)*.45),trail.radius*pulse);
+    });
     mesh.visible = true;
   }
   for (const [id, mesh] of shotMeshes) {
@@ -992,8 +1000,16 @@ function buildBoss(v=0){
  );
  shieldShell.userData.bossShield=true;shieldShell.visible=false;bossGroup.add(shieldShell);
 }
+let lastBossVisual=null;
 function syncBoss(b,width,height,now){
- if(!b){bossGroup.visible=false;bossArena.visible=false;return;}
+ if(!b){
+  if(bossGroup.visible&&lastBossVisual){
+   // Una sola detonación visual al desaparecer el jefe; no altera su derrota ni recompensas.
+   spawn3DBurst(lastBossVisual.position,lastBossVisual.color,qualityTier==="low"?1.75:2.35);
+  }
+  lastBossVisual=null;
+  bossGroup.visible=false;bossArena.visible=false;return;
+ }
  if(currentBossVariant!==b.variant){currentBossVariant=b.variant;buildBoss(b.variant);}
  bossGroup.visible=true;bossGroup.position.copy(worldPos(b.x,b.y,width,height,-10));
  bossArena.visible=true;bossArena.position.copy(worldPos(b.x,b.y,width,height,-16));bossArena.scale.setScalar(Math.max(.72,b.radius/58));bossArenaRing.rotation.z=now*.00012;bossArenaInner.rotation.z=-now*.00018;bossArenaRingMat.color.setHex(worldEraColors[currentWorldEra][1]);
@@ -1009,6 +1025,10 @@ function syncBoss(b,width,height,now){
    part.material.opacity=b.phase===3?.10+.045*(.5+.5*Math.sin(now*.008)):.0;
   }
  });
+ lastBossVisual={
+  position:bossGroup.position.clone(),
+  color:worldEraColors[currentWorldEra]?.[1]||0xff4c9a
+ };
 }
 
 // Fenómenos cósmicos 3D: agujero negro, supernova, magnetar y púlsar.
