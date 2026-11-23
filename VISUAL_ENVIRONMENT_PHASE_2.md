@@ -113,3 +113,13 @@ After these checks, extend sector-specific environments and convert the validate
 - Se seleccionó Hyper3D Rodin V2.5 mediante fal.ai para generar una nave GLB PBR optimizada para Three.js.
 - La generación no pudo comenzar: la cuenta fal.ai conectada no tiene créditos disponibles. No se creó ni se integró ningún modelo externo.
 - Para reanudar la generación, la cuenta conectada debe cargar créditos desde https://fal.ai/connect/credits?utm_medium=fal_mcp&utm_campaign=balance_exhausted&utm_content=openai. La tarifa publicada para esta generación es USD 0.40 por unidad; el coste final depende de las unidades consumidas.
+
+
+## Fase 8 — rendimiento de arranque y silueta de Valkyrie
+- Se reemplazaron cuatro texturas procedurales de nebulosa de 512×256 por una única textura compartida de 256×128 y tintes por capa; se redujo el ruido fractal de cinco a tres octavas.
+- La textura planetaria ahora adapta su resolución al perfil: 160×80 en low, 224×112 en medium y 288×144 en high/ultra, con menos octavas y anisotropía limitada.
+- Se eliminó la inserción duplicada del mismo objeto de polvo cósmico en el grupo ambiental.
+- Se rediseñó la geometría principal de las alas de Valkyrie con perfiles delta barridos y paneles facetados, manteniendo el fuselaje, motores, cañones y variantes seleccionables.
+- Se redujo el pixel ratio de renderizado y la carga de partículas para dispositivos integrados; perfiles: low 30 FPS/0.78, medium 36 FPS/0.95, high 45 FPS/1.15, ultra 50 FPS/1.35 (el renderer aplica además sus propios topes).
+- No se modificaron simulación, colisiones, hitboxes, daño, progresión, cuentas, Supabase ni contratos de Joystick/multijugador.
+- Verificación automática y pruebas visuales manuales pendientes para este commit. Se requiere revisar especialmente el contorno de las alas, la textura planetaria y la fluidez en el equipo Celeron/UHD 600.
