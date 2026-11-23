@@ -13,10 +13,10 @@
   if (tv && !constrained) tier = memory >= 4 && cores >= 6 ? "high" : "medium";
   if (mobile && !constrained) tier = memory >= 6 && cores >= 8 ? "high" : "medium";
   const profiles = {
-    low:    { pixelRatio: 1.0, fps: 30, particles: 0.55, shadows: false },
-    medium: { pixelRatio: 1.2, fps: 40, particles: 0.72, shadows: false },
-    high:   { pixelRatio: 1.45, fps: 50, particles: 0.88, shadows: false },
-    ultra:  { pixelRatio: 1.7, fps: 60, particles: 1.0, shadows: true }
+    low:    { pixelRatio: 0.78, fps: 30, particles: 0.45, shadows: false },
+    medium: { pixelRatio: 0.95, fps: 36, particles: 0.65, shadows: false },
+    high:   { pixelRatio: 1.15, fps: 45, particles: 0.85, shadows: false },
+    ultra:  { pixelRatio: 1.35, fps: 50, particles: 1.0, shadows: false }
   };
   const profile = profiles[tier];
   const platform = tv ? "android-tv" : mobile ? "mobile" : "desktop";
