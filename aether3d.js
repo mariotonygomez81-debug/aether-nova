@@ -203,6 +203,34 @@ for(const side of [-1,1]){
   add(new THREE.SphereGeometry(.075,12,8), glowMat, [side*2.42,.16,.0]);
   add(new THREE.BoxGeometry(.12,.05,.58), glowMat, [side*.35,-.32,1.3]);
 }
+// Microgeometría de la Valkyrie: placas, respiraderos y guías de servicio.
+ // Se añade al modelo base antes de crear las variantes, sin tocar su hitbox 2D.
+for(const side of [-1,1]){
+  // Paneles de blindaje superpuestos sobre las alas.
+  add(new THREE.BoxGeometry(1.72,.055,1.08),hullMat,[side*1.58,.105,.34],[0,side*.13,side*-.055]);
+  add(new THREE.BoxGeometry(1.34,.026,.055),goldMat,[side*1.58,.143,-.12],[0,side*.13,side*-.055]);
+  add(new THREE.BoxGeometry(.82,.035,.07),glowMat,[side*1.58,.15,.78],[0,side*.13,side*-.055]);
+  // Rejillas de refrigeración oscuras con tres aletas metálicas.
+  add(new THREE.BoxGeometry(.48,.035,.32),darkMat,[side*1.02,.15,1.08]);
+  for(let vent=0;vent<3;vent++){
+    add(new THREE.BoxGeometry(.055,.022,.25),panelMat,[side*(.84+vent*.16),.174,1.08],[0,0,side*-.08]);
+  }
+  // Cañón reforzado con boca de energía y carcasa de montaje.
+  add(new THREE.BoxGeometry(.28,.20,.72),darkMat,[side*1.72,-.10,-.58],[0,side*.12,0]);
+  add(new THREE.CylinderGeometry(.12,.15,.16,16),goldMat,[side*1.72,-.10,-.98],[Math.PI/2,0,0]);
+  add(new THREE.TorusGeometry(.12,.025,6,18),glowMat,[side*1.72,-.10,-1.075]);
+  // Detalles de actuadores y uniones del ala.
+  for(let bolt=0;bolt<4;bolt++){
+    add(new THREE.SphereGeometry(.026,8,6),goldMat,[side*(.95+bolt*.36),.17,-.18+bolt*.09]);
+  }
+  add(new THREE.BoxGeometry(.12,.12,.82),darkMat,[side*2.18,.04,.96],[0,0,side*-.18]);
+}
+for(const side of [-1,1]){
+  add(new THREE.TorusGeometry(.255,.038,8,24),goldMat,[side*.62,-.08,2.28]);
+  add(new THREE.CylinderGeometry(.145,.18,.12,20),darkMat,[side*.62,-.08,2.34],[Math.PI/2,0,0]);
+  add(new THREE.SphereGeometry(.105,16,12),glowMat,[side*.62,-.08,2.42]);
+}
+
 // Modelos de silueta diferenciada para cada clase de caza.
 const shipVariants = Object.create(null);
 const variantMats = {
