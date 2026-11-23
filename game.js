@@ -1677,7 +1677,7 @@ class EnemyShip {
     const entrySpeed = variant === "interceptor" || variant === "lancer" ? 3.1 : 2.05;
     this.vx = Math.cos(entryAngle) * entrySpeed;
     this.vy = Math.sin(entryAngle) * entrySpeed;
-    this.entryFrames = 72;
+    this.entryFrames = Math.min(300, Math.ceil(Math.hypot(targetX - this.x, targetY - this.y) / entrySpeed) + 8);
     this.depth = 3 + Math.random() * 12;
     this.radius = (variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16) * 1.35;
     // Resistencia enemiga con crecimiento suave durante los 100 sectores.
@@ -1702,7 +1702,8 @@ class EnemyShip {
       // Suaviza el ingreso y evita que una nave aparezca quieta en una fila.
       if (this.entryFrames === 0) {
         this.vx *= .72;
-        this.vy = Math.max(.65, Math.abs(this.vy) * .72);
+        this.vy = .82;
+        this.vx *= .38;
       }
     } else if (this.variant === "weaver") {
       this.x += Math.sin(this.age * .075) * 3.1;
