@@ -37,4 +37,6 @@ jobs:
           grep -q 'qualityTier==="low"?1:qualityTier==="medium"?2:3' aether3d.js
           grep -q 'AETHER_ORBITAL_STATION' aether3d.js
           grep -q 'station-docking-ring' aether3d.js
+          grep -q 'maxBursts=qualityTier' aether3d.js
+          grep -q 'particleCount=qualityTier' aether3d.js
           echo "Adaptive planetary environment, enemy, boss and asteroid detail checks passed."
