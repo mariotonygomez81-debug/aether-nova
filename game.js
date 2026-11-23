@@ -1757,6 +1757,18 @@ class EnemyShip {
       this.x += this.vx;
       this.y += this.vy;
     }
+    // Mantener a los cazas dentro del corredor de combate alcanzable.
+    // Evita que atraviesen la línea del piloto y queden detrás de la nave,
+    // donde los disparos frontales ya no pueden alcanzarlos.
+    const engagementLimit = Math.min(H * .68, (player ? player.y : H - 185) - Math.max(110, this.radius * 2.4));
+    if (this.y > engagementLimit) {
+      this.y = engagementLimit;
+      if (this.vy > 0) this.vy = 0;
+      if (this.variant === "lancer") {
+        this.vx *= .72;
+        this.dashTimer = Math.max(this.dashTimer, 55);
+      }
+    }
     this.depth = Math.max(0, this.depth - .12);
     if (this.x < -this.radius * 2 || this.x > W + this.radius * 2 || this.y < -this.radius * 2 || this.y > H + this.radius * 2) this.dead = true;
 
