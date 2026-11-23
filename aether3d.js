@@ -628,10 +628,34 @@ scene.add(ship2);
 // Asteroides 3D sincronizados con las instancias reales del motor 2D.
 // La simulación, impactos, vida y recompensas siguen controlados por game.js.
 const asteroidMeshes = new Map();
+// Textura mineral compartida: ruido geológico horneado una sola vez, nunca por frame.
+function makeRockAlbedoTexture(){
+  const canvas=document.createElement("canvas");
+  canvas.width=qualityTier==="low"?256:512;canvas.height=canvas.width/2;
+  const ctx=canvas.getContext("2d"),image=ctx.createImageData(canvas.width,canvas.height),data=image.data;
+  for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
+    const u=x/canvas.width,v=y/canvas.height;
+    const macro=fbm(u*8,v*5,73,3),fracture=fbm(u*25+4,v*17-2,91,2),grain=fbm(u*72,v*48,117,2);
+    const value=Math.max(28,Math.min(218,112+macro*72+fracture*35+grain*18));
+    const i=(y*canvas.width+x)*4;
+    data[i]=value;data[i+1]=value;data[i+2]=value;data[i+3]=255;
+  }
+  ctx.putImageData(image,0,0);
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+  texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
+  texture.needsUpdate=true;
+  return texture;
+}
+const rockAlbedoTexture=makeRockAlbedoTexture();
+const rockBumpTexture=rockAlbedoTexture.clone();
+rockBumpTexture.colorSpace=THREE.NoColorSpace;
+rockBumpTexture.needsUpdate=true;
 const asteroidMaterials = {
-  normal: new THREE.MeshStandardMaterial({ color: 0x59616a, metalness: .12, roughness: .96, flatShading:true }),
-  explosive: new THREE.MeshStandardMaterial({ color: 0x725044, metalness: .18, roughness: .92, flatShading:true, emissive: 0x351308, emissiveIntensity: .22 }),
-  magnetic: new THREE.MeshStandardMaterial({ color: 0x476a78, metalness: .38, roughness: .66, flatShading:true, emissive: 0x062b5b, emissiveIntensity: .42 }),
+  normal: new THREE.MeshStandardMaterial({ color: 0x59616a, map:rockAlbedoTexture, bumpMap:rockBumpTexture, bumpScale:.105, metalness:.12, roughness:.96, flatShading:false }),
+  explosive: new THREE.MeshStandardMaterial({ color: 0x725044, map:rockAlbedoTexture, bumpMap:rockBumpTexture, bumpScale:.13, metalness: .18, roughness: .92, flatShading:false, emissive: 0x351308, emissiveIntensity: .22 }),
+  magnetic: new THREE.MeshStandardMaterial({ color: 0x476a78, map:rockAlbedoTexture, bumpMap:rockBumpTexture, bumpScale:.09, metalness: .38, roughness: .66, flatShading:false, emissive: 0x062b5b, emissiveIntensity: .42 }),
   shooting_star: new THREE.MeshBasicMaterial({ color: 0x9df8ff })
 };
 function makeRockGeometry(seed) {
