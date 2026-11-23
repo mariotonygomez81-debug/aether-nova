@@ -341,3 +341,12 @@ After these checks, extend sector-specific environments and convert the validate
 - No se alteran daño, colisiones, cadencia, economía, progresión ni servicios online.
 - Se invalida la caché de game.js y aether3d.js con pickup-orbs-balanced-v1.
 - La reducción se orienta a recuperar proporción visual: orbes claramente menores que cazas y objetivos, con halo próximo a su silueta.
+
+
+## Fase 16 — esferas compactas que se recogen al disparar
+- Se sustituyó la presentación de los coleccionables grandes por pequeñas esferas de energía: escala base 0.34 para poderes y 0.28 para créditos, con variación de profundidad muy moderada.
+- El brillo radial queda pegado a la esfera (0.78/0.66), sin grandes discos luminosos, y se retiran los anillos exteriores y el glifo frontal sobredimensionado.
+- Se mantienen carcasa, núcleo, punto central, color identificador y un único aro fino para dar lectura tridimensional.
+- Se conserva la mecánica existente de impacto de proyectiles: al disparar y acertar sobre un potenciador se aplica el poder; al acertar sobre un crédito se suman los créditos. No se modifican las recompensas ni el balance.
+- Se actualiza la versión de caché de los scripts para forzar la carga de la presentación nueva.
+- Validación de CI y prueba visual posterior al despliegue pendientes.
