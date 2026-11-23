@@ -211,3 +211,14 @@ After these checks, extend sector-specific environments and convert the validate
 - No se modifican las velocidades, cadencias, daño, hitboxes ni recompensas del combate.
 - La simulación lógica sigue siendo 2D en esta fase; el eje Z se aplica al recorrido y a la proyección visual. Una migración de colisiones y navegación a 3D requiere una etapa separada.
 - Validación pendiente de pruebas manuales de legibilidad, convergencia visual y rendimiento en GPU integrada.
+
+
+## Fase 17 — apuntado libre en cuatro direcciones
+- Se incorpora una mira holográfica móvil con coordenadas independientes del centro de pantalla.
+- Flechas del teclado: izquierda/derecha/arriba/abajo desplazan la mira en cuatro ejes.
+- A/D mantienen el desplazamiento horizontal de la nave; los controles táctiles y gamepad existentes conservan el movimiento.
+- El armamento directo calcula su vector hacia la mira al disparar, conservando velocidad, daño y cadencia. Los misiles mantienen su guiado autónomo.
+- Cada proyectil transmite origen, vector y distancia de apuntado al renderer 3D; su posición se proyecta a profundidad según el avance real y su propia coordenada X/Y, sin convergencia artificial a un único punto de fuga.
+- La mira se representa como holograma 3D sincronizado con el objetivo seleccionado.
+- Las colisiones y el daño continúan usando el motor lógico existente; por tanto, el apuntado libre funciona dentro de la zona de juego 2D proyectada, no implica aún colisiones volumétricas 3D.
+- Pruebas manuales pendientes: teclado, mando, pantalla táctil, cooperativo y precisión de impactos en equipos de baja potencia.
