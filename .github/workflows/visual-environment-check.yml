@@ -46,6 +46,11 @@ jobs:
           grep -q 'powerup-collected' game.js
           grep -q 'credit-collected' game.js
           grep -q 'aether3dId' game.js
+          grep -q 'visualScale = item.variant' aether3d.js
+          grep -q 'depthTest:false' aether3d.js
+          grep -q 'hit.depth' aether3d.js
+          ! grep -q 'aimReticle' aether3d.js
+          ! grep -q 'cx="960" cy="405"' index.html
           grep -q 'p.aether3dId||("power-"+p.id)' aether3d.js
           grep -q 'particleCount=qualityTier' aether3d.js
           echo "Adaptive environment and 3D reward-orb checks passed."
