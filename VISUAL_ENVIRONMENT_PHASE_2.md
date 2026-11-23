@@ -252,3 +252,14 @@ After these checks, extend sector-specific environments and convert the validate
 - Se fuerza la ocultación del cuerpo planetario, capa nubosa, atmósfera y anillos en cada actualización de combate; no deben reaparecer al cambiar de sector.
 - Se conservan las trayectorias, colisiones, daño y cadencia del sistema de armas.
 - Pruebas automáticas de la rama aprobadas. Validación visual en navegador y prueba de rendimiento en hardware modesto pendientes.
+
+
+## Fase 7 — recompensas encapsuladas y aproximación de cazas
+
+- Se eliminó la mira central del renderizado 3D de cabina; los controles siguen gobernando la orientación de la nave/cámara.
+- Los créditos y potenciadores se exponen al renderizador 3D como objetos persistentes con esfera translúcida, núcleo luminoso, halo y anillo orbital. Los objetos mantienen identificadores estables entre fotogramas y se limpian al desaparecer.
+- Los disparos pueden recoger créditos y activar potenciadores al impactar sus coordenadas de juego; se conservan los importes, identificadores y efectos existentes de applyPowerup.
+- Los potenciadores y créditos dejan de caer como cortina vertical y permanecen suspendidos con deriva suave mientras se aproximan por profundidad.
+- Los cazas enemigos nacen dentro del campo visible a profundidad y se aproximan con movimiento lateral/vertical, con una escala visual mayor para distinguirlos desde la cabina.
+- Verificación automática: workflow Visual environment quality checks del commit 83d86e783e27a4ba0e59414acd07b34e818eb873 completado con éxito. Despliegue Render dep-dc1rbhutlv9c73ct4m1g en estado live.
+- Pendiente: prueba manual de adquisición de cada tipo de recompensa y de combate contra escuadrones en PC y móvil.
