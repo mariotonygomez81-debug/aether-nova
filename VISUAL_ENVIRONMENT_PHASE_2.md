@@ -232,3 +232,14 @@ After these checks, extend sector-specific environments and convert the validate
 - La capa de cabina usa CSS/SVG ligero, sin texturas externas ni dependencias adicionales; se adapta a pantallas pequeñas y respeta reducción de movimiento.
 - La simulación, controles, armas, daño, progreso y colisiones existentes permanecen intactos. La vista es una presentación inmersiva de cabina sobre el renderer 3D actual; no implica todavía una simulación física completa de vuelo en primera persona.
 - Verificación manual pendiente en PC, Android TV y móviles, especialmente legibilidad del HUD y visibilidad del campo central.
+
+
+## Fase 19 — cabina como punto de vista de vuelo
+- Se retiran del encuadre de combate el planeta, su atmósfera, nubes, anillos y luna; el fondo queda abierto al espacio profundo.
+- Se ocultan los modelos exteriores de ambos cazas del jugador: la cabina representa ahora el punto de vista del piloto.
+- Los controles horizontales y verticales inclinan suavemente la cámara en yaw/pitch. La escena completa cambia de perspectiva, en lugar de desplazar una nave dibujada sobre el fondo.
+- La retícula holográfica queda anclada al centro del parabrisas.
+- Los proyectiles de plasma aumentan su escala visual para mejorar lectura e impacto desde la cabina; se conserva la lógica de daño, cadencia, trayectoria y colisión.
+- Se mantienen el renderer adaptativo, las geometrías compartidas y el límite de FPS existente.
+- La rotación de cámara es una capa visual sobre la simulación actual; la física de vuelo y las colisiones no se convierten en una simulación 6DoF.
+- Verificación manual pendiente: comprobar respuesta de giro, centrado de disparo y rendimiento en PC, Android TV y móvil.
