@@ -272,3 +272,13 @@ After these checks, extend sector-specific environments and convert the validate
 - Esferas 3D de créditos y poderes ampliadas; se ocultan los dibujos Canvas duplicados cuando el renderer 3D está activo.
 - Se conservan recompensas, applyPowerup, daño, cadencia, economía, balance y progresión.
 - Pendiente validación automática y comprobación visual/rendimiento.
+
+
+## Fase 9 — orbes cromáticos de poder y optimización GPU
+- Los potenciadores se representan como esferas luminosas grandes, con carcasa translúcida aditiva, núcleo del color de la habilidad, centro blanco, halo y dos órbitas animadas.
+- Se utiliza el color ya definido por cada habilidad (triple, fuego rápido, láser, plasma, dispersión, escoltas, misiles, bombas, vida y escudos); los créditos conservan su identidad dorada.
+- Los orbes aumentan su escala al aproximarse por profundidad; se acelera moderadamente su avance en Z sin cambiar las reglas de adquisición, recompensa ni aplicación de poderes.
+- Se eliminó MeshPhysicalMaterial con transmisión de los coleccionables y se sustituyó por materiales básicos aditivos; las geometrías y materiales se comparten por color y se reutilizan entre apariciones.
+- La limpieza de un orbe ya no destruye recursos GPU compartidos. Se evita crear arreglos temporales de objetos clonados en cada fotograma durante la sincronización.
+- No se modifican puntuación, economía, daño, colisiones, cadencia, progresión, cuentas, Supabase, Joystick ni contratos multijugador.
+- Validación automática de sintaxis y rendimiento pendiente; se requiere comprobar visualmente que cada tipo de orbe se distingue y medir fluidez en el equipo de gama baja.
