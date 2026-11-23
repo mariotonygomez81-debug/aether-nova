@@ -468,6 +468,8 @@ const state = {
 };
 
 const keys = { Left: false, Right: false };
+const aimKeys = { left:false, right:false, up:false, down:false };
+let playerAim = { x: W * .5, y: H * .38 };
 let bullets = [];
 let enemyBullets = [];
 let asteroids = [];
@@ -929,6 +931,16 @@ class Player {
   update() {
     if (this.lives <= 0) return;
     this.prevX = this.x; this.prevY = this.y;
+    // La cruceta del teclado apunta en cuatro direcciones; A/D conserva el desplazamiento horizontal.
+    const aimSpeed = Math.max(4.5, Math.min(9, W * .006));
+    if (this.pilotId === 1) {
+      if (aimKeys.left) playerAim.x -= aimSpeed;
+      if (aimKeys.right) playerAim.x += aimSpeed;
+      if (aimKeys.up) playerAim.y -= aimSpeed;
+      if (aimKeys.down) playerAim.y += aimSpeed;
+      playerAim.x = Math.max(24, Math.min(W - 24, playerAim.x));
+      playerAim.y = Math.max(48, Math.min(this.y - 48, playerAim.y));
+    }
     let moveDir = 0;
     if (this.pilotId === 2) {
       if (keyboardInput2.left || phonepad2State.left) moveDir -= 1;
@@ -979,6 +991,7 @@ class Player {
     const baseDamage = (1 + Math.floor((mk - 1) * 0.5)) * (1 + (commercialData.upgrades?.cannon || 0) * 0.12) * this.shipDamageBonus;
     const dmg = Math.max(1, Math.round(baseDamage));
     SoundFX.play("laser");
+    const firstShotIndex = bullets.length;
 
     bullets.push({ x: this.x, y: this.y - 24, vx: 0, vy: -13.5, dmg, color: this.color, missile: false });
 
@@ -1034,6 +1047,21 @@ class Player {
       const droneDamage = Math.max(1, Math.round(dmg * (0.45 + this.droneLevel * 0.18)));
       bullets.push({ x: this.x - 42, y: this.y - 5, vx: -0.35, vy: -12.5, dmg: droneDamage, color: "#72f7ff", missile: false });
       bullets.push({ x: this.x + 42, y: this.y - 5, vx: 0.35, vy: -12.5, dmg: droneDamage, color: "#72f7ff", missile: false });
+    }
+    // Orienta el armamento directo hacia el punto de mira. Los misiles conservan su guiado autónomo.
+    for (let i = firstShotIndex; i < bullets.length; i++) {
+      const shot = bullets[i];
+      if (shot.missile) continue;
+      const sx = shot.x, sy = shot.y;
+      const dx = playerAim.x - sx, dy = playerAim.y - sy;
+      const distance = Math.max(1, Math.hypot(dx, dy));
+      const speed = Math.max(8, Math.hypot(shot.vx || 0, shot.vy || -13));
+      const spread = (shot.vx || 0) * .055;
+      const angle = Math.atan2(dy, dx) + spread;
+      shot.vx = Math.cos(angle) * speed;
+      shot.vy = Math.sin(angle) * speed;
+      shot.originX = sx; shot.originY = sy;
+      shot.aimDistance = distance;
     }
   }
 
@@ -4272,9 +4300,13 @@ bindTap("btn-local-coop",()=>{localCoopEnabled=!localCoopEnabled;const b=documen
 bindTap("btn-phonepad-copy",()=>{if(phonepadState.code)navigator.clipboard?.writeText(new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/?code="+phonepadState.code).href).catch(()=>{});});
 
 window.addEventListener("keydown", (e) => {
-  if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
-  if (e.code === "ArrowLeft" || e.code === "KeyA") keyboardInput.left = true;
-  if (e.code === "ArrowRight" || e.code === "KeyD") keyboardInput.right = true;
+  if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "ArrowLeft") aimKeys.left = true;
+  if (e.code === "ArrowRight") aimKeys.right = true;
+  if (e.code === "ArrowUp") aimKeys.up = true;
+  if (e.code === "ArrowDown") aimKeys.down = true;
+  if (e.code === "KeyA") keyboardInput.left = true;
+  if (e.code === "KeyD") keyboardInput.right = true;
   refreshHorizontalInput();
   if (e.code === "KeyJ") keyboardInput2.left = true;
   if (e.code === "KeyL") keyboardInput2.right = true;
@@ -4295,13 +4327,17 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("keyup", (e) => {
-  if (e.code === "ArrowLeft" || e.code === "KeyA") keyboardInput.left = false;
-  if (e.code === "ArrowRight" || e.code === "KeyD") keyboardInput.right = false;
+  if (e.code === "ArrowLeft") aimKeys.left = false;
+  if (e.code === "ArrowRight") aimKeys.right = false;
+  if (e.code === "ArrowUp") aimKeys.up = false;
+  if (e.code === "ArrowDown") aimKeys.down = false;
+  if (e.code === "KeyA") keyboardInput.left = false;
+  if (e.code === "KeyD") keyboardInput.right = false;
   refreshHorizontalInput();
   if (e.code === "KeyJ") keyboardInput2.left = false;
   if (e.code === "KeyL") keyboardInput2.right = false;
 });
-window.addEventListener("blur", () => { keyboardInput.left=keyboardInput.right=false;keyboardInput2.left=keyboardInput2.right=false;touchInput.left=touchInput.right=false;gamepadState.left=gamepadState.right=false;phonepadRelease();refreshHorizontalInput(); });
+window.addEventListener("blur", () => { aimKeys.left=aimKeys.right=aimKeys.up=aimKeys.down=false; keyboardInput.left=keyboardInput.right=false;keyboardInput2.left=keyboardInput2.right=false;touchInput.left=touchInput.right=false;gamepadState.left=gamepadState.right=false;phonepadRelease();refreshHorizontalInput(); });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && state.mode === "PLAYING") togglePause();
 });
