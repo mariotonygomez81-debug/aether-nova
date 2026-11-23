@@ -104,7 +104,7 @@ environment.add(worldBody);
 // Superficie planetaria con continentes definidos, océanos profundos y nubes.
  // Resolución suficiente para evitar el aspecto borroso observado en la vista previa.
 function makePlanetSurface(seed){
-  const size=qualityTier==="low"?[256,128]:qualityTier==="medium"?[384,192]:[512,256];
+  const size=qualityTier==="low"?[192,96]:qualityTier==="medium"?[256,128]:[384,192];
   const canvas=document.createElement("canvas");canvas.width=size[0];canvas.height=size[1];
   const ctx=canvas.getContext("2d"),img=ctx.createImageData(canvas.width,canvas.height),d=img.data;
   for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
