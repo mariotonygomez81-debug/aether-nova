@@ -1693,21 +1693,18 @@ class Asteroid {
 class EnemyShip {
   constructor(variant) {
     this.variant = variant;
-    // Entradas tridimensionales: arriba, laterales y desde el borde inferior del encuadre.
-    const edge = Math.floor(Math.random() * 4);
-    const targetX = W * (.32 + Math.random() * .36);
-    const targetY = H * (.22 + Math.random() * .2);
-    const margin = 58;
-    this.x = edge === 0 ? -margin : edge === 1 ? W + margin : Math.random() * (W - 90) + 45;
-    this.y = edge === 2 ? -margin : edge === 3 ? H + margin : Math.random() * H * .62 + H * .12;
+    // Los cazas aparecen en el espacio profundo, dentro del campo visible,
+    // y se aproximan al piloto mientras maniobran en los tres ejes.
+    this.x = W * (.18 + Math.random() * .64);
+    this.y = H * (.14 + Math.random() * .42);
     this.baseX = this.x;
     this.age = Math.floor(Math.random() * 90);
-    const entryAngle = Math.atan2(targetY - this.y, targetX - this.x);
-    const entrySpeed = variant === "interceptor" || variant === "lancer" ? 3.1 : 2.05;
+    const entryAngle = Math.random() * Math.PI * 2;
+    const entrySpeed = variant === "interceptor" || variant === "lancer" ? 1.45 : .92;
     this.vx = Math.cos(entryAngle) * entrySpeed;
     this.vy = Math.sin(entryAngle) * entrySpeed;
-    this.entryFrames = Math.min(300, Math.ceil(Math.hypot(targetX - this.x, targetY - this.y) / entrySpeed) + 8);
-    this.depth = 34 + Math.random() * 34;
+    this.entryFrames = 90 + Math.floor(Math.random() * 65);
+    this.depth = 48 + Math.random() * 20;
     this.radius = (variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16) * 1.35;
     // Resistencia enemiga con crecimiento suave durante los 100 sectores.
     const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
