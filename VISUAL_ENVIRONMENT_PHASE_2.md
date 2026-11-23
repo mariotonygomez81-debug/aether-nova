@@ -222,3 +222,13 @@ After these checks, extend sector-specific environments and convert the validate
 - La mira se representa como holograma 3D sincronizado con el objetivo seleccionado.
 - Las colisiones y el daño continúan usando el motor lógico existente; por tanto, el apuntado libre funciona dentro de la zona de juego 2D proyectada, no implica aún colisiones volumétricas 3D.
 - Pruebas manuales pendientes: teclado, mando, pantalla táctil, cooperativo y precisión de impactos en equipos de baja potencia.
+
+
+## Fase 18 — perspectiva desde la cabina del piloto
+- Se incorpora una superposición vectorial SVG de cabina: marco del parabrisas, pilares laterales, paneles tácticos, retícula central, radar y telemetría.
+- El centro del parabrisas permanece transparente para no tapar enemigos, asteroides ni proyectiles.
+- La cabina se muestra únicamente durante la partida (HUD activo); no altera menús ni pantallas de selección.
+- Se oculta el modelo exterior de la nave del jugador para evitar que la cámara de primera persona siga mostrando la nave desde fuera.
+- La capa de cabina usa CSS/SVG ligero, sin texturas externas ni dependencias adicionales; se adapta a pantallas pequeñas y respeta reducción de movimiento.
+- La simulación, controles, armas, daño, progreso y colisiones existentes permanecen intactos. La vista es una presentación inmersiva de cabina sobre el renderer 3D actual; no implica todavía una simulación física completa de vuelo en primera persona.
+- Verificación manual pendiente en PC, Android TV y móviles, especialmente legibilidad del HUD y visibilidad del campo central.
