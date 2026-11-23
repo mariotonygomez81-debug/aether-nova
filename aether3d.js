@@ -96,7 +96,7 @@ for(let layer=0;layer<3;layer++){
  // Los cuerpos son puramente decorativos: no alteran colisiones ni progresión.
  // La densidad geométrica se adapta al perfil del dispositivo.
 const qualityTier=window.AETHER_PLATFORM?.tier||"medium";
-const planetSegments=qualityTier==="low"?24:qualityTier==="medium"?36:56;
+const planetSegments=qualityTier==="low"?40:qualityTier==="medium"?72:112;
 const worldBody=new THREE.Group();
 worldBody.name="AETHER_PLANETARY_BACKDROP";
 environment.add(worldBody);
@@ -104,7 +104,7 @@ environment.add(worldBody);
 // Superficie planetaria con continentes definidos, océanos profundos y nubes.
  // Resolución suficiente para evitar el aspecto borroso observado en la vista previa.
 function makePlanetSurface(seed){
-  const size=qualityTier==="low"?[192,96]:qualityTier==="medium"?[320,160]:[512,256];
+  const size=qualityTier==="low"?[256,128]:qualityTier==="medium"?[512,256]:[768,384];
   const canvas=document.createElement("canvas");canvas.width=size[0];canvas.height=size[1];
   const ctx=canvas.getContext("2d"),img=ctx.createImageData(canvas.width,canvas.height),d=img.data;
   for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
@@ -157,6 +157,30 @@ function makeCloudTexture(){
   const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=2;return tex;
 }
 const planetCloudTexture=makeCloudTexture();
+// Recursos planetarios PBR gratuitos (Solar System Scope, CC BY 4.0).
+// Cargan de forma asíncrona y conservan el mapa procedural como fallback sin bloquear el inicio.
+const planetaryAssetLoader=new THREE.TextureLoader();
+planetaryAssetLoader.setCrossOrigin("anonymous");
+const planetaryTextureQuality=qualityTier==="low"?"2k":"2k";
+function configurePlanetTexture(texture){
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  texture.minFilter=THREE.LinearMipmapLinearFilter;
+  texture.magFilter=THREE.LinearFilter;
+  texture.generateMipmaps=true;
+  texture.needsUpdate=true;
+}
+planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_daymap.jpg",texture=>{
+  configurePlanetTexture(texture);
+  planetMaterial.map=texture;
+  planetMaterial.needsUpdate=true;
+},undefined,()=>{ /* Fallback procedural ya activo. */ });
+planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_clouds.jpg",texture=>{
+  configurePlanetTexture(texture);
+  planetCloudMaterial.map=texture;
+  planetCloudMaterial.opacity=.82;
+  planetCloudMaterial.needsUpdate=true;
+},undefined,()=>{ /* Mantener nubes procedurales si el CDN no responde. */ });
 const planetCloudMaterial=new THREE.MeshBasicMaterial({map:planetCloudTexture,transparent:true,opacity:.68,depthWrite:false,side:THREE.FrontSide});
 let planetClouds=null,planetRingMesh=null;
 const worldEraColors=[
