@@ -293,3 +293,14 @@ After these checks, extend sector-specific environments and convert the validate
 - Cada recompensa tiene identidad de malla independiente para que dos orbes del mismo tipo no compartan posición ni se oculten entre sí.
 - Se mantienen las funciones de aplicación de poderes, límites de inventario, importes, economía y progresión existentes.
 - Validación automática de sintaxis de game.js y aether3d.js y comprobaciones específicas de recompensas: pendiente de ejecución en CI. Prueba manual visual y de rendimiento: pendiente.
+
+
+## Fase 11 — orbes de poder 3D de alta legibilidad
+- Se amplían las esferas de energía y créditos con una silueta mayor, halo pulsante, núcleo brillante y tres anillos orbitales animados.
+- Cada potenciador incorpora un glifo frontal luminoso con su identificador (W, R, L, P, etc.) y conserva su color original; los créditos muestran el símbolo monetario.
+- El glifo permanece orientado hacia la cámara para que la habilidad se identifique durante el acercamiento.
+- Los orbes nacen a menor distancia de profundidad y avanzan más rápido por el eje Z; se añade deriva lateral/vertical suave para que no parezcan iconos estáticos pegados al plano.
+- Se comparten geometrías, materiales y texturas de glifos por combinación de símbolo/color para evitar recompilar recursos y mantener controlado el coste GPU.
+- Se conservan la adquisición por disparo/contacto, los identificadores, las recompensas, el balance, la economía y la aplicación de habilidades.
+- No se modifican cuentas, Supabase, Joystick, multijugador ni progresión.
+- CI: las comprobaciones de sintaxis ES module y game.js y las salvaguardas de calidad adaptativa finalizaron correctamente; el job todavía estaba en estado in_progress al registrar esta nota. Inspección visual y medición de FPS reales pendientes.
