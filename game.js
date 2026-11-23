@@ -3014,7 +3014,7 @@ function updateAndDraw() {
   creditCoins.forEach((coin) => {
     coin.x += coin.vx*.08;
     coin.y += coin.vy*.08;
-    coin.depth = Math.max(9,(coin.depth||52)-.014);
+    coin.depth = Math.max(9,(coin.depth||52)-.055);
     coin.spin += 0.16;
     coin.life--;
     if (coin.y > H + 24 || coin.life <= 0) coin.dead = true;
@@ -3058,7 +3058,7 @@ function updateAndDraw() {
     // Las esferas permanecen suspendidas en profundidad y derivan suavemente en 3D.
     p.x += Math.sin((p.aether3dPhase||(p.aether3dPhase=Math.random()*6.28))+performance.now()*.00055)*.34;
     p.y += Math.cos((p.aether3dPhase||0)+performance.now()*.00042)*.22;
-    p.depth = Math.max(8,(p.depth||58)-.018);
+    p.depth = Math.max(8,(p.depth||58)-.075);
     if (p.y > H + 30) p.dead = true;
 
     if (!window.__AETHER3D_ACTIVE && p.meteor) {
