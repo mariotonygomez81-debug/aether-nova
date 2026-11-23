@@ -359,3 +359,13 @@ After these checks, extend sector-specific environments and convert the validate
 - Se mantiene intacta la mecánica de disparo/recogida, los valores de recompensa y el resto del combate.
 - Caché de scripts actualizada a pickup-energy-spheres-v3.
 - Requiere revisión visual en preview para ajustar proporción final según la captura real.
+
+
+## Fase 18 — alineación de proyectiles e impactos de contacto
+- Se elimina la inclinación artificial en profundidad al orientar los proyectiles 3D: la dirección visual ahora sigue el vector real X/Y sobre el plano de combate, evitando que parezcan pasar por encima o debajo de los objetivos.
+- Se reduce la escala de proyectiles 3D (1.65; láser 1.85) para que el núcleo y la estela no oculten el punto de contacto.
+- La colisión contra asteroides ahora utiliza barrido del segmento recorrido por el disparo y movimiento del asteroide, igualando la robustez que ya tenía la colisión contra enemigos.
+- Enemigos y asteroides calculan el punto de contacto sobre su superficie, no en el centro del disparo, y publican ahí el impacto 3D con la profundidad real del objeto.
+- Se ajusta el tamaño de las ráfagas 3D de impacto para que sean visibles pero localizadas en la superficie, evitando grandes anillos flotantes.
+- No se cambian daño, cadencia, precisión lógica del juego, vida ni recompensas; se mejora la coincidencia visual y el registro de colisiones.
+- La revisión visual y pruebas de rendimiento quedan pendientes tras desplegar.
