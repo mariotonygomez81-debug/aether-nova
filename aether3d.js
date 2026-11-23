@@ -86,6 +86,80 @@ for(let layer=0;layer<3;layer++){
   const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:layer===2?.58:.28,vertexColors:true,transparent:true,opacity:layer===0?.8:.65,sizeAttenuation:true,depthWrite:false}));environment.add(pts);if(layer===0)window.__aetherStarFar=pts;else if(layer===1)window.__aetherStarMid=pts;else window.__aetherStarNear=pts;
 }
 
+// AETHER NOVA — entorno planetario cinematográfico.
+ // Los cuerpos son puramente decorativos: no alteran colisiones ni progresión.
+ // La densidad geométrica se adapta al perfil del dispositivo.
+const qualityTier=window.AETHER_PLATFORM?.tier||"medium";
+const planetSegments=qualityTier==="low"?24:qualityTier==="medium"?36:56;
+const worldBody=new THREE.Group();
+worldBody.name="AETHER_PLANETARY_BACKDROP";
+environment.add(worldBody);
+
+function makePlanetSurface(seed,base,land,ice){
+  const canvas=document.createElement("canvas");canvas.width=384;canvas.height=192;
+  const c=canvas.getContext("2d"),img=c.createImageData(canvas.width,canvas.height),d=img.data;
+  for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
+    const u=x/canvas.width,v=y/canvas.height;
+    const broad=fbm(u*7+seed,v*5-seed,seed);
+    const detail=fbm(u*22+seed*2,v*15+seed,seed+11);
+    const ridges=Math.max(0,Math.min(1,(broad*.72+detail*.38-.53)*3.2));
+    const polar=Math.pow(Math.abs(v-.5)*2,5);
+    const mix=Math.max(0,Math.min(1,ridges*.82+polar*.24));
+    const k=(y*canvas.width+x)*4;
+    for(let channel=0;channel<3;channel++){
+      const terrain=base[channel]*(1-mix)+land[channel]*mix;
+      d[k+channel]=Math.max(0,Math.min(255,terrain*(1-polar*.28)+ice[channel]*polar*.28));
+    }
+    d[k+3]=255;
+  }
+  c.putImageData(img,0,0);
+  const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
+  tex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  return tex;
+}
+const planetTexture=makePlanetSurface(13,[34,75,105],[102,119,112],[174,202,220]);
+const planetMaterial=new THREE.MeshStandardMaterial({map:planetTexture,color:0xc7dce9,roughness:.88,metalness:.06});
+const planet=new THREE.Mesh(new THREE.SphereGeometry(16.5,planetSegments,Math.max(16,planetSegments/2)),planetMaterial);
+planet.position.set(-48,25,-132);worldBody.add(planet);
+const atmosphere=new THREE.Mesh(
+  new THREE.SphereGeometry(17.15,planetSegments,Math.max(16,planetSegments/2)),
+  new THREE.MeshBasicMaterial({color:0x42bfff,transparent:true,opacity:.105,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
+);
+atmosphere.position.copy(planet.position);worldBody.add(atmosphere);
+if(qualityTier!=="low"){
+  const ring=new THREE.Mesh(
+    new THREE.TorusGeometry(20.1,.82,6,qualityTier==="medium"?64:112),
+    new THREE.MeshStandardMaterial({color:0x91b5c8,metalness:.42,roughness:.72,transparent:true,opacity:.52,side:THREE.DoubleSide})
+  );
+  ring.position.copy(planet.position);ring.rotation.set(1.19,.16,-.28);ring.scale.set(1,.72,1);worldBody.add(ring);
+  const moon=new THREE.Mesh(
+    new THREE.SphereGeometry(4.1,qualityTier==="medium"?20:32,16),
+    new THREE.MeshStandardMaterial({color:0x8995a6,roughness:.96,metalness:.02})
+  );
+  moon.position.set(25,-18,-153);worldBody.add(moon);
+  const moonRim=new THREE.Mesh(
+    new THREE.SphereGeometry(4.28,qualityTier==="medium"?20:32,16),
+    new THREE.MeshBasicMaterial({color:0x789bc0,transparent:true,opacity:.07,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
+  );
+  moonRim.position.copy(moon.position);worldBody.add(moonRim);
+}
+// Polvo espacial en profundidad: pocos puntos y sin luces individuales.
+const dustCount=qualityTier==="low"?48:qualityTier==="medium"?96:160;
+const dustPositions=[],dustColors=[];
+for(let i=0;i<dustCount;i++){
+  dustPositions.push((Math.random()-.5)*210,(Math.random()-.5)*118,-48-Math.random()*170);
+  const tint=new THREE.Color([0x6c9db8,0x8ab9ce,0xb2a0d5,0x9daec0][i%4]);
+  dustColors.push(tint.r,tint.g,tint.b);
+}
+const dustGeometry=new THREE.BufferGeometry();
+dustGeometry.setAttribute("position",new THREE.Float32BufferAttribute(dustPositions,3));
+dustGeometry.setAttribute("color",new THREE.Float32BufferAttribute(dustColors,3));
+const cosmicDust=new THREE.Points(dustGeometry,new THREE.PointsMaterial({
+  size:qualityTier==="low"?.32:.48,vertexColors:true,transparent:true,opacity:.24,
+  sizeAttenuation:true,depthWrite:false,blending:THREE.AdditiveBlending
+}));
+environment.add(cosmicDust);
+
 // Alpha 4: sin planetas ni estación orbital. Fondo profundo y limpio.
 const ship = new THREE.Group(); scene.add(ship);
 const shipModel = new THREE.Group(); shipModel.name="valkyrie"; ship.add(shipModel);
@@ -848,6 +922,10 @@ function animate(now) {
   const dt=Math.min(frameDelta,.05); last=now;
   const data=window.__AETHER3D_STATE;
   if (data && data.playing) {
+    // Parallax ambiental sutil: da escala y profundidad sin competir con el combate.
+    worldBody.rotation.y+=dt*.0022;
+    worldBody.position.x=THREE.MathUtils.damp(worldBody.position.x,-(data.x/data.width-.5)*2.4,1.6,dt);
+    cosmicDust.rotation.z+=dt*.0007;
     const impact=window.__AETHER3D_IMPACT;
     if(impact && impact.serial!==lastImpactSerial){lastImpactSerial=impact.serial;spawn3DBurst(worldPos(impact.x,impact.y,data.width,data.height,-8),impact.color==="#55eaff"?0x55eaff:0xff684d,1.35);}
     // Usar la misma proyección perspectiva que asteroides, enemigos y proyectiles.
