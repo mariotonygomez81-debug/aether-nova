@@ -5,7 +5,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 const canvas = document.getElementById('aether3dCanvas');
 const platformTier = window.AETHER_PLATFORM?.tier || "medium";
 const platformPixelRatio = window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, platformTier==="low"?.78:platformTier==="medium"?.95:1.15);
-const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: platformTier==="high", powerPreference: 'high-performance', precision: platformTier==="low"?"low":"mediump" });
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: platformTier==="high", powerPreference: 'high-performance', precision: platformTier==="low"?"lowp":"mediump" });
 renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.85:platformTier==="medium"?1:1.2));
 renderer.shadowMap.enabled = false;
 renderer.setSize(window.innerWidth, window.innerHeight);
