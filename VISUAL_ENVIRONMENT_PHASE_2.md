@@ -323,3 +323,12 @@ After these checks, extend sector-specific environments and convert the validate
 - Se conservan las geometrías/materiales compartidos y los límites adaptativos; no se crean luces ni recursos nuevos por fotograma.
 - Se invalidó la caché de ambos scripts del motor/renderizador con una nueva versión de recursos.
 - Validación automática de sintaxis y salvaguardas pendiente. La comprobación visual en navegador y FPS en PC Intel UHD 600 sigue siendo obligatoria antes de integrar en `main`.
+
+
+## Fase 14 — orbes de energía de alto contraste y acercamiento visible
+- Se añadieron billboards de resplandor radial por color, compartidos en caché, detrás de cada orbe 3D; glifo frontal ampliado y materiales no afectados por tone mapping.
+- Los potenciadores y créditos aparecen a menor profundidad inicial para que sean visibles desde el comienzo de su recorrido, manteniendo deriva, temporizador y reglas de recogida.
+- Se amplió la esfera y su halo pulsante; se conserva la reutilización de geometrías y materiales y no se generan recursos por fotograma.
+- Los impactos al recoger potenciadores/créditos ahora se sitúan en la misma profundidad del orbe, en lugar de usar un plano genérico lejano.
+- Se aumentó de nuevo la escala visual de los cazas enemigos sin cambiar hitboxes ni balance.
+- CI automática pendiente. La vista previa Render continúa configurada para la rama de desarrollo; verificar su commit publicado antes de pruebas visuales.
