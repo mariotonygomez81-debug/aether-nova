@@ -930,21 +930,24 @@ function syncShots(items, width, height, playerX, playerY) {
     if (item.id == null) continue;
     alive.add(item.id);
     const mesh = shotMeshes.get(item.id) || createShotMesh(item);
-    // El proyectil recorre un corredor de perspectiva desde la tobera hacia el punto de fuga.
-    // Su coordenada 2D sigue controlando el impacto; esta trayectoria es solo visual.
-    const progress=THREE.MathUtils.clamp((playerY-item.y)/Math.max(1,playerY-42),0,1);
-    const start=worldPos(playerX,playerY-23,width,height,-10.4);
-    const targetZ=-112;
-    // Punto de fuga fijo: el proyectil avanza hacia la profundidad, no hacia el borde superior.
-    const target=worldPos(width*.5,height*.43,width,height,targetZ);
-    mesh.position.copy(start).lerp(target,progress);
-    const apparent=1-progress*.76;
+    // Cada disparo conserva su vector de apuntado individual: no converge a un horizonte común.
+    const originX=Number.isFinite(item.originX)?item.originX:playerX;
+    const originY=Number.isFinite(item.originY)?item.originY:playerY-23;
+    const totalDistance=Math.max(1,Number(item.aimDistance)||Math.hypot(width*.5-originX,40-originY));
+    const traveled=Math.hypot(item.x-originX,item.y-originY);
+    const progress=THREE.MathUtils.clamp(traveled/totalDistance,0,1);
+    const depth=-10.4-progress*96;
+    mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
+    const apparent=1-progress*.58;
     mesh.scale.setScalar(apparent);
-    // El eje longitudinal del plasma apunta alejándose de la cámara (-Z).
-    const travelDirection=target.clone().sub(start).normalize();
+    // Orientación 3D según el vector real de movimiento del proyectil.
+    const nextX=item.x+(Number(item.vx)||0)*2;
+    const nextY=item.y+(Number(item.vy)||-1)*2;
+    const nextDepth=depth-1.8;
+    const ahead=worldPos(nextX,nextY,width,height,nextDepth);
+    const travelDirection=ahead.clone().sub(mesh.position).normalize();
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),travelDirection);
-    mesh.visible = true;
-    mesh.visible = true;
+    mesh.visible=true;
   }
   for (const [id, mesh] of shotMeshes) {
     if (!alive.has(id)) {
