@@ -49,6 +49,8 @@ jobs:
           grep -q 'visualScale = item.variant' aether3d.js
           grep -q 'depthTest:false' aether3d.js
           grep -q 'hit.depth' aether3d.js
+          grep -q 'pickupGlowTexture' aether3d.js
+          grep -q 'powerup-collected",-8-' game.js
           ! grep -q 'aimReticle' aether3d.js
           ! grep -q 'cx="960" cy="405"' index.html
           grep -q 'p.aether3dId||("power-"+p.id)' aether3d.js
