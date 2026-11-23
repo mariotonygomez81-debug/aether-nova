@@ -579,6 +579,22 @@ function addRockSurfaceDetails(mesh,item){
     crater.add(rim);
     detail.add(crater);
   }
+  // Estratos minerales facetados: aristas de roca, placas fracturadas y vetas
+  // compartidas para dar volumen sin crear geometría nueva por fotograma.
+  const shardGeometry=rockDetailGeometry.surfaceShard || (rockDetailGeometry.surfaceShard=new THREE.ConeGeometry(.115,.48,5,1));
+  shardGeometry.userData.sharedGeometry=true;
+  const ridgeCount=qualityTier==="low"?2:qualityTier==="medium"?4:6;
+  for(let i=0;i<ridgeCount;i++){
+    const angle=(seed*.293+i*2.399)%(Math.PI*2);
+    const latitude=-.58+((i*7)%5)*.27;
+    const normal=new THREE.Vector3(Math.cos(angle)*Math.cos(latitude),Math.sin(latitude),Math.sin(angle)*Math.cos(latitude)).normalize();
+    const ridge=new THREE.Mesh(shardGeometry,(item.kind==="magnetic"&&i%2===0)?rockDetailMaterials.ice:rockDetailMaterials.rim);
+    ridge.position.copy(normal.clone().multiplyScalar(.91));
+    ridge.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),normal);
+    ridge.rotateY(angle*.7);
+    ridge.scale.set(.62+(i%3)*.2,.58+(i%2)*.24,.72);
+    detail.add(ridge);
+  }
   if(item.kind==="magnetic"||item.kind==="explosive"){
     const crystalMat=item.kind==="magnetic"?rockDetailMaterials.ice:rockDetailMaterials.ore;
     const crystals=qualityTier==="low"?1:2;
