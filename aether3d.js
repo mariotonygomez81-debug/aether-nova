@@ -675,12 +675,12 @@ function buildEnemy(variant='scout'){
    ring.rotation.z=i*.5;
   }
  } else if(variant==='bomber'){
-  add(new THREE.BoxGeometry(2.7,.5,2.8),enemyDark,[0,-.2,.7]);
+  add(new THREE.BoxGeometry(2.7,.5,2.8),enemyDark,[0,-.2,.7],[0,0,0],g);
   for(const s of [-1,1]) add(new THREE.SphereGeometry(.32,16,12),enemyGold,[s*.75,-.35,1.35],[0,0,0],g);
  } else if(variant==='carrier'){
-  add(new THREE.BoxGeometry(4.5,.55,3.5),enemyDark,[0,-.2,.7]);
+  add(new THREE.BoxGeometry(4.5,.55,3.5),enemyDark,[0,-.2,.7],[0,0,0],g);
   for(let i=-2;i<=2;i++) add(new THREE.BoxGeometry(.36,.22,1.7),enemyViolet,[i*.7,.18,1.3],[0,0,0],g);
-  add(new THREE.SphereGeometry(.55,20,14),enemyCyan,[0,.2,-.3]);
+  add(new THREE.SphereGeometry(.55,20,14),enemyCyan,[0,.2,-.3],[0,0,0],g);
  } else if(variant==='interceptor'){
   for(const s of [-1,1]) add(new THREE.ConeGeometry(.2,1.35,8),enemyRed,[s*1.15,0,.1],[0,0,s*.8],g);
  }
