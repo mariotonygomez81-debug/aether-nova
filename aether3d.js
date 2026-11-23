@@ -699,6 +699,23 @@ function buildEnemy(variant='scout'){
   exhaust.rotation.x=Math.PI/2;exhaust.position.set(side*.55,-.14,2.72);exhaust.userData.enemyFlame=true;g.add(exhaust);
  }
  for(let i=0;i<3;i++)add(new THREE.BoxGeometry(.18,.045,.28),enemyDark,[-.25+i*.25,.25,.55],[0,0,0],g);
+ // Microdetalle industrial compartido: paneles, ranuras de ventilación y sensores.
+ const bodySpan=variant==='carrier'?2.8:variant==='bomber'?1.9:1.25;
+ for(const side of [-1,1]){
+  add(new THREE.BoxGeometry(bodySpan*.42,.035,.42),enemyHull,[side*bodySpan*.27,.205,-.48],[0,side*.08,0],g);
+  for(let vent=0;vent<3;vent++){
+   add(new THREE.BoxGeometry(.055,.025,.34),enemyCyan,[side*(.28+vent*.105),.235,.12],[0,0,0],g);
+  }
+  const sensor=add(new THREE.SphereGeometry(.095,12,8),accent,[side*(variant==='carrier'?2.05:.82),.22,-.82],[0,0,0],g);
+  sensor.userData.enemySensor=side;
+ }
+ // Cañones compactos y abrazaderas de motor, con silueta diferenciada por clase.
+ const barrelCount=variant==='carrier'?4:variant==='bomber'?3:2;
+ for(let i=0;i<barrelCount;i++){
+  const x=(i-(barrelCount-1)/2)*(variant==='carrier'?.72:.42);
+  add(new THREE.CylinderGeometry(.075,.11,variant==='carrier'?1.25:.78,10),enemyDark,[x,-.12,-1.02],[Math.PI/2,0,0],g);
+  add(new THREE.CylinderGeometry(.105,.105,.12,10),accent,[x,-.12,-1.43],[Math.PI/2,0,0],g);
+ }
  return g;
 }
 
@@ -744,6 +761,23 @@ function buildBoss(v=0){
  else if(v===7){p(9,1.4,7,0,0,0,bossBlack);c(0,.7,-1.4,1.3);for(const q of [-1,1]){p(2,.7,5,q*5,0,1);for(let i=0;i<3;i++)add(new THREE.CylinderGeometry(.55,.8,2.2,12),bossCore,[q*(3.2+i*.9),-.2,3],[Math.PI/2,0,0],bossGroup);}}
  else if(v===8){c(0,0,0,1.15);for(let i=0;i<4;i++)add(new THREE.TorusGeometry(2.5+i*.6,.18,12,64),bossCore,[0,0,0],[Math.PI/2,i*.55,i*.8],bossGroup);for(let i=0;i<8;i++){const q=i*Math.PI/4;p(.5,.5,4,Math.cos(q)*3.8,Math.sin(q)*3,0,bossBlack,[0,0,q]);}}
  else{p(8,1.2,6,0,0,0,bossBlack);c(0,.5,-.7,1.7);for(const q of [-1,1]){p(3,.5,5,q*4,.1,.2,bossMat,[0,0,q*.35]);for(let i=0;i<3;i++)add(new THREE.ConeGeometry(.45,3,8),bossCore,[q*(2.4+i*.9),0,2.6],[Math.PI/2,0,q*.1],bossGroup);}add(new THREE.TorusGeometry(5,.16,12,96),bossCore,[0,0,0],[Math.PI/2,0,0],bossGroup);}
+ // Detalle de ingeniería del casco: blindaje segmentado, disipadores y bocas de cañón.
+ for(const side of [-1,1]){
+  for(let i=0;i<4;i++){
+   add(new THREE.BoxGeometry(.42,.12,1.55),bossBlack,[side*(1.35+i*.72),-.72,-.35],[0,0,side*.035],bossGroup);
+   add(new THREE.BoxGeometry(.22,.045,.9),bossCore,[side*(1.35+i*.72),-.635,-.36],[0,0,side*.035],bossGroup);
+  }
+  const cannon=add(new THREE.CylinderGeometry(.24,.34,2.2,16),bossBlack,[side*4.55,-.18,2.15],[Math.PI/2,0,0],bossGroup);
+  add(new THREE.CylinderGeometry(.29,.29,.16,16),bossCore,[side*4.55,-.18,3.22],[Math.PI/2,0,0],bossGroup);
+  const vent=add(new THREE.BoxGeometry(.72,.09,1.4),bossMat,[side*5.1,.42,-1.15],[0,0,side*.12],bossGroup);
+  vent.userData.bossVent=side;
+ }
+ // Sensores frontales y aletas de estabilización dan escala y lectura de amenaza.
+ for(let i=0;i<5;i++){
+  const x=(i-2)*.78;
+  add(new THREE.SphereGeometry(.16,14,10),bossCore,[x,.42,2.8],[0,0,0],bossGroup);
+  add(new THREE.BoxGeometry(.12,.7,1.8),bossMat,[x*.82,.08,-2.45],[0,0,(i-2)*.035],bossGroup);
+ }
  // Kit de comandante: placas laterales, aros de reactor y balizas de energía.
  for(const side of [-1,1]){
   add(new THREE.BoxGeometry(2.05,.22,2.65),bossMat,[side*3.25,-.58,.35],[0,0,side*.12],bossGroup);
@@ -767,6 +801,9 @@ function syncBoss(b,width,height,now){
  bossGroup.rotation.y=Math.sin(now*.001)*.08;bossGroup.rotation.z=Math.sin(now*.002)*.035;
  bossGroup.traverse(part=>{if(part.userData.bossHalo!==undefined)part.rotation.z=now*.00035*(part.userData.bossHalo%2?-1:1);if(part.userData.bossBeacon!==undefined)part.material.emissiveIntensity=1.4+Math.sin(now*.009+part.userData.bossBeacon)*.8;});
  bossCore.emissiveIntensity=2.5+Math.sin(now*.012)*1.3+(b.phase===3?2:0);
+ bossGroup.traverse(part=>{
+  if(part.userData.bossVent!==undefined)part.material.emissiveIntensity=.45+.35*Math.sin(now*.006+part.userData.bossVent);
+ });
 }
 
 // Fenómenos cósmicos 3D: agujero negro, supernova, magnetar y púlsar.
