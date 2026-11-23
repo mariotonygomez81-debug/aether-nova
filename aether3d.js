@@ -792,6 +792,12 @@ function buildBoss(v=0){
   const angle=i*Math.PI/4,beacon=add(new THREE.SphereGeometry(.105,12,8),bossCore,[Math.cos(angle)*5.25,Math.sin(angle)*3.15,.12],[0,0,0],bossGroup);
   beacon.userData.bossBeacon=i;
  }
+ // Escudo holográfico de emergencia: aparece en la tercera fase del jefe.
+ const shieldShell=new THREE.Mesh(
+  new THREE.IcosahedronGeometry(7.25,2),
+  new THREE.MeshBasicMaterial({color:colors[v],wireframe:true,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})
+ );
+ shieldShell.userData.bossShield=true;shieldShell.visible=false;bossGroup.add(shieldShell);
 }
 function syncBoss(b,width,height,now){
  if(!b){bossGroup.visible=false;return;}
@@ -803,6 +809,11 @@ function syncBoss(b,width,height,now){
  bossCore.emissiveIntensity=2.5+Math.sin(now*.012)*1.3+(b.phase===3?2:0);
  bossGroup.traverse(part=>{
   if(part.userData.bossVent!==undefined)part.material.emissiveIntensity=.45+.35*Math.sin(now*.006+part.userData.bossVent);
+  if(part.userData.bossShield){
+   part.visible=b.phase===3;
+   part.rotation.set(now*.00018,now*.00027,now*.00013);
+   part.material.opacity=b.phase===3?.10+.045*(.5+.5*Math.sin(now*.008)):.0;
+  }
  });
 }
 
