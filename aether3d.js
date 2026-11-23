@@ -162,6 +162,10 @@ const planetCloudTexture=makeCloudTexture();
 const planetaryAssetLoader=new THREE.TextureLoader();
 planetaryAssetLoader.setCrossOrigin("anonymous");
 const planetaryTextureQuality=qualityTier==="low"?"2k":"2k";
+const planetTextureFiles=["earth_daymap","mars","jupiter","saturn","venus_surface","uranus","neptune","mercury","earth_daymap","moon"];
+const planetTextureCache={};
+const planetTexturePending=new Set();
+let planetNightTexture=null;
 function configurePlanetTexture(texture){
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
@@ -172,6 +176,7 @@ function configurePlanetTexture(texture){
 }
 planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_daymap.jpg",texture=>{
   configurePlanetTexture(texture);
+  planetTextureCache[0]=texture;
   planetMaterial.map=texture;
   planetMaterial.needsUpdate=true;
 },undefined,()=>{ /* Fallback procedural ya activo. */ });
@@ -190,6 +195,7 @@ planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+
 },undefined,()=>{ /* Mantener nubes procedurales si el CDN no responde. */ });
 planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_nightmap.jpg",texture=>{
   configurePlanetTexture(texture);
+  planetNightTexture=texture;
   planetMaterial.emissive.setHex(0xffffff);
   planetMaterial.emissiveMap=texture;
   planetMaterial.emissiveIntensity=.34;
@@ -197,6 +203,17 @@ planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+
 },undefined,()=>{ /* Iluminación nocturna opcional; la superficie diurna sigue funcionando. */ });
 const planetCloudMaterial=new THREE.MeshBasicMaterial({map:planetCloudTexture,transparent:true,opacity:.68,depthWrite:false,side:THREE.FrontSide});
 let planetClouds=null,planetRingMesh=null;
+function loadPlanetEraTexture(era){
+  if(planetTextureCache[era]||planetTexturePending.has(era)||era===0)return;
+  planetTexturePending.add(era);
+  const file=planetTextureFiles[era];
+  planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_"+file+".jpg",texture=>{
+    configurePlanetTexture(texture);
+    planetTextureCache[era]=texture;
+    planetTexturePending.delete(era);
+    if(currentWorldEra===era){planetMaterial.map=texture;planetMaterial.needsUpdate=true;}
+  },undefined,()=>{planetTexturePending.delete(era); /* Conservar el último planeta disponible si falla la descarga. */});
+}
 const worldEraColors=[
   [0xc7dce9,0x42bfff,0x91b5c8],[0xb4d6d8,0x35e0d2,0x8ebeb7],
   [0xd6b8a4,0xff9a62,0xd7a17c],[0xb9a8e4,0x9b72ff,0x9c87c7],
@@ -210,8 +227,14 @@ function applyWorldEra(level){
   if(era===currentWorldEra)return;
   currentWorldEra=era;
   const colors=worldEraColors[era];
-  // La textura satelital conserva sus colores reales; la era se expresa en atmósfera y acentos.
+  // Cada bloque de diez sectores presenta un cuerpo celeste real diferente.
   planetMaterial.color.setHex(0xffffff);
+  if(planetTextureCache[era]){planetMaterial.map=planetTextureCache[era];planetMaterial.needsUpdate=true;}
+  else loadPlanetEraTexture(era);
+  planetMaterial.emissiveMap=era===0?planetNightTexture:null;
+  planetMaterial.emissiveIntensity=era===0&&planetNightTexture?.34:0;
+  if(planetClouds)planetClouds.visible=era===0;
+  if(planetRingMesh)planetRingMesh.visible=era===3;
   atmosphere.material.color.setHex(colors[1]);
   if(planetRingMaterial)planetRingMaterial.color.setHex(colors[2]);
   sectorAccentMaterial.color.setHex(colors[1]);
