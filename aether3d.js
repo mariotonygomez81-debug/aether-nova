@@ -937,7 +937,7 @@ function syncShots(items, width, height, playerX, playerY) {
     const totalDistance=Math.max(1,Number(item.aimDistance)||Math.hypot(width*.5-originX,40-originY));
     const traveled=Math.hypot(item.x-originX,item.y-originY);
     const progress=THREE.MathUtils.clamp(traveled/totalDistance,0,1);
-    const depth=-10.4-progress*96;
+    const depth=-10.4-progress*62;
     mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
     const apparent=1-progress*.18;
     // Proyectiles de plasma más contundentes y legibles desde la cabina.
@@ -982,12 +982,39 @@ function spawn3DBurst(position,color=0xff9a55,scale=1){
  const flash=new THREE.Mesh(new THREE.SphereGeometry(.32,qualityTier==="low"?10:20,qualityTier==="low"?8:14),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
  group.add(flash);group.scale.setScalar(scale);fxBursts.push({group,particles,rings,flash,life:30,maxLife:30});
 }
+function spawn3DHitEffect(position,color=0x66eaff,scale=1){
+ // Impacto de blindaje: destello compacto, un anillo de contacto y chispas cortas.
+ const maxBursts=qualityTier==="low"?2:qualityTier==="medium"?4:7;
+ while(fxBursts.length>=maxBursts){
+  const oldest=fxBursts.shift();scene.remove(oldest.group);
+  oldest.group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});
+ }
+ const group=new THREE.Group();group.position.copy(position);scene.add(group);
+ const particles=[],count=qualityTier==="low"?5:9;
+ for(let i=0;i<count;i++){
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.025+Math.random()*.035,6,5),new THREE.MeshBasicMaterial({color:i%3===0?0xffffff:color,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const angle=Math.random()*Math.PI*2,speed=.65+Math.random()*1.25;
+  group.add(mesh);particles.push({mesh,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,vz:(Math.random()-.5)*.28});
+ }
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.22,.025,6,qualityTier==="low"?16:28),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+ group.add(ring);
+ const flash=new THREE.Mesh(new THREE.SphereGeometry(.17,8,6),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+ group.add(flash);group.scale.setScalar(scale);
+ fxBursts.push({group,particles,rings:[ring],flash,life:18,maxLife:18,compact:true});
+}
 function update3DBursts(dt){
  for(let i=fxBursts.length-1;i>=0;i--){
   const fx=fxBursts[i];fx.life-=dt*60;const k=Math.max(0,fx.life/fx.maxLife),progress=1-k;
   for(const p of fx.particles){p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;p.mesh.position.z+=p.vz*dt;p.mesh.material.opacity=k;}
-  fx.rings.forEach((ring,j)=>{ring.scale.setScalar(.8+progress*(3.6+j*.8));ring.material.opacity=k*(.9-j*.18);});
-  fx.flash.scale.setScalar(.4+progress*3.8);fx.flash.material.opacity=Math.max(0,.82*(1-progress*3.2));
+  if(fx.compact){
+   fx.rings[0].scale.setScalar(.72+progress*1.45);
+   fx.rings[0].material.opacity=k*.88;
+   fx.flash.scale.setScalar(.35+progress*1.1);
+   fx.flash.material.opacity=Math.max(0,.95*(1-progress*2.2));
+  }else{
+   fx.rings.forEach((ring,j)=>{ring.scale.setScalar(.8+progress*(3.6+j*.8));ring.material.opacity=k*(.9-j*.18);});
+   fx.flash.scale.setScalar(.4+progress*3.8);fx.flash.material.opacity=Math.max(0,.82*(1-progress*3.2));
+  }
   if(fx.life<=0){scene.remove(fx.group);fx.group.traverse(o=>{o.geometry?.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});fxBursts.splice(i,1);}
  }
 }
@@ -1538,8 +1565,13 @@ function animate(now) {
         const tint=new THREE.Color(hit.color||"#7cefff");
         const fallbackDepth=hit.kind==="powerup-collected"||hit.kind==="credit-collected"?-15:-9;
         const impactDepth=Number.isFinite(hit.depth)?hit.depth:fallbackDepth;
-        const burstScale=hit.kind==="enemy-hit"?1.15:hit.kind==="asteroid-hit"?1.05:hit.kind==="powerup-collected"||hit.kind==="credit-collected"?1.35:1.0;
-        spawn3DBurst(worldPos(hit.x,hit.y,data.width,data.height,impactDepth),tint,burstScale);
+        const impactPosition=worldPos(hit.x,hit.y,data.width,data.height,impactDepth);
+        if(hit.kind==="enemy-hit"||hit.kind==="asteroid-hit"){
+          spawn3DHitEffect(impactPosition,tint,hit.kind==="enemy-hit"?.92:.82);
+        }else{
+          const burstScale=hit.kind==="powerup-collected"||hit.kind==="credit-collected"?1.15:1.0;
+          spawn3DBurst(impactPosition,tint,burstScale);
+        }
       }
     }
 
