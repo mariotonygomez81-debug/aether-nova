@@ -948,8 +948,9 @@ function syncShots(items, width, height, playerX, playerY) {
     const progress=THREE.MathUtils.clamp(traveled/totalDistance,0,1);
     const depth=-10.4-progress*96;
     mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
-    const apparent=1-progress*.58;
-    mesh.scale.setScalar(apparent);
+    const apparent=1-progress*.28;
+    // Proyectiles de plasma más contundentes y legibles desde la cabina.
+    mesh.scale.setScalar(apparent*1.85);
     // Orientación 3D según el vector real de movimiento del proyectil.
     const nextX=item.x+(Number(item.vx)||0)*2;
     const nextY=item.y+(Number(item.vy)||-1)*2;
@@ -1410,25 +1411,27 @@ function animate(now) {
   const data=window.__AETHER3D_STATE;
   if (data && data.playing) {
     // Mira móvil de cuatro ejes; el jugador puede seleccionar cualquier punto del campo.
-    const aimX=Number.isFinite(data.aimX)?data.aimX:data.width*.5;
-    const aimY=Number.isFinite(data.aimY)?data.aimY:data.height*.38;
-    aimReticle.position.copy(worldPos(aimX,aimY,data.width,data.height,-8.4));
+    // La mira queda anclada al centro del parabrisas; el piloto gira la nave,
+    // no arrastra el punto de disparo por la pantalla.
+    aimReticle.position.copy(worldPos(data.width*.5,data.height*.43,data.width,data.height,-8.4));
     const aimPulse=1+Math.sin(now*.006)*.045;
     aimReticle.scale.setScalar(aimPulse);
     aimReticle.visible=true;
     // Cada bloque de diez sectores cambia la paleta del mundo sin reconstruir geometría.
     applyWorldEra(data.level||1);
-    // Parallax ambiental sutil: da escala y profundidad sin competir con el combate.
+    // Vuelo desde cabina: los mandos rotan la nave completa y la cámara,
+    // haciendo que TODO el universo cambie de perspectiva como en un simulador.
+    const steerX=THREE.MathUtils.clamp((data.x/data.width-.5)*2,-1,1);
+    const neutralY=data.height*.79;
+    const steerY=THREE.MathUtils.clamp((neutralY-data.y)/(data.height*.30),-1,1);
+    const targetYaw=steerX*.30;
+    const targetPitch=steerY*.19;
+    const yaw=camera.userData.yaw=THREE.MathUtils.damp(camera.userData.yaw||0,targetYaw,2.8,dt);
+    const pitch=camera.userData.pitch=THREE.MathUtils.damp(camera.userData.pitch||0,targetPitch,2.8,dt);
+    camera.position.x=THREE.MathUtils.damp(camera.position.x,Math.sin(yaw)*1.9,2.8,dt);
+    camera.position.y=THREE.MathUtils.damp(camera.position.y,3.4+pitch*2.2,2.8,dt);
+    camera.lookAt(Math.sin(yaw)*7, pitch*6, -7);
     worldBody.rotation.y+=dt*.0011;
-    worldBody.position.x=THREE.MathUtils.damp(worldBody.position.x,-(data.x/data.width-.5)*1.15,1.2,dt);
-    // Rotación visible del planeta, deriva independiente de nubes y anillos orbitales.
-    planet.rotation.y+=dt*.012;
-    if(planetClouds){planetClouds.rotation.y+=dt*.019;planetClouds.rotation.z+=dt*.0018;}
-    if(planetRingMesh){planetRingMesh.rotation.z+=dt*.0045;}
-    planet.position.y=27+Math.sin(now*.00022)*.72;
-    planetClouds.position.y=planet.position.y;
-    atmosphere.position.y=planet.position.y;
-    if(planetRingMesh)planetRingMesh.position.y=planet.position.y;
     cosmicDust.rotation.z+=dt*.0007;
     const impact=window.__AETHER3D_IMPACT;
     if(impact && impact.serial!==lastImpactSerial){lastImpactSerial=impact.serial;spawn3DBurst(worldPos(impact.x,impact.y,data.width,data.height,-8),impact.color==="#55eaff"?0x55eaff:0xff684d,1.35);}
@@ -1452,7 +1455,8 @@ function animate(now) {
     ship.rotation.z=THREE.MathUtils.damp(ship.rotation.z,-(data.x-data.width/2)/(data.width/2)*.22,7,dt);
     ship.rotation.x=THREE.MathUtils.damp(ship.rotation.x,Math.sin(now*.002)*.018,3,dt);
     // Durante la invulnerabilidad la nave parpadea, pero nunca desaparece del todo.
-    ship.visible=true;
+    // La nave del jugador ya es la cabina: no dibujar el caza exterior delante del cristal.
+    ship.visible=false;
     if(ship.userData.lastInvulnerable!==!!data.invulnerable){
       ship.userData.lastInvulnerable=!!data.invulnerable;
       ship.traverse((part)=>{
@@ -1468,7 +1472,7 @@ function animate(now) {
     }
     // Escudo AEGIS: burbuja facetada y dos órbitas de plasma con pulso suave.
     const shieldPulse=1+.035*Math.sin(now*.012);
-    shield.visible=!!data.shield;
+    shield.visible=false; // El escudo se representa como indicador de cabina en primera persona.
     shield.scale.setScalar(shieldPulse);
     shield.rotation.y=now*.00042;shield.rotation.x=Math.sin(now*.0017)*.12;
     shieldRingA.rotation.z=now*.00115;shieldRingB.rotation.x=-.55+now*.00082;
@@ -1477,7 +1481,7 @@ function animate(now) {
     shieldRingB.material.opacity=.16+.2*(.5+.5*Math.sin(now*.011+1.4));
     const p2=data.coopPlayer2;
     if(p2){
-      ship2.visible=true;
+      ship2.visible=false;
       const p2Shield=ship2.getObjectByName("AETHER_PLAYER_SHIELD");
       if(p2Shield){
         p2Shield.visible=!!p2.shield;
