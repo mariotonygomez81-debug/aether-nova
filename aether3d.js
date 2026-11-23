@@ -176,11 +176,25 @@ planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+
   planetMaterial.needsUpdate=true;
 },undefined,()=>{ /* Fallback procedural ya activo. */ });
 planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_clouds.jpg",texture=>{
-  configurePlanetTexture(texture);
-  planetCloudMaterial.map=texture;
-  planetCloudMaterial.opacity=.82;
+  // El mapa de nubes es una máscara: el negro queda transparente y las nubes blancas visibles.
+  texture.colorSpace=THREE.NoColorSpace;
+  texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+  texture.minFilter=THREE.LinearMipmapLinearFilter;
+  texture.magFilter=THREE.LinearFilter;
+  texture.generateMipmaps=true;
+  planetCloudMaterial.map=null;
+  planetCloudMaterial.alphaMap=texture;
+  planetCloudMaterial.color.setHex(0xffffff);
+  planetCloudMaterial.opacity=.9;
   planetCloudMaterial.needsUpdate=true;
 },undefined,()=>{ /* Mantener nubes procedurales si el CDN no responde. */ });
+planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_nightmap.jpg",texture=>{
+  configurePlanetTexture(texture);
+  planetMaterial.emissive.setHex(0xffffff);
+  planetMaterial.emissiveMap=texture;
+  planetMaterial.emissiveIntensity=.34;
+  planetMaterial.needsUpdate=true;
+},undefined,()=>{ /* Iluminación nocturna opcional; la superficie diurna sigue funcionando. */ });
 const planetCloudMaterial=new THREE.MeshBasicMaterial({map:planetCloudTexture,transparent:true,opacity:.68,depthWrite:false,side:THREE.FrontSide});
 let planetClouds=null,planetRingMesh=null;
 const worldEraColors=[
@@ -196,7 +210,8 @@ function applyWorldEra(level){
   if(era===currentWorldEra)return;
   currentWorldEra=era;
   const colors=worldEraColors[era];
-  planetMaterial.color.setHex(colors[0]);
+  // La textura satelital conserva sus colores reales; la era se expresa en atmósfera y acentos.
+  planetMaterial.color.setHex(0xffffff);
   atmosphere.material.color.setHex(colors[1]);
   if(planetRingMaterial)planetRingMaterial.color.setHex(colors[2]);
   sectorAccentMaterial.color.setHex(colors[1]);
