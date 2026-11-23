@@ -304,3 +304,11 @@ After these checks, extend sector-specific environments and convert the validate
 - Se conservan la adquisición por disparo/contacto, los identificadores, las recompensas, el balance, la economía y la aplicación de habilidades.
 - No se modifican cuentas, Supabase, Joystick, multijugador ni progresión.
 - CI: las comprobaciones de sintaxis ES module y game.js y las salvaguardas de calidad adaptativa finalizaron correctamente; el job todavía estaba en estado in_progress al registrar esta nota. Inspección visual y medición de FPS reales pendientes.
+
+
+## Fase 12 — publicación de recursos visuales sin caché obsoleta
+- Se detectó que index.html mantenía identificadores de caché antiguos para game.js y aether3d.js, por lo que navegadores podían reutilizar versiones anteriores aunque GitHub tuviera los cambios nuevos.
+- Se actualizaron ambos parámetros de versión a power-orbs-depth-v3 para forzar la descarga de los scripts del motor y del renderizador 3D.
+- El workflow visual ahora también se activa cuando cambia index.html.
+- Esta corrección resuelve la entrega de scripts obsoletos en clientes que respetan los parámetros de URL como clave de caché. No equivale a desplegar la rama en Render ni a verificar visualmente el resultado.
+- La versión de producción y main permanecen sin cambios.
