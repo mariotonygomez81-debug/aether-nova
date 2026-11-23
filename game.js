@@ -2082,7 +2082,7 @@ function spawnPowerup() {
   const phase = Math.random() * Math.PI * 2;
   powerups.push({
     ...item, x, y, prevX:x, prevY:y,
-    aether3dId: "power-" + (++campaignPickupKills) + "-" + Math.random().toString(36).slice(2,7),
+    aether3dId: "power-" + Math.random().toString(36).slice(2,12),
     aether3dPhase:phase, depth:104 + Math.random() * 24,
     depthSpeed:.18 + Math.random() * .08,
     driftX:(Math.random()-.5)*.12, driftY:(Math.random()-.5)*.1,
