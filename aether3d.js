@@ -658,56 +658,44 @@ function getShotMaterial(color) {
 function createShotMesh(item){
   const group=new THREE.Group();
   const mats=getShotMaterial(item.color);
+  const low=qualityTier==="low";
+  const radial=low?8:16;
   if(item.type==="laser"){
-    const beam=new THREE.Mesh(new THREE.CylinderGeometry(.075,.13,2.25,16),mats.core);
-    beam.position.y=-.58;
-    group.add(beam);
-    const aura=new THREE.Mesh(new THREE.CylinderGeometry(.19,.24,2.5,16),mats.glow);
-    aura.position.y=-.58;
-    group.add(aura);
-    const tip=new THREE.Mesh(new THREE.SphereGeometry(.18,20,16),mats.shell);
-    tip.position.y=.58;
-    group.add(tip);
-  } else {
-  // Orbe de plasma compacto con tres capas luminosas concéntricas.
-  const core=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.core);
-  core.scale.setScalar(item.type==="plasma"?.34:item.missile?.24:.205);
-  group.add(core);
-  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.shell);
-  shell.scale.setScalar(item.type==="plasma"?.49:item.missile?.35:.30);
-  group.add(shell);
-  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),mats.glow);
-  halo.scale.setScalar(item.type==="plasma"?.66:item.missile?.49:.43);
-  group.add(halo);
-  // Estela continua: esferas solapadas para eliminar el efecto de puntos separados.
-  const trailSpecs=item.missile
-    ? [[.235,-.17],[.215,-.34],[.185,-.51],[.145,-.68],[.105,-.84],[.065,-.99]]
-    : [[.205,-.16],[.185,-.31],[.155,-.46],[.12,-.61],[.085,-.75],[.05,-.88]];
-  for(let i=0;i<trailSpecs.length;i++){
-    const [radius,offset]=trailSpecs[i];
-    const volume=new THREE.Mesh(
-      new THREE.SphereGeometry(1,24,18),
-      i<2?mats.shell:mats.tail
-    );
-    volume.scale.set(radius,radius*1.12,radius);
-    volume.position.y=offset;
-    volume.userData.shotTrail={radius,index:i};
-    group.add(volume);
-  }
-  // Brillo difuso central que une visualmente el orbe y la estela.
-  const bridge=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mats.glow);
-  bridge.scale.set(item.missile?.19:.16,item.missile?.53:.43,item.missile?.19:.16);
-  bridge.position.y=item.missile?-.39:-.32;
-  group.add(bridge);
-  }
-  if(item.missile){
-    const fins=new THREE.Group();
-    for(const side of [-1,1]){
-      const fin=new THREE.Mesh(new THREE.BoxGeometry(.12,.20,.035),mats.core);
-      fin.position.set(side*.22,-.02,0);
-      fins.add(fin);
+    // Haz de energía perforante: núcleo blanco, camisa cromática y punta afilada.
+    const beam=new THREE.Mesh(new THREE.CylinderGeometry(.055,.105,2.9,radial),mats.core);
+    beam.position.y=-.12;group.add(beam);
+    const aura=new THREE.Mesh(new THREE.CylinderGeometry(.16,.25,3.12,radial,1,true),mats.glow);
+    aura.position.y=-.12;group.add(aura);
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(.15,.48,radial),mats.shell);
+    tip.position.y=1.56;group.add(tip);
+    const wake=new THREE.Mesh(new THREE.ConeGeometry(.13,.72,radial,1,true),mats.tail);
+    wake.rotation.x=Math.PI;wake.position.y=-1.78;group.add(wake);
+  }else{
+    // Proyectil de plasma estilizado: punta, núcleo alargado, aro de confinamiento y estela cónica.
+    // Sustituye la silueta esférica tipo bombilla por un dardo energético direccional.
+    const plasma=item.type==="plasma", missile=!!item.missile;
+    const length=missile?1.48:plasma?1.32:1.08;
+    const width=missile?.15:plasma?.19:.135;
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(width*.56,width,length,radial,1,false),mats.core);
+    body.position.y=.02;group.add(body);
+    const sheath=new THREE.Mesh(new THREE.CylinderGeometry(width*.9,width*1.35,length*.94,radial,1,true),mats.shell);
+    sheath.position.y=.02;group.add(sheath);
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(width*1.02,missile?.46:.34,radial),mats.core);
+    tip.position.y=length*.5+.12;group.add(tip);
+    const wake=new THREE.Mesh(new THREE.ConeGeometry(width*.95,missile?1.02:.78,radial,1,true),mats.glow);
+    wake.rotation.x=Math.PI;wake.position.y=-length*.5-.28;group.add(wake);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(width*1.22,.025,6,radial*2),mats.shell);
+    ring.rotation.x=Math.PI/2;ring.position.y=-.12;group.add(ring);
+    const coreFlare=new THREE.Mesh(new THREE.SphereGeometry(width*.48,radial,Math.max(6,radial-2)),mats.shell);
+    coreFlare.position.y=length*.18;group.add(coreFlare);
+    if(missile){
+      const fins=new THREE.Group();
+      for(const side of [-1,1]){
+        const fin=new THREE.Mesh(new THREE.BoxGeometry(.11,.28,.035),mats.core);
+        fin.position.set(side*width*1.45,-.12,0);fin.rotation.z=side*.22;fins.add(fin);
+      }
+      group.add(fins);
     }
-    group.add(fins);
   }
   scene.add(group);
   shotMeshes.set(item.id,group);
