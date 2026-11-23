@@ -191,3 +191,12 @@ After these checks, extend sector-specific environments and convert the validate
 - Se mantienen coordenadas 2D para colisiones, daño, disparos, recompensas y balance; el cambio afecta al patrón de aparición y a su representación espacial.
 - Los campos de escombros que crean asteroides con coordenadas explícitas conservan su patrón especial.
 - Pendiente de pruebas manuales: comprobar entradas desde todos los bordes, legibilidad de proyectiles, solapamientos, dificultad y FPS en equipos de baja potencia.
+
+
+## Fase 16 — disparos hacia el punto de fuga y aproximación desde espacio profundo
+- Los disparos del jugador se representan como corredores de plasma en perspectiva: nacen visualmente en la nave y se reducen mientras avanzan hacia un punto de fuga a gran profundidad.
+- Los impactos siguen calculándose con las coordenadas originales del motor; la trayectoria de profundidad es exclusivamente visual para no alterar daño, cadencia, armas ni balance.
+- Los proyectiles enemigos registran su origen y profundidad de lanzamiento y recorren visualmente el trayecto desde el caza hacia el jugador, aumentando su tamaño aparente al aproximarse.
+- Asteroides y naves comienzan a profundidades mayores y reducen esa distancia gradualmente para reforzar la sensación de aproximación desde el espacio profundo.
+- Se conservan las coordenadas 2D como plano de colisión; esta fase es una proyección 3D de aproximación, no una migración completa del simulador a física 3D.
+- Verificación automática de sintaxis y salvaguardas adaptativas; quedan pendientes pruebas de combate para revisar alineación visual con impactos, trayectorias de armas especiales y rendimiento.
