@@ -35,4 +35,6 @@ jobs:
           grep -q 'asteroid-surface-details' aether3d.js
           grep -q 'sharedGeometry' aether3d.js
           grep -q 'qualityTier==="low"?1:qualityTier==="medium"?2:3' aether3d.js
+          grep -q 'AETHER_ORBITAL_STATION' aether3d.js
+          grep -q 'station-docking-ring' aether3d.js
           echo "Adaptive planetary environment, enemy, boss and asteroid detail checks passed."
