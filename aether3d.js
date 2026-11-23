@@ -119,6 +119,23 @@ function makePlanetSurface(seed,base,land,ice){
 }
 const planetTexture=makePlanetSurface(13,[34,75,105],[102,119,112],[174,202,220]);
 const planetMaterial=new THREE.MeshStandardMaterial({map:planetTexture,color:0xc7dce9,roughness:.88,metalness:.06});
+const worldEraColors=[
+  [0xc7dce9,0x42bfff,0x91b5c8],[0xb4d6d8,0x35e0d2,0x8ebeb7],
+  [0xd6b8a4,0xff9a62,0xd7a17c],[0xb9a8e4,0x9b72ff,0x9c87c7],
+  [0x9eb7d0,0x4e9dff,0x91a9d2],[0xd2c6a4,0xffd27b,0xc9b88b],
+  [0xa7c6b5,0x61e6b2,0x91bba7],[0xb9a6a6,0xff6e91,0xc18d9e],
+  [0x9eb1c4,0x62b7dc,0x8ea8bc],[0xc8b4d9,0xb18aff,0xa48cbe]
+];
+let planetRingMaterial=null, currentWorldEra=-1;
+function applyWorldEra(level){
+  const era=Math.max(0,Math.floor((Math.max(1,level)-1)/10))%worldEraColors.length;
+  if(era===currentWorldEra)return;
+  currentWorldEra=era;
+  const colors=worldEraColors[era];
+  planetMaterial.color.setHex(colors[0]);
+  atmosphere.material.color.setHex(colors[1]);
+  if(planetRingMaterial)planetRingMaterial.color.setHex(colors[2]);
+}
 const planet=new THREE.Mesh(new THREE.SphereGeometry(16.5,planetSegments,Math.max(16,planetSegments/2)),planetMaterial);
 planet.position.set(-48,25,-132);worldBody.add(planet);
 const atmosphere=new THREE.Mesh(
@@ -129,7 +146,7 @@ atmosphere.position.copy(planet.position);worldBody.add(atmosphere);
 if(qualityTier!=="low"){
   const ring=new THREE.Mesh(
     new THREE.TorusGeometry(20.1,.82,6,qualityTier==="medium"?64:112),
-    new THREE.MeshStandardMaterial({color:0x91b5c8,metalness:.42,roughness:.72,transparent:true,opacity:.52,side:THREE.DoubleSide})
+    (planetRingMaterial=new THREE.MeshStandardMaterial({color:0x91b5c8,metalness:.42,roughness:.72,transparent:true,opacity:.52,side:THREE.DoubleSide}))
   );
   ring.position.copy(planet.position);ring.rotation.set(1.19,.16,-.28);ring.scale.set(1,.72,1);worldBody.add(ring);
   const moon=new THREE.Mesh(
@@ -950,6 +967,8 @@ function animate(now) {
   const dt=Math.min(frameDelta,.05); last=now;
   const data=window.__AETHER3D_STATE;
   if (data && data.playing) {
+    // Cada bloque de diez sectores cambia la paleta del mundo sin reconstruir geometría.
+    applyWorldEra(data.level||1);
     // Parallax ambiental sutil: da escala y profundidad sin competir con el combate.
     worldBody.rotation.y+=dt*.0022;
     worldBody.position.x=THREE.MathUtils.damp(worldBody.position.x,-(data.x/data.width-.5)*2.4,1.6,dt);
