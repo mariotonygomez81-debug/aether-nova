@@ -498,8 +498,14 @@ function attachEngineFX(group,id){
 attachEngineFX(shipModel,"valkyrie");
 for(const [id,group] of Object.entries(shipVariants))attachEngineFX(group,id);
 
-const shield = new THREE.Mesh(new THREE.SphereGeometry(2.65, 24, 16), new THREE.MeshBasicMaterial({ color: 0x37dcff, wireframe: true, transparent: true, opacity: .13 }));
-shield.visible = false; ship.add(shield);
+const shield = new THREE.Mesh(new THREE.SphereGeometry(2.65, qualityTier==="low"?16:28, qualityTier==="low"?10:18), new THREE.MeshBasicMaterial({ color: 0x37dcff, wireframe: true, transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false }));
+shield.name="AETHER_PLAYER_SHIELD";
+shield.visible = false;
+const shieldRingA=new THREE.Mesh(new THREE.TorusGeometry(2.18,.035,qualityTier==="low"?4:7,qualityTier==="low"?32:64),new THREE.MeshBasicMaterial({color:0x9af7ff,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false}));
+shieldRingA.name="AETHER_SHIELD_RING_A";shieldRingA.rotation.set(.65,.25,0);shield.add(shieldRingA);
+const shieldRingB=new THREE.Mesh(new THREE.TorusGeometry(2.38,.022,qualityTier==="low"?4:6,qualityTier==="low"?32:64),new THREE.MeshBasicMaterial({color:0x37bfff,transparent:true,opacity:.3,blending:THREE.AdditiveBlending,depthWrite:false}));
+shieldRingB.name="AETHER_SHIELD_RING_B";shieldRingB.rotation.set(-.55,.8,.35);shield.add(shieldRingB);
+ship.add(shield);
 
 // Nave del segundo piloto: modelo 3D duplicado, materiales propios y firma naranja.
 const ship2 = ship.clone(true);
@@ -1228,10 +1234,28 @@ function animate(now) {
         }
       }
     });
+    // Escudo AEGIS: burbuja facetada y dos órbitas de plasma con pulso suave.
+    const shieldPulse=1+.035*Math.sin(now*.012);
     shield.visible=!!data.shield;
+    shield.scale.setScalar(shieldPulse);
+    shield.rotation.y=now*.00042;shield.rotation.x=Math.sin(now*.0017)*.12;
+    shieldRingA.rotation.z=now*.00115;shieldRingB.rotation.x=-.55+now*.00082;
+    shield.material.opacity=.12+.055*(.5+.5*Math.sin(now*.014));
+    shieldRingA.material.opacity=.25+.24*(.5+.5*Math.sin(now*.017));
+    shieldRingB.material.opacity=.16+.2*(.5+.5*Math.sin(now*.011+1.4));
     const p2=data.coopPlayer2;
     if(p2){
       ship2.visible=true;
+      const p2Shield=ship2.getObjectByName("AETHER_PLAYER_SHIELD");
+      if(p2Shield){
+        p2Shield.visible=!!p2.shield;
+        p2Shield.scale.setScalar(1+.035*Math.sin(now*.012+1.1));
+        p2Shield.rotation.y=-now*.00038;p2Shield.rotation.x=Math.sin(now*.0015+.6)*.12;
+        const ringA=p2Shield.getObjectByName("AETHER_SHIELD_RING_A"),ringB=p2Shield.getObjectByName("AETHER_SHIELD_RING_B");
+        if(ringA){ringA.rotation.z=-now*.00105;ringA.material.opacity=.25+.24*(.5+.5*Math.sin(now*.017+1));}
+        if(ringB){ringB.rotation.x=-.55-now*.00076;ringB.material.opacity=.16+.2*(.5+.5*Math.sin(now*.011));}
+        p2Shield.material.opacity=.12+.055*(.5+.5*Math.sin(now*.014+1));
+      }
       const p2ShipId=p2.selectedShip||"viper";
       ship2.children.forEach(child=>{if(child.name==="valkyrie"||shipVariants[child.name])child.visible=child.name===p2ShipId;});
       const p2Target=worldPos(p2.x,p2.y,data.width,data.height,-10);
