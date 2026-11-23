@@ -1078,13 +1078,15 @@ function buildEnemy(variant='scout'){
 // Recompensas 3D: orbes de energía cromática. Geometrías y materiales compartidos
 // para evitar recompilar shaders y crear/liberar recursos GPU en cada recogida.
 const pickupMeshes=new Map();
+const pickupGlyphCache=new Map();
 const pickupGeometry={
- shell:new THREE.SphereGeometry(1,qualityTier==="low"?12:16,qualityTier==="low"?8:12),
- core:new THREE.SphereGeometry(.43,qualityTier==="low"?10:14,qualityTier==="low"?8:10),
- nucleus:new THREE.SphereGeometry(.17,8,6),
- halo:new THREE.SphereGeometry(1.42,qualityTier==="low"?8:12,qualityTier==="low"?6:8),
- ring:new THREE.TorusGeometry(.92,.032,5,qualityTier==="low"?20:28),
- ringFine:new THREE.TorusGeometry(.68,.018,4,qualityTier==="low"?18:24)
+ shell:new THREE.SphereGeometry(1,qualityTier==="low"?12:18,qualityTier==="low"?8:14),
+ core:new THREE.SphereGeometry(.48,qualityTier==="low"?10:16,qualityTier==="low"?8:12),
+ nucleus:new THREE.SphereGeometry(.2,8,6),
+ halo:new THREE.SphereGeometry(1.58,qualityTier==="low"?8:14,qualityTier==="low"?6:10),
+ ring:new THREE.TorusGeometry(1.08,.038,5,qualityTier==="low"?20:36),
+ ringFine:new THREE.TorusGeometry(.78,.022,4,qualityTier==="low"?18:32),
+ ringOuter:new THREE.TorusGeometry(1.34,.018,4,qualityTier==="low"?18:32)
 };
 const pickupMaterialCache=new Map();
 function pickupMaterials(color){
@@ -1101,7 +1103,23 @@ function pickupMaterials(color){
  };
  pickupMaterialCache.set(key,materials);return materials;
 }
-function makePickupSphere(kind,color){
+function pickupGlyphTexture(label,color){
+ const key=(label||"✦")+"|"+(color||"#55eaff");
+ if(pickupGlyphCache.has(key))return pickupGlyphCache.get(key);
+ const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;
+ const ctx=canvas.getContext("2d");
+ const glow=color||"#55eaff";
+ ctx.clearRect(0,0,128,128);
+ ctx.shadowColor=glow;ctx.shadowBlur=24;
+ ctx.fillStyle="rgba(2,10,25,.78)";ctx.beginPath();ctx.arc(64,64,48,0,Math.PI*2);ctx.fill();
+ ctx.shadowBlur=0;ctx.strokeStyle=glow;ctx.lineWidth=4;ctx.beginPath();ctx.arc(64,64,43,0,Math.PI*2);ctx.stroke();
+ ctx.shadowColor=glow;ctx.shadowBlur=18;ctx.fillStyle="#ffffff";
+ ctx.font=(String(label||"✦").length>2?"bold 34px":"bold 62px")+" sans-serif";
+ ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(String(label||"✦"),64,66);
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=2;
+ pickupGlyphCache.set(key,texture);return texture;
+}
+function makePickupSphere(kind,color,label){
  const group=new THREE.Group(),m=pickupMaterials(color);
  const shell=new THREE.Mesh(pickupGeometry.shell,m.shell);
  const core=new THREE.Mesh(pickupGeometry.core,m.core);
@@ -1109,29 +1127,37 @@ function makePickupSphere(kind,color){
  const halo=new THREE.Mesh(pickupGeometry.halo,m.halo);
  const ring=new THREE.Mesh(pickupGeometry.ring,m.ring);
  const ringFine=new THREE.Mesh(pickupGeometry.ringFine,m.ringFine);
- ring.rotation.x=Math.PI*.34;ringFine.rotation.set(Math.PI*.34,.72,.35);
- group.add(halo,shell,core,nucleus,ring,ringFine);
- group.userData={ring,ringFine,core,nucleus,kind};
+ const ringOuter=new THREE.Mesh(pickupGeometry.ringOuter,m.ringFine);
+ const glyph=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlyphTexture(label,color),transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending}));
+ glyph.scale.set(1.12,1.12,1);glyph.position.set(0,0,1.08);glyph.renderOrder=18;
+ ring.rotation.x=Math.PI*.34;ringFine.rotation.set(Math.PI*.34,.72,.35);ringOuter.rotation.set(-Math.PI*.28,.42,-.5);
+ group.add(halo,shell,core,nucleus,ring,ringFine,ringOuter,glyph);
+ group.userData={ring,ringFine,ringOuter,core,nucleus,halo,shell,glyph,kind};
  scene.add(group);return group;
 }
 function syncPickups(powerups,coins,width,height,now){
  const alive=new Set();
  const syncOne=(item,kind,key,color)=>{
   alive.add(key);
+  const glyph=kind==="credit"?"¢":(item.label||"✦");
   let mesh=pickupMeshes.get(key);
-  if(!mesh){mesh=makePickupSphere(kind,color);pickupMeshes.set(key,mesh);}
+  if(!mesh){mesh=makePickupSphere(kind,color,glyph);pickupMeshes.set(key,mesh);}
   const itemDepth=Number.isFinite(item.depth)?item.depth:(kind==="credit"?46:42);
   mesh.position.copy(worldPos(item.x,item.y,width,height,-8-itemDepth));
-  // El orbe crece de forma perceptible al aproximarse por el eje Z.
-  const near=THREE.MathUtils.clamp(1-itemDepth/125,.58,1.32);
-  const pulse=1+Math.sin(now*.004+(item.spin||0))*.095;
-  mesh.scale.setScalar((kind==="credit"?1.5:2.05)*near*pulse);
-  mesh.rotation.y=now*.00072+(item.spin||0);
-  mesh.rotation.z=now*.00038;
-  mesh.userData.core.scale.setScalar(1+Math.sin(now*.006+(item.spin||0))*.13);
-  mesh.userData.nucleus.scale.setScalar(.82+Math.sin(now*.009)*.16);
+  // Orbes deliberadamente grandes: deben leerse como cápsulas energéticas, no como iconos 2D.
+  const near=THREE.MathUtils.clamp(1.18-itemDepth/260,.82,1.22);
+  const pulse=1+Math.sin(now*.004+(item.spin||0))*.075;
+  mesh.scale.setScalar((kind==="credit"?2.05:2.65)*near*pulse);
+  mesh.rotation.set(0,0,0);
+  mesh.userData.shell.rotation.y=now*.0009+(item.spin||0);
+  mesh.userData.core.rotation.x=now*.0015;
   mesh.userData.ring.rotation.z=-now*.00115;
   mesh.userData.ringFine.rotation.z=now*.00155;
+  mesh.userData.ringOuter.rotation.z=-now*.00072;
+  mesh.userData.core.scale.setScalar(1+Math.sin(now*.006+(item.spin||0))*.16);
+  mesh.userData.nucleus.scale.setScalar(.82+Math.sin(now*.009)*.16);
+  mesh.userData.halo.scale.setScalar(1.22+Math.sin(now*.005+(item.spin||0))*.12);
+  mesh.userData.glyph.quaternion.copy(camera.quaternion);
   mesh.visible=true;
  };
  for(const p of powerups||[])syncOne(p,"power",p.aether3dId||("power-"+p.id),p.color||"#55eaff");
