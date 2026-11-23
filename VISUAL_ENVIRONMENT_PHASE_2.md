@@ -123,3 +123,12 @@ After these checks, extend sector-specific environments and convert the validate
 - Se redujo el pixel ratio de renderizado y la carga de partículas para dispositivos integrados; perfiles: low 30 FPS/0.78, medium 36 FPS/0.95, high 45 FPS/1.15, ultra 50 FPS/1.35 (el renderer aplica además sus propios topes).
 - No se modificaron simulación, colisiones, hitboxes, daño, progresión, cuentas, Supabase ni contratos de Joystick/multijugador.
 - Verificación automática y pruebas visuales manuales pendientes para este commit. Se requiere revisar especialmente el contorno de las alas, la textura planetaria y la fluidez en el equipo Celeron/UHD 600.
+
+
+## Fase 9 — rediseño de planeta Exodus
+- Se reemplazó la textura azul difusa por una superficie planetaria con océanos profundos, plataformas costeras turquesas, continentes verdes/ocres, tierras altas y nubes.
+- La máscara de continentes combina ruido fractal de baja frecuencia y detalle regional para evitar manchas borrosas sin rasgos geográficos.
+- Resolución adaptativa contenida para no repetir el problema de rendimiento: low 192×96, medium 256×128, high/ultra 384×192.
+- Se mantiene el planeta como elemento ambiental sin colisiones ni cambios de gameplay.
+- El cambio responde directamente a la captura del usuario: el planeta anterior se veía pixelado, sin continentes definidos y con coloración uniforme.
+- Pendiente: comprobar visualmente la composición y el coste de arranque en navegador, especialmente con Intel UHD 600.
