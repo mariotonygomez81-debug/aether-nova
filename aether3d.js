@@ -1135,9 +1135,9 @@ function makePickupSphere(kind,color,label){
  const ringFine=new THREE.Mesh(pickupGeometry.ringFine,m.ringFine);
  const ringOuter=new THREE.Mesh(pickupGeometry.ringOuter,m.ringFine);
  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlowTexture(color),transparent:true,opacity:.9,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));
- glow.scale.set(10.5,10.5,1);glow.position.set(0,0,-.65);glow.renderOrder=17;
+ glow.scale.set(3.2,3.2,1);glow.position.set(0,0,-.65);glow.renderOrder=17;
  const glyph=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlyphTexture(label,color),transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));
- glyph.scale.set(2.15,2.15,1);glyph.position.set(0,0,1.35);glyph.renderOrder=19;
+ glyph.scale.set(.92,.92,1);glyph.position.set(0,0,1.05);glyph.renderOrder=19;
  ring.rotation.x=Math.PI*.34;ringFine.rotation.set(Math.PI*.34,.72,.35);ringOuter.rotation.set(-Math.PI*.28,.42,-.5);
  group.add(glow,halo,shell,core,nucleus,ring,ringFine,ringOuter,glyph);
  for(const part of group.children){part.renderOrder=part===glow?17:part===glyph?19:18;if(part.material){part.material.depthTest=false;part.material.depthWrite=false;if("toneMapped" in part.material)part.material.toneMapped=false;}}
@@ -1154,12 +1154,12 @@ function syncPickups(powerups,coins,width,height,now){
   if(!mesh){mesh=makePickupSphere(kind,color,glyph);pickupMeshes.set(key,mesh);}
   const itemDepth=Number.isFinite(item.depth)?item.depth:(kind==="credit"?46:42);
   mesh.position.copy(worldPos(item.x,item.y,width,height,-8-itemDepth));
-  // Orbes deliberadamente grandes: deben leerse como cápsulas energéticas, no como iconos 2D.
-  const near=THREE.MathUtils.clamp(1.24-itemDepth/320,.92,1.28);
+  // Orbes compactos: silueta legible y halo contenido para no tapar el combate.
+  const near=THREE.MathUtils.clamp(1.08-itemDepth/420,.88,1.12);
   const pulse=1+Math.sin(now*.004+(item.spin||0))*.09;
-  mesh.scale.setScalar((kind==="credit"?4.05:4.85)*near*pulse);
+  mesh.scale.setScalar((kind==="credit"?1.08:1.32)*near*pulse);
   mesh.userData.glow.material.opacity=.72+.2*(.5+.5*Math.sin(now*.006+(item.spin||0)));
-  mesh.userData.glow.scale.setScalar((kind==="credit"?11.5:13.5)*near);
+  mesh.userData.glow.scale.setScalar((kind==="credit"?2.65:3.15)*near);
   mesh.rotation.set(0,0,0);
   mesh.userData.shell.rotation.y=now*.0009+(item.spin||0);
   mesh.userData.core.rotation.x=now*.0015;
