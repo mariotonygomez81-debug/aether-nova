@@ -232,7 +232,7 @@ function applyWorldEra(level){
   if(planetTextureCache[era]){planetMaterial.map=planetTextureCache[era];planetMaterial.needsUpdate=true;}
   else loadPlanetEraTexture(era);
   planetMaterial.emissiveMap=era===0?planetNightTexture:null;
-  planetMaterial.emissiveIntensity=era===0&&planetNightTexture?.34:0;
+  planetMaterial.emissiveIntensity=era===0&&planetNightTexture ? .34 : 0;
   if(planetClouds)planetClouds.visible=era===0;
   if(planetRingMesh)planetRingMesh.visible=era===3;
   atmosphere.material.color.setHex(colors[1]);
