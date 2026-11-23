@@ -2761,7 +2761,8 @@ function updateAndDraw() {
       })),
       enemies: enemies.filter(e => !e.dead).map(e => ({
         id: e.aether3dId || (e.aether3dId = "enemy-" + (e._aether3dId || (e._aether3dId = Math.random().toString(36).slice(2)))),
-        x: e.x, y: e.y, radius: e.radius, variant: e.variant, age: e.age || 0
+        x: e.x, y: e.y, radius: e.radius, variant: e.variant, age: e.age || 0,
+        hp: e.hp
       })),
       boss: boss && !boss.dead ? {
         x: boss.x, y: boss.y, radius: boss.radius, variant: boss.variant,
