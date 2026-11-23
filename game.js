@@ -1580,7 +1580,7 @@ class Asteroid {
     const margin = Math.max(28, radius + 8);
     this.x = x ?? (edge === 0 ? -margin : edge === 1 ? W + margin : Math.random() * (W - 60) + 30);
     this.y = y ?? (edge === 2 ? -margin : edge === 3 ? H + margin : Math.random() * H * .72 + H * .08);
-    this.depth = Math.random() * 13;
+    this.depth = x == null && y == null ? 28 + Math.random() * 34 : 8 + Math.random() * 8;
     const dx = targetX - this.x, dy = targetY - this.y;
     const angle = Math.atan2(dy, dx);
     if (kind === "shooting_star") {
@@ -1611,6 +1611,7 @@ class Asteroid {
 
     this.x += this.vx;
     this.y += this.vy;
+    this.depth = Math.max(0, (this.depth || 0) - (this.kind === 'shooting_star' ? .34 : .16));
     this.rot += this.rotSpeed;
     if (this.hitFlash > 0) this.hitFlash--;
 
@@ -1678,7 +1679,7 @@ class EnemyShip {
     this.vx = Math.cos(entryAngle) * entrySpeed;
     this.vy = Math.sin(entryAngle) * entrySpeed;
     this.entryFrames = Math.min(300, Math.ceil(Math.hypot(targetX - this.x, targetY - this.y) / entrySpeed) + 8);
-    this.depth = 3 + Math.random() * 12;
+    this.depth = 34 + Math.random() * 34;
     this.radius = (variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16) * 1.35;
     // Resistencia enemiga con crecimiento suave durante los 100 sectores.
     const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
@@ -1699,6 +1700,7 @@ class EnemyShip {
       this.entryFrames--;
       this.x += this.vx;
       this.y += this.vy;
+      this.depth = Math.max(0, this.depth - .24);
       // Suaviza el ingreso y evita que una nave aparezca quieta en una fila.
       if (this.entryFrames === 0) {
         this.vx *= .72;
@@ -2782,7 +2784,7 @@ function updateAndDraw() {
       })),
       asteroids: asteroids.filter(a => !a.dead).map(a => ({
         id: a.aether3dId, x: a.x, y: a.y, radius: a.radius, kind: a.kind,
-        rot: a.rot, hitFlash: a.hitFlash, depth: Math.min(18, Math.max(0, a.radius * 0.12)),
+        rot: a.rot, hitFlash: a.hitFlash, depth: Number.isFinite(a.depth) ? a.depth : 12,
         sx: a.kind === "magnetic" ? 1.15 : 1, sy: a.kind === "shooting_star" ? .72 : 1,
         sz: a.kind === "shooting_star" ? .72 : 1
       })),
