@@ -1045,7 +1045,11 @@ function syncEnemies(items,width,height){
   alive.add(item.id);
   let mesh=enemyMeshes.get(item.id);
   if(!mesh){mesh=buildEnemy(item.variant);scene.add(mesh);enemyMeshes.set(item.id,mesh);}
-  mesh.position.copy(worldPos(item.x,item.y,width,height,-11));
+  const enemyZ = -7 - (Number.isFinite(item.depth) ? item.depth : 5);
+  mesh.position.copy(worldPos(item.x,item.y,width,height,enemyZ));
+  // Perspectiva real: los cazas lejanos son menores y crecen al acercarse.
+  const enemyDepth = camera.position.z - enemyZ;
+  const enemyWorldPerPixel = (2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*enemyDepth)/height;
   // Feedback de impactos: comparar HP entre fotogramas, sin intervenir en el daño real.
   if(Number.isFinite(item.hp)){
    const previousHp=mesh.userData.lastHp;
@@ -1065,15 +1069,17 @@ function syncEnemies(items,width,height){
     }
    });
   }
-  mesh.rotation.z=Math.sin((item.age||0)*.04)*.035;
+  mesh.rotation.set(
+   THREE.MathUtils.clamp(-(item.vy||0)*.012,-.22,.22),
+   THREE.MathUtils.clamp((item.vx||0)*.035,-.42,.42),
+   Math.sin((item.age||0)*.04)*.035
+  );
   mesh.traverse(part=>{if(part.userData.enemyFlame){const pulse=.82+.2*Math.sin((item.age||0)*.22);part.scale.set(1,pulse,1);part.material.opacity=.26+.2*pulse;}});
   // El modelo 3D respeta el tamaño del hitbox 2D; antes era mucho más ancho
   // que su radio lógico y daba la impresión de que los disparos lo atravesaban.
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
-  const depth = camera.position.z - (-11);
-  const worldPerPixel = (2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*depth)/height;
   const targetWidth = item.radius * 2 * 1.42;
-  const visualScale = THREE.MathUtils.clamp((targetWidth*worldPerPixel)/modelWidth,.22,.72);
+  const visualScale = THREE.MathUtils.clamp((targetWidth*enemyWorldPerPixel)/modelWidth,.18,.82);
   mesh.scale.setScalar(visualScale);
  }
  for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,1.15);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
