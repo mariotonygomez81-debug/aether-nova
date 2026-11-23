@@ -181,3 +181,13 @@ After these checks, extend sector-specific environments and convert the validate
 - Si una descarga falla, se conserva el último mapa disponible y el juego continúa sin bloquear la simulación.
 - La progresión, enemigos, colisiones, daño y recompensas no cambian; la variación es exclusivamente visual.
 - Los mapas se distribuyen bajo CC BY 4.0; se mantiene la atribución a Solar System Scope.
+
+
+## Fase 15 — entradas espaciales multidireccionales
+- Asteroides y estrellas fugaces sin coordenadas explícitas aparecen desde bordes laterales, superior o inferior, con trayectorias vectoriales hacia la zona de combate.
+- Los cazas enemigos entran desde cuatro bordes, con aproximación diagonal y transición a su patrón de combate habitual.
+- Cada objeto recibe una profundidad 3D individual; el renderer proyecta su posición con la cámara perspectiva y escala según distancia.
+- Los cazas inclinan su actitud según el vector de movimiento y conservan el tamaño relativo a su hitbox lógico.
+- Se mantienen coordenadas 2D para colisiones, daño, disparos, recompensas y balance; el cambio afecta al patrón de aparición y a su representación espacial.
+- Los campos de escombros que crean asteroides con coordenadas explícitas conservan su patrón especial.
+- Pendiente de pruebas manuales: comprobar entradas desde todos los bordes, legibilidad de proyectiles, solapamientos, dificultad y FPS en equipos de baja potencia.
