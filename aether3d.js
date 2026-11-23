@@ -135,6 +135,7 @@ function applyWorldEra(level){
   planetMaterial.color.setHex(colors[0]);
   atmosphere.material.color.setHex(colors[1]);
   if(planetRingMaterial)planetRingMaterial.color.setHex(colors[2]);
+  sectorAccentMaterial.color.setHex(colors[1]);
 }
 const planet=new THREE.Mesh(new THREE.SphereGeometry(16.5,planetSegments,Math.max(16,planetSegments/2)),planetMaterial);
 planet.position.set(-48,25,-132);worldBody.add(planet);
@@ -217,6 +218,70 @@ const cosmicDust=new THREE.Points(dustGeometry,new THREE.PointsMaterial({
   sizeAttenuation:true,depthWrite:false,blending:THREE.AdditiveBlending
 }));
 environment.add(cosmicDust);
+
+environment.add(cosmicDust);
+
+// AETHER NOVA — arquitectura ambiental sectorial y arena de jefes.
+// Todo este conjunto permanece detrás de la zona de combate y es decorativo.
+const sectorAccentMaterial=new THREE.MeshBasicMaterial({color:0x55cfff,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false});
+const wreckageMaterial=new THREE.MeshStandardMaterial({color:0x34485c,metalness:.78,roughness:.62});
+const wreckageDarkMaterial=new THREE.MeshStandardMaterial({color:0x101a2b,metalness:.72,roughness:.72});
+const sectorStructures=new THREE.Group();
+sectorStructures.name="AETHER_SECTOR_WRECKAGE";
+environment.add(sectorStructures);
+function addWreckageCluster(x,y,z,rotation,scale=1){
+  const cluster=new THREE.Group();
+  const core=new THREE.Mesh(new THREE.BoxGeometry(5.8,.72,1.15),wreckageDarkMaterial);
+  core.rotation.z=.16;cluster.add(core);
+  for(let side of [-1,1]){
+    const wing=new THREE.Mesh(new THREE.BoxGeometry(2.8,.24,.9),wreckageMaterial);
+    wing.position.set(side*3.25,.08,.12);wing.rotation.z=side*.34;cluster.add(wing);
+    const brokenEdge=new THREE.Mesh(new THREE.ConeGeometry(.38,1.55,5),wreckageDarkMaterial);
+    brokenEdge.position.set(side*4.65,.02,.2);brokenEdge.rotation.z=side*1.1;cluster.add(brokenEdge);
+    const seam=new THREE.Mesh(new THREE.BoxGeometry(1.6,.045,.07),sectorAccentMaterial);
+    seam.position.set(side*2.3,.42,.05);cluster.add(seam);
+  }
+  for(let i=0;i<3;i++){
+    const rib=new THREE.Mesh(new THREE.BoxGeometry(.12,.82,.18),wreckageMaterial);
+    rib.position.set(-1.4+i*1.4,.12,.22);cluster.add(rib);
+  }
+  cluster.position.set(x,y,z);cluster.rotation.z=rotation;cluster.scale.setScalar(scale);
+  sectorStructures.add(cluster);
+}
+addWreckageCluster(-61,-13,-96,.34,.82);
+addWreckageCluster(58,18,-142,-.48,1.12);
+addWreckageCluster(4,-31,-184,.12,.68);
+
+// Campo energético lejano por sector: un marco amplio, sin hitbox ni interacción.
+const sectorGate=new THREE.Group();
+sectorGate.name="AETHER_SECTOR_ENERGY_FIELD";
+const gateRing=new THREE.Mesh(new THREE.TorusGeometry(13,.16,8,96),sectorAccentMaterial);
+gateRing.rotation.x=.22;sectorGate.add(gateRing);
+const gateInner=new THREE.Mesh(new THREE.TorusGeometry(11.8,.045,5,80),sectorAccentMaterial);
+gateInner.rotation.x=.22;sectorGate.add(gateInner);
+for(let i=0;i<6;i++){
+  const angle=i*Math.PI/3;
+  const pylon=new THREE.Mesh(new THREE.BoxGeometry(.42,3.4,.48),wreckageMaterial);
+  pylon.position.set(Math.cos(angle)*13,Math.sin(angle)*13,0);
+  pylon.rotation.z=angle+Math.PI/2;sectorGate.add(pylon);
+}
+sectorGate.position.set(2,4,-178);sectorGate.scale.set(1.15,.82,1);
+environment.add(sectorGate);
+
+// Arena visual de jefes: anillos y balizas tras el modelo, nunca sobre el área de disparo.
+const bossArena=new THREE.Group();
+bossArena.name="AETHER_BOSS_ARENA";
+const bossArenaRingMat=new THREE.MeshBasicMaterial({color:0xff4c9a,transparent:true,opacity:.25,blending:THREE.AdditiveBlending,depthWrite:false});
+const bossArenaRing=new THREE.Mesh(new THREE.TorusGeometry(10.5,.12,6,112),bossArenaRingMat);
+bossArenaRing.rotation.x=Math.PI/2.15;bossArena.add(bossArenaRing);
+const bossArenaInner=new THREE.Mesh(new THREE.TorusGeometry(8.8,.045,5,96),bossArenaRingMat);
+bossArenaInner.rotation.x=Math.PI/2.15;bossArena.add(bossArenaInner);
+for(let i=0;i<8;i++){
+  const a=i*Math.PI/4;
+  const beacon=new THREE.Mesh(new THREE.BoxGeometry(.22,1.8,.22),bossArenaRingMat);
+  beacon.position.set(Math.cos(a)*10.5,Math.sin(a)*7.8,0);beacon.rotation.z=a;bossArena.add(beacon);
+}
+bossArena.visible=false;scene.add(bossArena);
 
 // Modelo 3D del jugador y catálogo de naves seleccionables.
 const ship = new THREE.Group(); scene.add(ship);
@@ -903,9 +968,10 @@ function buildBoss(v=0){
  shieldShell.userData.bossShield=true;shieldShell.visible=false;bossGroup.add(shieldShell);
 }
 function syncBoss(b,width,height,now){
- if(!b){bossGroup.visible=false;return;}
+ if(!b){bossGroup.visible=false;bossArena.visible=false;return;}
  if(currentBossVariant!==b.variant){currentBossVariant=b.variant;buildBoss(b.variant);}
  bossGroup.visible=true;bossGroup.position.copy(worldPos(b.x,b.y,width,height,-10));
+ bossArena.visible=true;bossArena.position.copy(worldPos(b.x,b.y,width,height,-16));bossArena.scale.setScalar(Math.max(.72,b.radius/58));bossArenaRing.rotation.z=now*.00012;bossArenaInner.rotation.z=-now*.00018;bossArenaRingMat.color.setHex(worldEraColors[currentWorldEra][1]);
  bossGroup.scale.setScalar(Math.max(.85,b.radius/52));
  bossGroup.rotation.y=Math.sin(now*.001)*.08;bossGroup.rotation.z=Math.sin(now*.002)*.035;
  bossGroup.traverse(part=>{if(part.userData.bossHalo!==undefined)part.rotation.z=now*.00035*(part.userData.bossHalo%2?-1:1);if(part.userData.bossBeacon!==undefined)part.material.emissiveIntensity=1.4+Math.sin(now*.009+part.userData.bossBeacon)*.8;});
@@ -1197,7 +1263,7 @@ function animate(now) {
     syncBoss(data.boss, data.width, data.height, now);
     syncPhenomena(data.phenomena, data.width, data.height, now);
   } else {
-    ship.visible=false; ship2.visible=false; shield.visible=false; bossGroup.visible=false;
+    ship.visible=false; ship2.visible=false; shield.visible=false; bossGroup.visible=false; bossArena.visible=false;
     for (const mesh of asteroidMeshes.values()) mesh.visible=false;
     for (const mesh of shotMeshes.values()) mesh.visible=false;
     for (const mesh of enemyShotMeshes.values()) mesh.visible=false;
