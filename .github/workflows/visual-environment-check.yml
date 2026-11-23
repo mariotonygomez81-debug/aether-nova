@@ -52,7 +52,10 @@ jobs:
           grep -q 'pickupGlowTexture' aether3d.js
           grep -q 'kind==="credit"?.54:.68' aether3d.js
           grep -q 'kind==="credit"?1.02:1.18' aether3d.js
-          grep -q 'pickup-energy-spheres-v3' index.html
+          grep -q 'projectile-contact-alignment-v1' index.html
+          grep -q 'contactX=e.x+nx/norm' game.js
+          grep -q 'contactX=a.x+nx/norm' game.js
+          grep -q 'const ahead=worldPos(nextX,nextY,width,height,depth)' aether3d.js
           grep -q 'pickup-energy-spheres-v2' index.html
           grep -q 'pickup-orbs-balanced-v1' index.html
           grep -q 'powerup-collected",-8-' game.js
