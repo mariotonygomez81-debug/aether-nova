@@ -478,6 +478,11 @@ let boss = null;
 let phenomena = [];
 let powerups = [];
 let creditCoins = [];
+function publishAether3DImpact(x,y,color="#7cefff",kind="hit"){
+  const queue=window.__AETHER3D_IMPACTS||(window.__AETHER3D_IMPACTS=[]);
+  queue.push({x,y,color,kind,serial:(window.__AETHER3D_IMPACT_SERIAL=(window.__AETHER3D_IMPACT_SERIAL||0)+1)});
+  if(queue.length>16)queue.splice(0,queue.length-16);
+}
 let campaignPickupKills = 0;
 let campaignPickupIndex = 0;
 let particles = [];
@@ -1096,9 +1101,7 @@ class Player {
     // Señal audiovisual inmediata: el jugador siempre percibe el contacto.
     state.shake = Math.max(state.shake, 10);
     state.flash = Math.max(state.flash, .22);
-    const priorImpact = window.__AETHER3D_IMPACT || { serial: 0 };
-    window.__AETHER3D_IMPACT = { serial: priorImpact.serial + 1, x: this.x, y: this.y,
-      color: this.buffs.shield > 0 || this.permanentShieldCharges > 0 ? "#55eaff" : "#ff684d" };
+    publishAether3DImpact(this.x,this.y,this.buffs.shield > 0 || this.permanentShieldCharges > 0 ? "#55eaff" : "#ff684d","player-hit");
     spawnImpactBurst(this.x, this.y, this.buffs.shield > 0 || this.permanentShieldCharges > 0 ? "#55eaff" : "#ff684d", IS_LOW_POWER ? 8 : 15);
     if (this.permanentShieldCharges > 0) {
       this.permanentShieldCharges--;
@@ -2892,6 +2895,7 @@ function updateAndDraw() {
         if (b.pierce > 0) b.pierce--; else b.dead = true;
         a.hp -= b.dmg;
         a.hitFlash = 12;
+        publishAether3DImpact(b.x,b.y,a.kind==="magnetic"?"#70e7ff":"#ffd27a","asteroid-hit");
         spawnImpactBurst(b.x, b.y, a.kind === "magnetic" ? "#70e7ff" : "#ffd27a", IS_LOW_POWER ? 3 : 6);
         SoundFX.play("targetHit");
         if (a.hp <= 0) {
@@ -2939,6 +2943,7 @@ function updateAndDraw() {
       if (distance < e.radius + (b.missile ? 13 : b.type === "laser" ? 18 : b.type === "plasma" ? 14 : 11)) {
         if (b.pierce > 0) b.pierce--; else b.dead = true;
         e.hp -= b.dmg;
+        publishAether3DImpact(b.x,b.y,e.variant==="carrier"?"#b18aff":e.variant==="bomber"?"#ffbd65":"#ff6f9d","enemy-hit");
         spawnImpactBurst(b.x, b.y, "#ff8bc8", IS_LOW_POWER ? 3 : 6);
         SoundFX.play("targetHit");
         if (e.hp <= 0) {
@@ -3016,6 +3021,7 @@ function updateAndDraw() {
 
     // Moneda dorada visible: brillo, canto y símbolo de crédito.
     const squash = Math.max(0.22, Math.abs(Math.cos(coin.spin)));
+    if(!window.__AETHER3D_ACTIVE){
     ctx.save();
     ctx.translate(coin.x, coin.y);
     ctx.shadowBlur = 17;
@@ -3038,9 +3044,10 @@ function updateAndDraw() {
     ctx.textBaseline = "middle";
     ctx.fillText(String(coin.amount), 0, 0);
     ctx.restore();
+    }
 
     const coinShot=bullets.find(b=>!b.dead&&Math.hypot(b.x-coin.x,b.y-coin.y)<22);
-    if(coinShot&&!coin.dead){coinShot.dead=true;coin.dead=true;awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");SoundFX.play("powerup");addFloatingText(coin.x,coin.y-20,`+${coin.amount} CRÉDITOS`,"#ffd34e");}
+    if(coinShot&&!coin.dead){coinShot.dead=true;coin.dead=true;publishAether3DImpact(coin.x,coin.y,"#ffd45c","credit-collected");awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");SoundFX.play("powerup");addFloatingText(coin.x,coin.y-20,`+${coin.amount} CRÉDITOS`,"#ffd34e");}
     if (!coin.dead && (Math.hypot(coin.x-player.x,coin.y-player.y)<player.radius+15 || (player2&&player2.lives>0&&Math.hypot(coin.x-player2.x,coin.y-player2.y)<player2.radius+15))) {
       coin.dead=true;awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");SoundFX.play("powerup");addFloatingText(coin.x,coin.y-20,`+${coin.amount} CRÉDITOS`,"#ffd34e");
     }
@@ -3054,7 +3061,7 @@ function updateAndDraw() {
     p.depth = Math.max(8,(p.depth||58)-.018);
     if (p.y > H + 30) p.dead = true;
 
-    if (p.meteor) {
+    if (!window.__AETHER3D_ACTIVE && p.meteor) {
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(-0.32);
@@ -3070,17 +3077,19 @@ function updateAndDraw() {
       ctx.moveTo(0, -13); ctx.lineTo(12, 0); ctx.lineTo(0, 13); ctx.lineTo(-12, 0);
       ctx.closePath(); ctx.fill();
       ctx.restore();
-    } else {
+    } else if(!window.__AETHER3D_ACTIVE) {
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = "#050711";
-    ctx.font = "bold 13px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(p.label, p.x, p.y);
+    if(!window.__AETHER3D_ACTIVE){
+      ctx.fillStyle = "#050711";
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(p.label, p.x, p.y);
+    }
 
     if (!p.dead) {
       // Colisión barrida: comprueba el recorrido relativo entre dos frames, no solo la posición final.
@@ -3092,7 +3101,7 @@ function updateAndDraw() {
       const t = lengthSq > 0 ? Math.max(0, Math.min(1, -(sx * vx + sy * vy) / lengthSq)) : 0;
       const closest = Math.hypot(sx + vx * t, sy + vy * t);
       const plasmaHit=bullets.find(b=>!b.dead&&Math.hypot(b.x-p.x,b.y-p.y)<22);
-      if(plasmaHit){plasmaHit.dead=true;p.dead=true;applyPowerup(p,player);addFloatingText(p.x,p.y-24,p.text||"PODER ADQUIRIDO",p.color||"#55eaff");SoundFX.play("powerup");}
+      if(plasmaHit){plasmaHit.dead=true;p.dead=true;publishAether3DImpact(p.x,p.y,p.color||"#55eaff","powerup-collected");applyPowerup(p,player);addFloatingText(p.x,p.y-24,p.text||"PODER ADQUIRIDO",p.color||"#55eaff");SoundFX.play("powerup");}
       else if (closest < player.radius + 14) {p.dead=true;applyPowerup(p,player);}
       else if(player2&&player2.lives>0){
         const sx2=(p.prevX??p.x)-(player2.prevX??player2.x),sy2=(p.prevY??p.y)-(player2.prevY??player2.y),ex2=p.x-player2.x,ey2=p.y-player2.y,vx2=ex2-sx2,vy2=ey2-sy2,len2=vx2*vx2+vy2*vy2,t2=len2>0?Math.max(0,Math.min(1,-(sx2*vx2+sy2*vy2)/len2)):0;
