@@ -332,3 +332,12 @@ After these checks, extend sector-specific environments and convert the validate
 - Los impactos al recoger potenciadores/créditos ahora se sitúan en la misma profundidad del orbe, en lugar de usar un plano genérico lejano.
 - Se aumentó de nuevo la escala visual de los cazas enemigos sin cambiar hitboxes ni balance.
 - CI automática pendiente. La vista previa Render continúa configurada para la rama de desarrollo; verificar su commit publicado antes de pruebas visuales.
+
+
+## Fase 15 — tamaño moderado de orbes de recompensa
+- Se reduce de forma marcada la escala física de los coleccionables: poderes a una base de 1.32 y créditos a 1.08, con variación de profundidad más contenida.
+- Se reduce el billboard de resplandor a 3.15/2.65 y el glifo frontal a 0.92 para mantener la identificación sin cubrir el campo de combate.
+- Se conservan el color por habilidad, núcleo, órbitas, recogida por disparo/contacto, profundidad, recompensas y materiales/geometrías compartidos.
+- No se alteran daño, colisiones, cadencia, economía, progresión ni servicios online.
+- Se invalida la caché de game.js y aether3d.js con pickup-orbs-balanced-v1.
+- La reducción se orienta a recuperar proporción visual: orbes claramente menores que cazas y objetivos, con halo próximo a su silueta.
