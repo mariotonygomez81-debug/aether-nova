@@ -720,15 +720,22 @@ function syncShots(items, width, height) {
 const fxBursts=[];
 let lastImpactSerial=0;
 function spawn3DBurst(position,color=0xff9a55,scale=1){
+ // Limitar simultaneidad para evitar picos de draw calls en equipos modestos.
+ const maxBursts=qualityTier==="low"?2:qualityTier==="medium"?4:7;
+ while(fxBursts.length>=maxBursts){
+  const oldest=fxBursts.shift();scene.remove(oldest.group);
+  oldest.group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});
+ }
  const group=new THREE.Group();group.position.copy(position);scene.add(group);const particles=[];
- for(let i=0;i<30;i++){
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.035+Math.random()*.085,8,6),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+ const particleCount=qualityTier==="low"?10:qualityTier==="medium"?18:30;
+ for(let i=0;i<particleCount;i++){
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.035+Math.random()*.085,qualityTier==="low"?6:8,qualityTier==="low"?4:6),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
   const u=Math.random()*2-1,angle=Math.random()*Math.PI*2,q=Math.sqrt(1-u*u),v=.85+Math.random()*3.2;
   group.add(mesh);particles.push({mesh,vx:Math.cos(angle)*q*v,vy:u*v,vz:Math.sin(angle)*q*v});
  }
  const rings=[];
- for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(.3+i*.12,.035-i*.006,8,40),new THREE.MeshBasicMaterial({color:i===1?0xffffff:color,transparent:true,opacity:.92-i*.16,blending:THREE.AdditiveBlending,depthWrite:false}));ring.rotation.set(i*.78,Math.PI/2.3+i*.52,i*.6);group.add(ring);rings.push(ring);}
- const flash=new THREE.Mesh(new THREE.SphereGeometry(.32,20,14),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
+ for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(.3+i*.12,.035-i*.006,qualityTier==="low"?5:8,qualityTier==="low"?20:40),new THREE.MeshBasicMaterial({color:i===1?0xffffff:color,transparent:true,opacity:.92-i*.16,blending:THREE.AdditiveBlending,depthWrite:false}));ring.rotation.set(i*.78,Math.PI/2.3+i*.52,i*.6);group.add(ring);rings.push(ring);}
+ const flash=new THREE.Mesh(new THREE.SphereGeometry(.32,qualityTier==="low"?10:20,qualityTier==="low"?8:14),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
  group.add(flash);group.scale.setScalar(scale);fxBursts.push({group,particles,rings,flash,life:30,maxLife:30});
 }
 function update3DBursts(dt){
