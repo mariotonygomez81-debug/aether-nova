@@ -478,10 +478,10 @@ let boss = null;
 let phenomena = [];
 let powerups = [];
 let creditCoins = [];
-function publishAether3DImpact(x,y,color="#7cefff",kind="hit"){
+function publishAether3DImpact(x,y,color="#7cefff",kind="hit",depth=null){
   const queue=window.__AETHER3D_IMPACTS||(window.__AETHER3D_IMPACTS=[]);
-  queue.push({x,y,color,kind,serial:(window.__AETHER3D_IMPACT_SERIAL=(window.__AETHER3D_IMPACT_SERIAL||0)+1)});
-  if(queue.length>16)queue.splice(0,queue.length-16);
+  queue.push({x,y,color,kind,depth:Number.isFinite(depth)?depth:null,serial:(window.__AETHER3D_IMPACT_SERIAL=(window.__AETHER3D_IMPACT_SERIAL||0)+1)});
+  if(queue.length>24)queue.splice(0,queue.length-24);
 }
 let campaignPickupKills = 0;
 let campaignPickupIndex = 0;
@@ -2904,7 +2904,7 @@ function updateAndDraw() {
         if (b.pierce > 0) b.pierce--; else b.dead = true;
         a.hp -= b.dmg;
         a.hitFlash = 12;
-        publishAether3DImpact(b.x,b.y,a.kind==="magnetic"?"#70e7ff":"#ffd27a","asteroid-hit");
+        publishAether3DImpact(b.x,b.y,a.kind==="magnetic"?"#70e7ff":"#ffd27a","asteroid-hit",-5-(Number.isFinite(a.depth)?a.depth:12));
         spawnImpactBurst(b.x, b.y, a.kind === "magnetic" ? "#70e7ff" : "#ffd27a", IS_LOW_POWER ? 3 : 6);
         SoundFX.play("targetHit");
         if (a.hp <= 0) {
@@ -2952,7 +2952,7 @@ function updateAndDraw() {
       if (distance < e.radius + (b.missile ? 13 : b.type === "laser" ? 18 : b.type === "plasma" ? 14 : 11)) {
         if (b.pierce > 0) b.pierce--; else b.dead = true;
         e.hp -= b.dmg;
-        publishAether3DImpact(b.x,b.y,e.variant==="carrier"?"#b18aff":e.variant==="bomber"?"#ffbd65":"#ff6f9d","enemy-hit");
+        publishAether3DImpact(b.x,b.y,e.variant==="carrier"?"#b18aff":e.variant==="bomber"?"#ffbd65":"#ff6f9d","enemy-hit",-7-(Number.isFinite(e.depth)?e.depth:5));
         spawnImpactBurst(b.x, b.y, "#ff8bc8", IS_LOW_POWER ? 3 : 6);
         SoundFX.play("targetHit");
         if (e.hp <= 0) {
