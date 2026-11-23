@@ -2083,8 +2083,8 @@ function spawnPowerup() {
   powerups.push({
     ...item, x, y, prevX:x, prevY:y,
     aether3dId: "power-" + Math.random().toString(36).slice(2,12),
-    aether3dPhase:phase, depth:78 + Math.random() * 18,
-    depthSpeed:.34 + Math.random() * .12,
+    aether3dPhase:phase, depth:52 + Math.random() * 12,
+    depthSpeed:.3 + Math.random() * .08,
     driftX:(Math.random()-.5)*.24, driftY:(Math.random()-.5)*.2,
     spin:phase, life:2100, dead:false
   });
@@ -2102,8 +2102,8 @@ function spawnCreditCoin(x, y, amount) {
   const phase=Math.random()*Math.PI*2;
   creditCoins.push({
     id:"credit-"+Math.random().toString(36).slice(2,10),
-    x, y, prevX:x, prevY:y, depth:86+Math.random()*18,
-    depthSpeed:.16, amount:Math.max(1,Math.floor(amount)),
+    x, y, prevX:x, prevY:y, depth:60+Math.random()*12,
+    depthSpeed:.2, amount:Math.max(1,Math.floor(amount)),
     driftX:(Math.random()-.5)*.1, driftY:(Math.random()-.5)*.1,
     spin:phase, aether3dPhase:phase, life:1500, dead:false
   });
@@ -3060,7 +3060,7 @@ function updateAndDraw() {
     const coinShot=bullets.find(b=>!b.dead&&Math.hypot(b.x-coin.x,b.y-coin.y)<34);
     if(coinShot&&!coin.dead){
       coinShot.dead=true;coin.dead=true;
-      publishAether3DImpact(coin.x,coin.y,"#ffd45c","credit-collected");
+      publishAether3DImpact(coin.x,coin.y,"#ffd45c","credit-collected",-8-(coin.depth||46));
       spawnImpactBurst(coin.x,coin.y,"#ffd45c",IS_LOW_POWER?7:12);
       awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");
       SoundFX.play("powerup");
@@ -3135,7 +3135,7 @@ function updateAndDraw() {
       });
       if(plasmaHit){
         plasmaHit.dead=true;p.dead=true;
-        publishAether3DImpact(p.x,p.y,p.color||"#55eaff","powerup-collected");
+        publishAether3DImpact(p.x,p.y,p.color||"#55eaff","powerup-collected",-8-(p.depth||42));
         spawnImpactBurst(p.x,p.y,p.color||"#55eaff",IS_LOW_POWER?8:15);
         applyPowerup(p,player);
         addFloatingText(p.x,p.y-24,p.text||"PODER ADQUIRIDO",p.color||"#55eaff");
