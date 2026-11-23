@@ -900,6 +900,24 @@ function syncEnemies(items,width,height){
   let mesh=enemyMeshes.get(item.id);
   if(!mesh){mesh=buildEnemy(item.variant);scene.add(mesh);enemyMeshes.set(item.id,mesh);}
   mesh.position.copy(worldPos(item.x,item.y,width,height,-11));
+  // Feedback de impactos: comparar HP entre fotogramas, sin intervenir en el daño real.
+  if(Number.isFinite(item.hp)){
+   const previousHp=mesh.userData.lastHp;
+   if(previousHp!==undefined&&item.hp<previousHp){
+    const hitColor=item.variant==="carrier"||item.variant==="weaver"?0xb18aff:item.variant==="bomber"?0xffbd65:0x66eaff;
+    spawn3DBurst(mesh.position.clone(),hitColor,.38);
+    mesh.userData.hitPulse=1;
+   }
+   mesh.userData.lastHp=item.hp;
+  }
+  if(mesh.userData.hitPulse>0){
+   mesh.userData.hitPulse=Math.max(0,mesh.userData.hitPulse-.12);
+   mesh.traverse(part=>{
+    if(part.isMesh&&part.material&&part.material.emissive){
+     part.material.emissiveIntensity=Math.max(part.material.userData.baseHitEmissive||0, (part.material.userData.baseHitEmissive||0)+mesh.userData.hitPulse*1.8);
+    }
+   });
+  }
   mesh.rotation.z=Math.sin((item.age||0)*.04)*.035;
   mesh.traverse(part=>{if(part.userData.enemyFlame){const pulse=.82+.2*Math.sin((item.age||0)*.22);part.scale.set(1,pulse,1);part.material.opacity=.26+.2*pulse;}});
   // El modelo 3D respeta el tamaño del hitbox 2D; antes era mucho más ancho
