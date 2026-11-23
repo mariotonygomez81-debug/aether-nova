@@ -893,14 +893,20 @@ function createEnemyShot(item){
   wake.rotation.x=Math.PI;wake.position.y=.72;group.add(wake);
   scene.add(group);enemyShotMeshes.set(item.id,group);return group;
 }
-function syncEnemyShots(items,width,height){
+function syncEnemyShots(items,width,height,playerX,playerY){
   const alive=new Set();
   for(const item of items||[]){
     if(item.id==null)continue;
     alive.add(item.id);
     const mesh=enemyShotMeshes.get(item.id)||createEnemyShot(item);
-    mesh.position.copy(worldPos(item.x,item.y,width,height,-7.2));
-    // El eje +Y apunta en la dirección de movimiento; la estela queda detrás.
+    const sourceY=Number.isFinite(item.originY)?item.originY:item.y;
+    const travel=THREE.MathUtils.clamp((item.y-sourceY)/Math.max(1,playerY-sourceY),0,1);
+    const sourceZ=-7.5-(Number.isFinite(item.depth)?item.depth:24);
+    const start=worldPos(Number.isFinite(item.originX)?item.originX:item.x,sourceY,width,height,sourceZ);
+    const end=worldPos(playerX,playerY-18,width,height,-10);
+    mesh.position.copy(start).lerp(end,travel);
+    const apparent=.32+travel*.92;
+    mesh.scale.setScalar(apparent);
     const vx=Number(item.vx)||0, vy=Number(item.vy)||1;
     mesh.rotation.z=Math.atan2(-vx,-vy);
     mesh.visible=true;
@@ -914,14 +920,22 @@ function syncEnemyShots(items,width,height){
   }
 }
 
-function syncShots(items, width, height) {
+function syncShots(items, width, height, playerX, playerY) {
   const alive = new Set();
   for (const item of items || []) {
     if (item.id == null) continue;
     alive.add(item.id);
     const mesh = shotMeshes.get(item.id) || createShotMesh(item);
-    mesh.position.copy(worldPos(item.x, item.y, width, height, -7.5));
-    mesh.rotation.set(0, 0, 0);
+    // El proyectil recorre un corredor de perspectiva desde la tobera hacia el punto de fuga.
+    // Su coordenada 2D sigue controlando el impacto; esta trayectoria es solo visual.
+    const progress=THREE.MathUtils.clamp((playerY-item.y)/Math.max(1,playerY-42),0,1);
+    const start=worldPos(playerX,playerY-23,width,height,-10.4);
+    const targetZ=-88;
+    const target=worldPos(item.x,42,width,height,targetZ);
+    mesh.position.copy(start).lerp(target,progress);
+    const apparent=1-progress*.84;
+    mesh.scale.setScalar(apparent);
+    mesh.rotation.set(0,0,0);
     mesh.visible = true;
   }
   for (const [id, mesh] of shotMeshes) {
@@ -1473,8 +1487,8 @@ function animate(now) {
     camera.position.y=THREE.MathUtils.damp(camera.position.y,3.4+ship.position.y*.12,2.4,dt);
     camera.lookAt(camera.position.x*.25, camera.position.y*.18, -7);
     syncAsteroids(data.asteroids, data.width, data.height, dt);
-    syncShots(data.shots, data.width, data.height);
-    syncEnemyShots(data.enemyShots, data.width, data.height);
+    syncShots(data.shots, data.width, data.height, data.x, data.y);
+    syncEnemyShots(data.enemyShots, data.width, data.height, data.x, data.y);
     syncEnemies(data.enemies, data.width, data.height);
     syncBoss(data.boss, data.width, data.height, now);
     syncPhenomena(data.phenomena, data.width, data.height, now);
