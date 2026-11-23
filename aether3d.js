@@ -1070,6 +1070,7 @@ function buildEnemy(variant='scout'){
 // para evitar recompilar shaders y crear/liberar recursos GPU en cada recogida.
 const pickupMeshes=new Map();
 const pickupGlyphCache=new Map();
+const pickupGlowCache=new Map();
 const pickupGeometry={
  shell:new THREE.SphereGeometry(1,qualityTier==="low"?12:18,qualityTier==="low"?8:14),
  core:new THREE.SphereGeometry(.48,qualityTier==="low"?10:16,qualityTier==="low"?8:12),
@@ -1093,6 +1094,20 @@ function pickupMaterials(color){
   ringFine:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.76,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false})
  };
  pickupMaterialCache.set(key,materials);return materials;
+}
+function pickupGlowTexture(color){
+ const key=color||"#55eaff";
+ if(pickupGlowCache.has(key))return pickupGlowCache.get(key);
+ const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;
+ const ctx=canvas.getContext("2d");
+ const gradient=ctx.createRadialGradient(64,64,2,64,64,62);
+ gradient.addColorStop(0,"rgba(255,255,255,.98)");
+ gradient.addColorStop(.12,key+"ee");
+ gradient.addColorStop(.38,key+"88");
+ gradient.addColorStop(1,"rgba(0,0,0,0)");
+ ctx.fillStyle=gradient;ctx.fillRect(0,0,128,128);
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+ pickupGlowCache.set(key,texture);return texture;
 }
 function pickupGlyphTexture(label,color){
  const key=(label||"✦")+"|"+(color||"#55eaff");
@@ -1119,13 +1134,15 @@ function makePickupSphere(kind,color,label){
  const ring=new THREE.Mesh(pickupGeometry.ring,m.ring);
  const ringFine=new THREE.Mesh(pickupGeometry.ringFine,m.ringFine);
  const ringOuter=new THREE.Mesh(pickupGeometry.ringOuter,m.ringFine);
- const glyph=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlyphTexture(label,color),transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending}));
- glyph.scale.set(1.12,1.12,1);glyph.position.set(0,0,1.08);glyph.renderOrder=18;
+ const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlowTexture(color),transparent:true,opacity:.9,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));
+ glow.scale.set(10.5,10.5,1);glow.position.set(0,0,-.65);glow.renderOrder=17;
+ const glyph=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlyphTexture(label,color),transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));
+ glyph.scale.set(2.15,2.15,1);glyph.position.set(0,0,1.35);glyph.renderOrder=19;
  ring.rotation.x=Math.PI*.34;ringFine.rotation.set(Math.PI*.34,.72,.35);ringOuter.rotation.set(-Math.PI*.28,.42,-.5);
- group.add(halo,shell,core,nucleus,ring,ringFine,ringOuter,glyph);
- for(const part of group.children){part.renderOrder=18;if(part.material){part.material.depthTest=false;part.material.depthWrite=false;}}
- group.frustumCulled=false;
- group.userData={ring,ringFine,ringOuter,core,nucleus,halo,shell,glyph,kind};
+ group.add(glow,halo,shell,core,nucleus,ring,ringFine,ringOuter,glyph);
+ for(const part of group.children){part.renderOrder=part===glow?17:part===glyph?19:18;if(part.material){part.material.depthTest=false;part.material.depthWrite=false;if("toneMapped" in part.material)part.material.toneMapped=false;}}
+ group.renderOrder=18;group.frustumCulled=false;
+ group.userData={ring,ringFine,ringOuter,core,nucleus,halo,shell,glow,glyph,kind};
  scene.add(group);return group;
 }
 function syncPickups(powerups,coins,width,height,now){
@@ -1138,9 +1155,11 @@ function syncPickups(powerups,coins,width,height,now){
   const itemDepth=Number.isFinite(item.depth)?item.depth:(kind==="credit"?46:42);
   mesh.position.copy(worldPos(item.x,item.y,width,height,-8-itemDepth));
   // Orbes deliberadamente grandes: deben leerse como cápsulas energéticas, no como iconos 2D.
-  const near=THREE.MathUtils.clamp(1.18-itemDepth/260,.82,1.22);
-  const pulse=1+Math.sin(now*.004+(item.spin||0))*.075;
-  mesh.scale.setScalar((kind==="credit"?2.8:3.65)*near*pulse);
+  const near=THREE.MathUtils.clamp(1.24-itemDepth/320,.92,1.28);
+  const pulse=1+Math.sin(now*.004+(item.spin||0))*.09;
+  mesh.scale.setScalar((kind==="credit"?4.05:4.85)*near*pulse);
+  mesh.userData.glow.material.opacity=.72+.2*(.5+.5*Math.sin(now*.006+(item.spin||0)));
+  mesh.userData.glow.scale.setScalar((kind==="credit"?11.5:13.5)*near);
   mesh.rotation.set(0,0,0);
   mesh.userData.shell.rotation.y=now*.0009+(item.spin||0);
   mesh.userData.core.rotation.x=now*.0015;
@@ -1200,7 +1219,7 @@ function syncEnemies(items,width,height){
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
   // Escala física estable: la cámara hace que un caza lejano se vea pequeño
   // y que crezca naturalmente al acercarse, sin compensación de tamaño por píxel.
-  const visualScale = item.variant==='carrier' ? 2.15 : item.variant==='bomber' ? 1.95 : item.variant==='weaver' ? 1.9 : 1.82;
+  const visualScale = item.variant==='carrier' ? 2.85 : item.variant==='bomber' ? 2.65 : item.variant==='weaver' ? 2.55 : 2.45;
   mesh.scale.setScalar(visualScale);
  }
  for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,2.05);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
