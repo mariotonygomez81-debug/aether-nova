@@ -1157,7 +1157,7 @@ function syncEnemies(items,width,height){
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
   // Escala física estable: la cámara hace que un caza lejano se vea pequeño
   // y que crezca naturalmente al acercarse, sin compensación de tamaño por píxel.
-  const visualScale = item.variant==='carrier' ? .72 : item.variant==='bomber' ? .56 : .43;
+  const visualScale = item.variant==='carrier' ? .92 : item.variant==='bomber' ? .76 : .64;
   mesh.scale.setScalar(visualScale);
  }
  for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,1.15);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
