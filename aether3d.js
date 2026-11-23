@@ -138,6 +138,47 @@ function applyWorldEra(level){
 }
 const planet=new THREE.Mesh(new THREE.SphereGeometry(16.5,planetSegments,Math.max(16,planetSegments/2)),planetMaterial);
 planet.position.set(-48,25,-132);worldBody.add(planet);
+// Estación orbital distante: pieza ambiental sin colisión ni interacción con la simulación.
+if(qualityTier!=="low"){
+  const station=new THREE.Group();
+  station.name="AETHER_ORBITAL_STATION";
+  const hull=new THREE.MeshStandardMaterial({color:0x647b8d,metalness:.78,roughness:.42});
+  const darkHull=new THREE.MeshStandardMaterial({color:0x172b3b,metalness:.68,roughness:.58});
+  const stationLight=new THREE.MeshStandardMaterial({color:0x69eaff,emissive:0x1689b8,emissiveIntensity:2.2,metalness:.2,roughness:.25});
+  const warmLight=new THREE.MeshStandardMaterial({color:0xffb36b,emissive:0x9b3b13,emissiveIntensity:1.1});
+  const addStationPart=(geometry,material,position,rotation=[0,0,0],scale=[1,1,1])=>{
+    const part=new THREE.Mesh(geometry,material);
+    part.position.set(...position);part.rotation.set(...rotation);part.scale.set(...scale);
+    station.add(part);return part;
+  };
+  // Núcleo presurizado y módulos longitudinales.
+  addStationPart(new THREE.CylinderGeometry(.82,.95,3.8,qualityTier==="medium"?10:16),hull,[0,0,0],[Math.PI/2,0,0]);
+  addStationPart(new THREE.CylinderGeometry(1.08,1.08,.28,20),darkHull,[0,0,0],[Math.PI/2,0,0]);
+  addStationPart(new THREE.CylinderGeometry(.46,.58,2.5,12),darkHull,[0,0,-2.25],[Math.PI/2,0,0]);
+  addStationPart(new THREE.CylinderGeometry(.3,.3,.22,16),stationLight,[0,0,-3.55],[Math.PI/2,0,0]);
+  // Anillo de atraque, cuatro brazos y cápsulas de servicio.
+  const dockRing=addStationPart(new THREE.TorusGeometry(4.35,.18,6,qualityTier==="medium"?48:80),hull,[0,0,0],[.18,.12,0]);
+  dockRing.name="station-docking-ring";
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2;
+    const x=Math.cos(a),y=Math.sin(a);
+    addStationPart(new THREE.BoxGeometry(2.45,.22,.3),darkHull,[x*2.55,y*2.55,0],[0,0,a]);
+    addStationPart(new THREE.BoxGeometry(1.05,.66,.95),hull,[x*4.2,y*4.2,0],[0,0,a]);
+    addStationPart(new THREE.BoxGeometry(.62,.055,.12),stationLight,[x*4.2,y*4.2,.51],[0,0,a]);
+    addStationPart(new THREE.BoxGeometry(.55,.16,.65),warmLight,[x*4.2,y*4.2,-.53],[0,0,a]);
+  }
+  // Paneles solares dobles con nervaduras estructurales.
+  for(const side of [-1,1]){
+    addStationPart(new THREE.BoxGeometry(2.7,.08,1.5),darkHull,[side*1.9,0,2.2],[0,0,side*.08]);
+    for(let rib=0;rib<4;rib++){
+      addStationPart(new THREE.BoxGeometry(2.45,.025,.035),stationLight,[side*1.9,-.52+rib*.34,2.27],[0,0,side*.08]);
+    }
+    addStationPart(new THREE.BoxGeometry(.22,.32,.28),hull,[side*1.9,0,1.25]);
+  }
+  station.position.set(28,7,-112);
+  station.scale.setScalar(qualityTier==="medium"?.78:1);
+  worldBody.add(station);
+}
 const atmosphere=new THREE.Mesh(
   new THREE.SphereGeometry(17.15,planetSegments,Math.max(16,planetSegments/2)),
   new THREE.MeshBasicMaterial({color:0x42bfff,transparent:true,opacity:.105,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
