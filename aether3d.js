@@ -422,7 +422,7 @@ const asteroidMaterials = {
   shooting_star: new THREE.MeshBasicMaterial({ color: 0x9df8ff })
 };
 function makeRockGeometry(seed) {
-  const geometry = new THREE.IcosahedronGeometry(1, 3);
+  const geometry = new THREE.IcosahedronGeometry(1, qualityTier==="low"?1:qualityTier==="medium"?2:3);
   const position = geometry.attributes.position;
   for (let i = 0; i < position.count; i++) {
     const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
