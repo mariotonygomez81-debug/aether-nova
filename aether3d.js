@@ -914,7 +914,8 @@ function syncEnemies(items,width,height){
    mesh.userData.hitPulse=Math.max(0,mesh.userData.hitPulse-.12);
    mesh.traverse(part=>{
     if(part.isMesh&&part.material&&part.material.emissive){
-     part.material.emissiveIntensity=Math.max(part.material.userData.baseHitEmissive||0, (part.material.userData.baseHitEmissive||0)+mesh.userData.hitPulse*1.8);
+     if(part.material.userData.baseHitEmissive===undefined)part.material.userData.baseHitEmissive=part.material.emissiveIntensity||0;
+     part.material.emissiveIntensity=part.material.userData.baseHitEmissive+mesh.userData.hitPulse*1.8;
     }
    });
   }
