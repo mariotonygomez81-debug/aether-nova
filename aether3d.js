@@ -432,11 +432,61 @@ function makeRockGeometry(seed) {
   geometry.computeVertexNormals();
   return geometry;
 }
+// Detalles compartidos para que el acabado mineral no multiplique geometrías por asteroide.
+const rockDetailGeometry = {
+  crater: new THREE.SphereGeometry(1, 10, 7),
+  craterRim: new THREE.TorusGeometry(.78,.105,5,14),
+  crystal: new THREE.ConeGeometry(.19,.62,5,1),
+  seam: new THREE.CylinderGeometry(.018,.018,1,5)
+};
+const rockDetailMaterials = {
+  shadow: new THREE.MeshStandardMaterial({color:0x111923,roughness:1,metalness:0}),
+  rim: new THREE.MeshStandardMaterial({color:0x9aa7b2,roughness:.88,metalness:.12}),
+  ice: new THREE.MeshStandardMaterial({color:0x63dfff,emissive:0x0b5878,emissiveIntensity:.7,roughness:.32,metalness:.24}),
+  ore: new THREE.MeshStandardMaterial({color:0xffa15b,emissive:0x6e260b,emissiveIntensity:.42,roughness:.68,metalness:.3})
+};
+function addRockSurfaceDetails(mesh,item){
+  const detail=new THREE.Group();
+  detail.name="asteroid-surface-details";
+  const seed=Math.abs(Number(item.id)||1);
+  const detailCount=qualityTier==="low"?1:qualityTier==="medium"?2:3;
+  for(let i=0;i<detailCount;i++){
+    const angle=(seed*.731+i*2.399)% (Math.PI*2);
+    const latitude=-.42+(i%3)*.39;
+    const normal=new THREE.Vector3(Math.cos(angle)*Math.cos(latitude),Math.sin(latitude),Math.sin(angle)*Math.cos(latitude)).normalize();
+    const crater=new THREE.Group();
+    crater.position.copy(normal.clone().multiplyScalar(.965));
+    crater.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+    const bowl=new THREE.Mesh(rockDetailGeometry.crater,rockDetailMaterials.shadow);
+    bowl.scale.set(.19+(i%2)*.055,.15,.035);
+    crater.add(bowl);
+    const rim=new THREE.Mesh(rockDetailGeometry.craterRim,rockDetailMaterials.rim);
+    rim.scale.set(.22+(i%2)*.055,.18,1);
+    rim.position.z=.012;
+    crater.add(rim);
+    detail.add(crater);
+  }
+  if(item.kind==="magnetic"||item.kind==="explosive"){
+    const crystalMat=item.kind==="magnetic"?rockDetailMaterials.ice:rockDetailMaterials.ore;
+    const crystals=qualityTier==="low"?1:2;
+    for(let i=0;i<crystals;i++){
+      const shard=new THREE.Mesh(rockDetailGeometry.crystal,crystalMat);
+      const angle=(seed*.41+i*Math.PI)*1.7;
+      shard.position.set(Math.cos(angle)*.66,.42+(i%2)*.12,Math.sin(angle)*.66);
+      shard.rotation.set(.25+i*.18,angle,.45-i*.2);
+      shard.scale.setScalar(item.kind==="magnetic"?1:.72);
+      detail.add(shard);
+    }
+  }
+  mesh.add(detail);
+  mesh.userData.surfaceDetails=detail;
+}
 function addAsteroid3D(item) {
   const material = asteroidMaterials[item.kind] || asteroidMaterials.normal;
   const geometry = item.kind === 'shooting_star' ? new THREE.SphereGeometry(1, 14, 10) : makeRockGeometry(item.id);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = false; mesh.receiveShadow = false;
+  if(item.kind!=="shooting_star")addRockSurfaceDetails(mesh,item);
   if (item.kind === 'shooting_star') {
     const trail = new THREE.Mesh(new THREE.ConeGeometry(.32, 2.8, 10), new THREE.MeshBasicMaterial({ color: 0x16dfff, transparent: true, opacity: .52 }));
     trail.rotation.x = -Math.PI/2; trail.position.z = 1.45; mesh.add(trail);
@@ -461,6 +511,10 @@ function syncAsteroids(items, width, height, dt) {
     const r = Math.max(.08, item.radius * unit);
     mesh.scale.set(r*(item.sx || 1), r*(item.sy || 1), r*(item.sz || 1));
     mesh.rotation.set(item.rot*.7, item.rot, item.rot*.42);
+    if (mesh.userData.surfaceDetails) {
+      const detail=mesh.userData.surfaceDetails;
+      detail.rotation.set(item.rot*.11,item.rot*.17,item.rot*.09);
+    }
     if (item.hitFlash > 0 && item.kind !== 'shooting_star') mesh.material = asteroidMaterials.explosive;
     else mesh.material = asteroidMaterials[item.kind] || asteroidMaterials.normal;
     mesh.visible = true;
