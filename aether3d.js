@@ -141,6 +141,24 @@ function makePlanetSurface(seed){
 }
 const planetTexture=makePlanetSurface(13);
 const planetMaterial=new THREE.MeshStandardMaterial({map:planetTexture,color:0xffffff,roughness:.94,metalness:0});
+// Nubes volumétricas ligeras: textura procedural compartida, sin luces ni geometría por fotograma.
+function makeCloudTexture(){
+  const canvas=document.createElement("canvas");canvas.width=256;canvas.height=128;
+  const ctx=canvas.getContext("2d"),img=ctx.createImageData(canvas.width,canvas.height),d=img.data;
+  for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
+    const u=x/canvas.width,v=y/canvas.height;
+    const broad=fbm(u*7+2.4,v*4.2-1.7,41,3);
+    const detail=fbm(u*18-3,v*11+2,57,2);
+    const density=Math.max(0,Math.min(1,(broad*.72+detail*.28-.57)*5.2));
+    const k=(y*canvas.width+x)*4;
+    d[k]=220;d[k+1]=237;d[k+2]=255;d[k+3]=Math.round(density*175);
+  }
+  ctx.putImageData(img,0,0);
+  const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=2;return tex;
+}
+const planetCloudTexture=makeCloudTexture();
+const planetCloudMaterial=new THREE.MeshBasicMaterial({map:planetCloudTexture,transparent:true,opacity:.68,depthWrite:false,side:THREE.FrontSide});
+let planetClouds=null,planetRingMesh=null;
 const worldEraColors=[
   [0xc7dce9,0x42bfff,0x91b5c8],[0xb4d6d8,0x35e0d2,0x8ebeb7],
   [0xd6b8a4,0xff9a62,0xd7a17c],[0xb9a8e4,0x9b72ff,0x9c87c7],
@@ -160,7 +178,10 @@ function applyWorldEra(level){
   sectorAccentMaterial.color.setHex(colors[1]);
 }
 const planet=new THREE.Mesh(new THREE.SphereGeometry(16.5,planetSegments,Math.max(16,planetSegments/2)),planetMaterial);
-planet.position.set(-48,25,-132);worldBody.add(planet);
+planet.position.set(-68,27,-174);planet.scale.setScalar(2.02);worldBody.add(planet);
+// Capa nubosa independiente: deriva a otra velocidad para dar profundidad y movimiento.
+planetClouds=new THREE.Mesh(new THREE.SphereGeometry(16.78,planetSegments,Math.max(16,planetSegments/2)),planetCloudMaterial);
+planetClouds.position.copy(planet.position);planetClouds.scale.copy(planet.scale).multiplyScalar(1.012);worldBody.add(planetClouds);
 // Estación orbital distante: pieza ambiental sin colisión ni interacción con la simulación.
 if(qualityTier!=="low"){
   const station=new THREE.Group();
@@ -206,13 +227,13 @@ const atmosphere=new THREE.Mesh(
   new THREE.SphereGeometry(17.15,planetSegments,Math.max(16,planetSegments/2)),
   new THREE.MeshBasicMaterial({color:0x42bfff,transparent:true,opacity:.105,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
 );
-atmosphere.position.copy(planet.position);worldBody.add(atmosphere);
+atmosphere.position.copy(planet.position);atmosphere.scale.copy(planet.scale).multiplyScalar(1.045);worldBody.add(atmosphere);
 if(qualityTier!=="low"){
   const ring=new THREE.Mesh(
     new THREE.TorusGeometry(20.1,.82,6,qualityTier==="medium"?64:112),
     (planetRingMaterial=new THREE.MeshStandardMaterial({color:0x91b5c8,metalness:.42,roughness:.72,transparent:true,opacity:.52,side:THREE.DoubleSide}))
   );
-  ring.position.copy(planet.position);ring.rotation.set(1.19,.16,-.28);ring.scale.set(1,.72,1);worldBody.add(ring);
+  ring.position.copy(planet.position);ring.rotation.set(1.19,.16,-.28);ring.scale.set(2.02,1.46,2.02);planetRingMesh=ring;worldBody.add(ring);
   const moon=new THREE.Mesh(
     new THREE.SphereGeometry(4.1,qualityTier==="medium"?20:32,16),
     new THREE.MeshStandardMaterial({color:0x8995a6,roughness:.96,metalness:.02})
@@ -1263,8 +1284,16 @@ function animate(now) {
     // Cada bloque de diez sectores cambia la paleta del mundo sin reconstruir geometría.
     applyWorldEra(data.level||1);
     // Parallax ambiental sutil: da escala y profundidad sin competir con el combate.
-    worldBody.rotation.y+=dt*.0022;
-    worldBody.position.x=THREE.MathUtils.damp(worldBody.position.x,-(data.x/data.width-.5)*2.4,1.6,dt);
+    worldBody.rotation.y+=dt*.0011;
+    worldBody.position.x=THREE.MathUtils.damp(worldBody.position.x,-(data.x/data.width-.5)*1.15,1.2,dt);
+    // Rotación visible del planeta, deriva independiente de nubes y anillos orbitales.
+    planet.rotation.y+=dt*.012;
+    if(planetClouds){planetClouds.rotation.y+=dt*.019;planetClouds.rotation.z+=dt*.0018;}
+    if(planetRingMesh){planetRingMesh.rotation.z+=dt*.0045;}
+    planet.position.y=27+Math.sin(now*.00022)*.72;
+    planetClouds.position.y=planet.position.y;
+    atmosphere.position.y=planet.position.y;
+    if(planetRingMesh)planetRingMesh.position.y=planet.position.y;
     cosmicDust.rotation.z+=dt*.0007;
     const impact=window.__AETHER3D_IMPACT;
     if(impact && impact.serial!==lastImpactSerial){lastImpactSerial=impact.serial;spawn3DBurst(worldPos(impact.x,impact.y,data.width,data.height,-8),impact.color==="#55eaff"?0x55eaff:0xff684d,1.35);}
