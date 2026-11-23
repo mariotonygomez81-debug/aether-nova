@@ -6,7 +6,7 @@ const canvas = document.getElementById('aether3dCanvas');
 const platformTier = window.AETHER_PLATFORM?.tier || "medium";
 const platformPixelRatio = window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, platformTier==="low"?.78:platformTier==="medium"?.95:1.15);
 const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: platformTier==="high", powerPreference: 'high-performance', precision: platformTier==="low"?"lowp":"mediump" });
-renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.85:platformTier==="medium"?1:1.2));
+renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.72:platformTier==="medium"?.86:platformTier==="high"?1:1.1));
 renderer.shadowMap.enabled = false;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 0);
@@ -51,30 +51,34 @@ function smoothNoise(x,y,seed=0){
   const a=hash2(ix,iy,seed),b=hash2(ix+1,iy,seed),c=hash2(ix,iy+1,seed),d=hash2(ix+1,iy+1,seed);
   return (a+(b-a)*u)*(1-v)+(c+(d-c)*u)*v;
 }
-function fbm(x,y,seed=0){let sum=0,amp=.5,norm=0;for(let o=0;o<5;o++){sum+=smoothNoise(x,y,seed+o*13)*amp;norm+=amp;x*=2.03;y*=2.03;amp*=.5;}return sum/norm;}
-function makeNebulaTexture(seed, palette){
-  const c=document.createElement('canvas');c.width=512;c.height=256;const ctx=c.getContext('2d');
-  const img=ctx.createImageData(c.width,c.height);const d=img.data;
+function fbm(x,y,seed=0,octaves=5){let sum=0,amp=.5,norm=0;for(let o=0;o<octaves;o++){sum+=smoothNoise(x,y,seed+o*13)*amp;norm+=amp;x*=2.03;y*=2.03;amp*=.5;}return sum/norm;}
+// Una sola textura de nebulosa compartida por seis capas. Se reduce la resolución
+// y el número de octavas para evitar bloquear el hilo principal durante el arranque.
+function makeNebulaTexture(seed){
+  const c=document.createElement('canvas');c.width=256;c.height=128;const ctx=c.getContext('2d');
+  const img=ctx.createImageData(c.width,c.height),d=img.data;
   for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
-    const u=x/c.width,v=y/c.height;const n=fbm(u*7+seed,v*5+seed,seed);
-    const wisps=fbm(u*18+seed*2,v*13-seed,seed+8);const ridge=1-Math.abs(n-.52)*2.1;
-    const density=Math.max(0,Math.min(1,(ridge*.65+wisps*.55-.49)*2.1));
+    const u=x/c.width,v=y/c.height;
+    const n=fbm(u*7+seed,v*5+seed,seed,3);
+    const wisps=fbm(u*15+seed*2,v*11-seed,seed+8,3);
+    const ridge=1-Math.abs(n-.52)*2.1;
+    const density=Math.max(0,Math.min(1,(ridge*.68+wisps*.48-.50)*2.15));
     const edge=Math.pow(Math.max(0,Math.sin(Math.PI*u)*Math.sin(Math.PI*v)),.42);
-    const a=Math.min(170,Math.pow(density,1.55)*155*edge);
-    const t=Math.max(0,Math.min(1,n*.95+wisps*.25));
-    const col=t<.5?palette[0].map((q,i)=>q+(palette[1][i]-q)*t*2):palette[1].map((q,i)=>q+(palette[2][i]-q)*(t-.5)*2);
-    const k=(y*c.width+x)*4;d[k]=col[0];d[k+1]=col[1];d[k+2]=col[2];d[k+3]=a;
+    const alpha=Math.min(158,Math.pow(density,1.5)*150*edge);
+    const tint=Math.max(0,Math.min(1,n*.9+wisps*.2));
+    const k=(y*c.width+x)*4;
+    d[k]=28+Math.round(tint*88);d[k+1]=32+Math.round(tint*62);d[k+2]=112+Math.round(tint*116);d[k+3]=alpha;
   }
-  ctx.putImageData(img,0,0);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;return tex;
+  ctx.putImageData(img,0,0);const tex=new THREE.CanvasTexture(c);
+  tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=2;return tex;
 }
-const nebulaPalettes=[[[17,48,125],[71,70,190],[205,58,151]],[[0,105,137],[32,155,187],[117,74,180]],[[76,34,117],[173,67,119],[232,130,78]],[[19,59,91],[48,127,143],[157,177,195]]];
-const nebulaMaps=nebulaPalettes.map((palette,i)=>makeNebulaTexture(i+2,palette));
-const nebulaTex=nebulaMaps[0];
+const nebulaTex=makeNebulaTexture(2);
+const nebulaTints=[0x9c83ff,0x43d7ff,0xff78b7,0x7bd6cb,0x668cff,0xffa36b];
 for(let i=0;i<6;i++){
-  const tex=nebulaMaps[i%nebulaMaps.length];
-  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:.34,depthWrite:false,blending:THREE.AdditiveBlending,color:0xffffff}));
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:nebulaTex,transparent:true,opacity:.32,depthWrite:false,blending:THREE.AdditiveBlending,color:nebulaTints[i]}));
   sprite.position.set((Math.random()-.5)*150,(Math.random()-.5)*82,-58-Math.random()*170);
-  const w=48+Math.random()*75,h=25+Math.random()*48;sprite.scale.set(w,h,1);sprite.material.rotation=(Math.random()-.5)*.7;environment.add(sprite);
+  const w=48+Math.random()*75,h=25+Math.random()*48;
+  sprite.scale.set(w,h,1);sprite.material.rotation=(Math.random()-.5)*.7;environment.add(sprite);
 }
 // Estrellas en varias profundidades y temperaturas cromáticas.
 const starColors=[0xb9ddff,0xffffff,0x7feaff,0xffd5a0,0xd2b7ff];
@@ -98,12 +102,14 @@ worldBody.name="AETHER_PLANETARY_BACKDROP";
 environment.add(worldBody);
 
 function makePlanetSurface(seed,base,land,ice){
-  const canvas=document.createElement("canvas");canvas.width=384;canvas.height=192;
+  const canvas=document.createElement("canvas");
+  const surfaceSize=qualityTier==="low"?[160,80]:qualityTier==="medium"?[224,112]:[288,144];
+  canvas.width=surfaceSize[0];canvas.height=surfaceSize[1];
   const c=canvas.getContext("2d"),img=c.createImageData(canvas.width,canvas.height),d=img.data;
   for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
     const u=x/canvas.width,v=y/canvas.height;
-    const broad=fbm(u*7+seed,v*5-seed,seed);
-    const detail=fbm(u*22+seed*2,v*15+seed,seed+11);
+    const broad=fbm(u*7+seed,v*5-seed,seed,3);
+    const detail=fbm(u*18+seed*2,v*12+seed,seed+11,2);
     const ridges=Math.max(0,Math.min(1,(broad*.72+detail*.38-.53)*3.2));
     const polar=Math.pow(Math.abs(v-.5)*2,5);
     const mix=Math.max(0,Math.min(1,ridges*.82+polar*.24));
@@ -116,7 +122,7 @@ function makePlanetSurface(seed,base,land,ice){
   }
   c.putImageData(img,0,0);
   const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
-  tex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  tex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
   return tex;
 }
 const planetTexture=makePlanetSurface(13,[34,75,105],[102,119,112],[174,202,220]);
@@ -221,8 +227,6 @@ const cosmicDust=new THREE.Points(dustGeometry,new THREE.PointsMaterial({
 }));
 environment.add(cosmicDust);
 
-environment.add(cosmicDust);
-
 // AETHER NOVA — arquitectura ambiental sectorial y arena de jefes.
 // Todo este conjunto permanece detrás de la zona de combate y es decorativo.
 const sectorAccentMaterial=new THREE.MeshBasicMaterial({color:0x55cfff,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false});
@@ -305,8 +309,29 @@ add(new THREE.BoxGeometry(.42,.22,2.1), panelMat, [0,-.28,.35]);
 add(new THREE.SphereGeometry(.47,32,20), canopyMat, [0,.39,-.58], [0,0,0], ship, [1,.68,1.65]);
 // Ala delta segmentada, con paneles superiores y bordes energéticos.
 for (const side of [-1,1]) {
-  const wing = add(new THREE.BoxGeometry(2.75,.18,2.5), darkMat, [side*1.23,-.10,.52], [0,side*.13,side*-.055]);
-  add(new THREE.BoxGeometry(2.28,.035,1.62), panelMat, [side*1.23,.005,.37], [0,side*.13,side*-.055]);
+  // Ala delta de contorno barrido: sustituye el bloque rectangular por una
+  // pieza facetada con borde de ataque largo y salida escalonada.
+  const wingShape=new THREE.Shape();
+  wingShape.moveTo(side*.42,-1.72);
+  wingShape.lineTo(side*.82,-1.34);
+  wingShape.lineTo(side*3.12,.24);
+  wingShape.lineTo(side*2.82,1.14);
+  wingShape.lineTo(side*1.12,1.72);
+  wingShape.lineTo(side*.55,1.12);
+  wingShape.closePath();
+  const wingGeo=new THREE.ExtrudeGeometry(wingShape,{depth:.20,steps:1,bevelEnabled:true,bevelThickness:.045,bevelSize:.055,bevelSegments:2,curveSegments:2});
+  wingGeo.translate(0,0,-.10);wingGeo.rotateX(Math.PI/2);
+  const wing=add(wingGeo,darkMat,[0,-.10,0],[0,side*.035,side*-.018]);
+  const panelShape=new THREE.Shape();
+  panelShape.moveTo(side*.83,-1.08);
+  panelShape.lineTo(side*1.10,-.82);
+  panelShape.lineTo(side*2.72,.34);
+  panelShape.lineTo(side*2.48,.78);
+  panelShape.lineTo(side*1.22,1.18);
+  panelShape.lineTo(side*.86,.82);
+  panelShape.closePath();
+  const panelGeo=new THREE.ShapeGeometry(panelShape,2);panelGeo.rotateX(Math.PI/2);
+  add(panelGeo,panelMat,[0,.012,0],[0,side*.035,side*-.018]);
   add(new THREE.BoxGeometry(.13,.10,2.12), glowMat, [side*1.23,.075,-.05], [0,side*.13,side*-.055]);
   add(new THREE.BoxGeometry(.22,.52,1.5), hullMat, [side*2.35,.12,.9], [0,0,side*-.18]);
   add(new THREE.ConeGeometry(.19,.92,8), goldMat, [side*2.35,.14,.1], [Math.PI/2,0,side*-.18]);
@@ -1205,7 +1230,7 @@ const renderInterval = 1000 / (window.AETHER_PLATFORM?.fps || 40); // Límite ad
 let targetX = 0, targetY = 0;
 function resize() {
   const w=window.innerWidth, h=window.innerHeight; camera.aspect=w/h; camera.updateProjectionMatrix();
-  renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.85:platformTier==="medium"?1:1.2));
+  renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.72:platformTier==="medium"?.86:platformTier==="high"?1:1.1));
   renderer.shadowMap.enabled = false; renderer.setSize(w,h);
 }
 window.addEventListener('resize', resize, { passive: true });
