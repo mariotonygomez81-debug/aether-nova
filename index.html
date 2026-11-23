@@ -25,6 +25,50 @@
   <canvas id="gameCanvas"></canvas>
   <canvas id="aether3dCanvas" aria-hidden="true"></canvas>
 
+  <!-- Cabina inmersiva: marco transparente para conservar visible el combate 3D. -->
+  <div id="cockpit-overlay" aria-hidden="true">
+    <svg class="cockpit-glass" viewBox="0 0 1920 1080" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="cockpitMetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a9f5ff" stop-opacity=".52"/><stop offset=".42" stop-color="#1b6688" stop-opacity=".18"/><stop offset="1" stop-color="#020813" stop-opacity=".94"/></linearGradient>
+        <linearGradient id="cockpitGlass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#071b30" stop-opacity=".12"/><stop offset=".78" stop-color="#061425" stop-opacity=".02"/><stop offset="1" stop-color="#020711" stop-opacity=".35"/></linearGradient>
+        <filter id="cockpitGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <path d="M0 0H1920V1080H0Z" fill="url(#cockpitGlass)"/>
+      <path class="cockpit-frame" d="M0 0H1920L1818 54 1650 95 1518 140 1390 82 1320 42 600 42 510 82 390 140 270 95 102 54Z" />
+      <path class="cockpit-frame" d="M0 0 0 760 72 900 208 1018 320 1080H0Z M1920 0V760L1848 900 1712 1018 1600 1080H1920Z"/>
+      <path class="cockpit-strut" d="M270 82 400 120 520 330 650 540 720 610 M1650 82 1520 120 1400 330 1270 540 1200 610"/>
+      <path class="cockpit-strut" d="M0 790 250 900 430 1015 610 1080 M1920 790 1670 900 1490 1015 1310 1080"/>
+      <path class="cockpit-dash" d="M0 1080 0 920 220 1010 430 1080 M1920 1080 1920 920 1700 1010 1490 1080"/>
+      <path class="cockpit-dash" d="M440 1080 530 970 710 925 1210 925 1390 970 1480 1080"/>
+      <path class="cockpit-edge" d="M0 760 70 890 250 1005 430 1070 M1920 760 1850 890 1670 1005 1490 1070"/>
+      <path class="cockpit-edge" d="M270 82 390 140 510 350 640 540 M1650 82 1530 140 1410 350 1280 540"/>
+      <g class="cockpit-hud-lines" filter="url(#cockpitGlow)">
+        <path d="M52 190H310L370 220 M1870 190H1610L1550 220"/>
+        <path d="M64 440H330 M1590 440H1856"/>
+        <path d="M620 80H1300 M760 930H1160"/>
+        <path d="M70 470h250m-250 8h180 M1600 470h250m-180 8h180"/>
+      </g>
+      <g class="cockpit-labels">
+        <text x="76" y="74">AETHER NOVA // FLIGHT SYSTEMS</text><text x="76" y="102">OVR  ·  WEAP  ·  NAV  ·  PWR  ·  SHLD</text>
+        <text x="1510" y="74">TACTICAL DISPLAY  //  SUBSYS</text><text x="1640" y="102">RADAR  ·  TARGET  ·  CARGO</text>
+        <text x="960" y="64" text-anchor="middle">COMBAT   /   STARMAP   /   SYSTEMS</text>
+        <text x="78" y="420">WEAPON SYSTEMS</text><text x="1600" y="420">CONTACTS / THREAT ANALYSIS</text>
+        <text x="960" y="1008" text-anchor="middle">FLIGHT CONTROL  •  AETHER NOVA</text>
+        <text x="960" y="1032" text-anchor="middle">THRUST  /  SHIELDS  /  ENERGY  /  NAVIGATION</text>
+      </g>
+      <g class="cockpit-instruments">
+        <path d="M82 500h245v100H82z M82 620h245v100H82z M1593 500h245v100h-245z M1593 620h245v100h-245z"/>
+        <path d="M100 535h190 M100 550h130 M100 665h190 M100 680h130 M1612 535h190 M1612 550h130 M1612 665h190 M1612 680h130"/>
+        <path d="M80 760h250 M1590 760h250 M100 780h150 M1610 780h150"/>
+        <circle cx="290" cy="570" r="9"/><circle cx="1800" cy="570" r="9"/><circle cx="290" cy="690" r="9"/><circle cx="1800" cy="690" r="9"/>
+      </g>
+    </svg>
+    <div class="cockpit-radar"><span></span><i></i><b>TACTICAL RADAR</b></div>
+    <div class="cockpit-speed"><b>SPD</b><strong>0.78</strong><small>RELATIVE VELOCITY</small></div>
+    <div class="cockpit-status left"><b>SHIELDS</b><span></span><span></span><span></span><small>HULL INTEGRITY 100%</small></div>
+    <div class="cockpit-status right"><b>WEAPON CHARGE</b><span></span><span></span><span></span><small>PLASMA CORE ONLINE</small></div>
+  </div>
+
   <header id="hud" class="hidden">
     <div class="hud-group">
       <div class="pill"><span class="lbl">PUNTOS</span><strong id="ui-score">0</strong></div>
@@ -396,8 +440,8 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer></script>
   <script src="./platform-runtime.js" defer></script>
   <script src="./cloud-config.js" defer></script>
-  <script src="./game.js?v=nova-safe-migration-2" defer></script>
-  <script type="module" src="./aether3d.js?v=nova-id-friends-2"></script>
+  <script src="./game.js?v=enemy-engagement-range-v1" defer></script>
+  <script type="module" src="./aether3d.js?v=enemy-engagement-range-v1"></script>
   <script src="./multiplayer-client.js" defer></script>
   <script type="module" src="./social-realtime.js"></script>
 </body>

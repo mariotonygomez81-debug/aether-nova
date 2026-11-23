@@ -3,8 +3,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 // Renderizador 3D transparente: representa la nave real del jugador.
 // La lógica y las colisiones siguen ejecutándose en game.js.
 const canvas = document.getElementById('aether3dCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, 1.15));
+const platformTier = window.AETHER_PLATFORM?.tier || "medium";
+const platformPixelRatio = window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, platformTier==="low"?.78:platformTier==="medium"?.95:1.15);
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: platformTier==="high", powerPreference: 'high-performance', precision: platformTier==="low"?"lowp":"mediump" });
+renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.72:platformTier==="medium"?.86:platformTier==="high"?1:1.1));
 renderer.shadowMap.enabled = false;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 0);
@@ -13,6 +15,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.24;
 
 const scene = new THREE.Scene();
+// Retículo central retirado: el campo de combate queda despejado.
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 300);
 function worldPos(x,y,width,height,z=-10){
   const depth=camera.position.z-z;
@@ -32,7 +35,7 @@ camera.position.set(0, 3.4, 16);
 camera.lookAt(0, 0, -7);
 scene.add(new THREE.HemisphereLight(0xc8e6ff, 0x171126, 1.65));
 const ambientFill = new THREE.AmbientLight(0x526b9a, .38); scene.add(ambientFill);
-const key = new THREE.DirectionalLight(0xe2f1ff, 3.8); key.position.set(-28, 24, 38); key.castShadow = true; key.shadow.mapSize.set(1024,1024); scene.add(key);
+const key = new THREE.DirectionalLight(0xe2f1ff, 3.8); key.position.set(-28, 24, 38); key.castShadow = false; scene.add(key);
 const rim = new THREE.PointLight(0x16cfff, 24, 36); rim.position.set(0, 1, 2); scene.add(rim);
 const warmFill = new THREE.PointLight(0xff8a58, 9, 90); warmFill.position.set(-34,12,-72); scene.add(warmFill);
 const violetFill = new THREE.PointLight(0x875dff, 11, 110); violetFill.position.set(38,-15,-112); scene.add(violetFill);
@@ -49,30 +52,34 @@ function smoothNoise(x,y,seed=0){
   const a=hash2(ix,iy,seed),b=hash2(ix+1,iy,seed),c=hash2(ix,iy+1,seed),d=hash2(ix+1,iy+1,seed);
   return (a+(b-a)*u)*(1-v)+(c+(d-c)*u)*v;
 }
-function fbm(x,y,seed=0){let sum=0,amp=.5,norm=0;for(let o=0;o<5;o++){sum+=smoothNoise(x,y,seed+o*13)*amp;norm+=amp;x*=2.03;y*=2.03;amp*=.5;}return sum/norm;}
-function makeNebulaTexture(seed, palette){
-  const c=document.createElement('canvas');c.width=512;c.height=256;const ctx=c.getContext('2d');
-  const img=ctx.createImageData(c.width,c.height);const d=img.data;
+function fbm(x,y,seed=0,octaves=5){let sum=0,amp=.5,norm=0;for(let o=0;o<octaves;o++){sum+=smoothNoise(x,y,seed+o*13)*amp;norm+=amp;x*=2.03;y*=2.03;amp*=.5;}return sum/norm;}
+// Una sola textura de nebulosa compartida por seis capas. Se reduce la resolución
+// y el número de octavas para evitar bloquear el hilo principal durante el arranque.
+function makeNebulaTexture(seed){
+  const c=document.createElement('canvas');c.width=256;c.height=128;const ctx=c.getContext('2d');
+  const img=ctx.createImageData(c.width,c.height),d=img.data;
   for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
-    const u=x/c.width,v=y/c.height;const n=fbm(u*7+seed,v*5+seed,seed);
-    const wisps=fbm(u*18+seed*2,v*13-seed,seed+8);const ridge=1-Math.abs(n-.52)*2.1;
-    const density=Math.max(0,Math.min(1,(ridge*.65+wisps*.55-.49)*2.1));
+    const u=x/c.width,v=y/c.height;
+    const n=fbm(u*7+seed,v*5+seed,seed,3);
+    const wisps=fbm(u*15+seed*2,v*11-seed,seed+8,3);
+    const ridge=1-Math.abs(n-.52)*2.1;
+    const density=Math.max(0,Math.min(1,(ridge*.68+wisps*.48-.50)*2.15));
     const edge=Math.pow(Math.max(0,Math.sin(Math.PI*u)*Math.sin(Math.PI*v)),.42);
-    const a=Math.min(170,Math.pow(density,1.55)*155*edge);
-    const t=Math.max(0,Math.min(1,n*.95+wisps*.25));
-    const col=t<.5?palette[0].map((q,i)=>q+(palette[1][i]-q)*t*2):palette[1].map((q,i)=>q+(palette[2][i]-q)*(t-.5)*2);
-    const k=(y*c.width+x)*4;d[k]=col[0];d[k+1]=col[1];d[k+2]=col[2];d[k+3]=a;
+    const alpha=Math.min(158,Math.pow(density,1.5)*150*edge);
+    const tint=Math.max(0,Math.min(1,n*.9+wisps*.2));
+    const k=(y*c.width+x)*4;
+    d[k]=28+Math.round(tint*88);d[k+1]=32+Math.round(tint*62);d[k+2]=112+Math.round(tint*116);d[k+3]=alpha;
   }
-  ctx.putImageData(img,0,0);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;return tex;
+  ctx.putImageData(img,0,0);const tex=new THREE.CanvasTexture(c);
+  tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=2;return tex;
 }
-const nebulaPalettes=[[[17,48,125],[71,70,190],[205,58,151]],[[0,105,137],[32,155,187],[117,74,180]],[[76,34,117],[173,67,119],[232,130,78]],[[19,59,91],[48,127,143],[157,177,195]]];
-const nebulaMaps=nebulaPalettes.map((palette,i)=>makeNebulaTexture(i+2,palette));
-const nebulaTex=nebulaMaps[0];
+const nebulaTex=makeNebulaTexture(2);
+const nebulaTints=[0x9c83ff,0x43d7ff,0xff78b7,0x7bd6cb,0x668cff,0xffa36b];
 for(let i=0;i<6;i++){
-  const tex=nebulaMaps[i%nebulaMaps.length];
-  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:.34,depthWrite:false,blending:THREE.AdditiveBlending,color:0xffffff}));
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:nebulaTex,transparent:true,opacity:.32,depthWrite:false,blending:THREE.AdditiveBlending,color:nebulaTints[i]}));
   sprite.position.set((Math.random()-.5)*150,(Math.random()-.5)*82,-58-Math.random()*170);
-  const w=48+Math.random()*75,h=25+Math.random()*48;sprite.scale.set(w,h,1);sprite.material.rotation=(Math.random()-.5)*.7;environment.add(sprite);
+  const w=48+Math.random()*75,h=25+Math.random()*48;
+  sprite.scale.set(w,h,1);sprite.material.rotation=(Math.random()-.5)*.7;environment.add(sprite);
 }
 // Estrellas en varias profundidades y temperaturas cromáticas.
 const starColors=[0xb9ddff,0xffffff,0x7feaff,0xffd5a0,0xd2b7ff];
@@ -86,8 +93,302 @@ for(let layer=0;layer<3;layer++){
   const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:layer===2?.58:.28,vertexColors:true,transparent:true,opacity:layer===0?.8:.65,sizeAttenuation:true,depthWrite:false}));environment.add(pts);if(layer===0)window.__aetherStarFar=pts;else if(layer===1)window.__aetherStarMid=pts;else window.__aetherStarNear=pts;
 }
 
-// Alpha 4: sin planetas ni estación orbital. Fondo profundo y limpio.
-const ship = new THREE.Group(); scene.add(ship);
+// AETHER NOVA — entorno planetario cinematográfico.
+ // Los cuerpos son puramente decorativos: no alteran colisiones ni progresión.
+ // La densidad geométrica se adapta al perfil del dispositivo.
+const qualityTier=window.AETHER_PLATFORM?.tier||"medium";
+const planetSegments=qualityTier==="low"?40:qualityTier==="medium"?72:112;
+const worldBody=new THREE.Group();
+worldBody.name="AETHER_PLANETARY_BACKDROP";
+environment.add(worldBody);
+
+// Superficie planetaria con continentes definidos, océanos profundos y nubes.
+ // Resolución suficiente para evitar el aspecto borroso observado en la vista previa.
+function makePlanetSurface(seed){
+  const size=qualityTier==="low"?[256,128]:qualityTier==="medium"?[512,256]:[768,384];
+  const canvas=document.createElement("canvas");canvas.width=size[0];canvas.height=size[1];
+  const ctx=canvas.getContext("2d"),img=ctx.createImageData(canvas.width,canvas.height),d=img.data;
+  for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
+    const u=x/canvas.width,v=y/canvas.height;
+    const continental=fbm(u*4.6+seed,v*3.4-seed,seed,3);
+    const regional=fbm(u*10.5-seed*.7,v*8.2+seed,seed+19,2);
+    const fine=fbm(u*29+seed,v*21-seed,seed+37,2);
+    const elevation=continental*.72+regional*.22+fine*.06;
+    const polar=Math.pow(Math.abs(v-.5)*2,7);
+    const rawLand=(elevation-.505)*15+.5;
+    const landT=Math.max(0,Math.min(1,rawLand));
+    const landMask=landT*landT*(3-2*landT);
+    const shelf=Math.max(0,Math.min(1,(elevation-.455)*13));
+    const ocean=[3+17*shelf,18+54*shelf,49+105*shelf];
+    const coast=[30,128,145],lowland=[48,112,76],forest=[28,82,57],highland=[133,119,91],snow=[190,207,211];
+    const landColor=elevation>.665?snow:elevation>.60?highland:elevation>.545?forest:lowland;
+    const cloudNoise=fbm(u*14+seed*2,v*10-seed,seed+51,2);
+    const cloudBand=Math.max(0,Math.min(1,(cloudNoise-.62)*3.8))*(1-polar*.62);
+    const cloud=cloudBand*.68;
+    const k=(y*canvas.width+x)*4;
+    for(let ch=0;ch<3;ch++){
+      let terrain=ocean[ch]*(1-landMask)+landColor[ch]*landMask;
+      const coastWeight=Math.max(0,Math.min(1,(.18-landT)*5))*(landT>0?1:0);
+      terrain=terrain*(1-coastWeight*.42)+coast[ch]*coastWeight*.42;
+      terrain=terrain*(1-cloud)+[205,222,235][ch]*cloud;
+      const latitudeShade=1-polar*.16;
+      d[k+ch]=Math.max(0,Math.min(255,terrain*latitudeShade));
+    }
+    d[k+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
+  tex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());return tex;
+}
+const planetTexture=makePlanetSurface(13);
+const planetMaterial=new THREE.MeshStandardMaterial({map:planetTexture,color:0xffffff,roughness:.94,metalness:0});
+// Nubes volumétricas ligeras: textura procedural compartida, sin luces ni geometría por fotograma.
+function makeCloudTexture(){
+  const canvas=document.createElement("canvas");canvas.width=256;canvas.height=128;
+  const ctx=canvas.getContext("2d"),img=ctx.createImageData(canvas.width,canvas.height),d=img.data;
+  for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
+    const u=x/canvas.width,v=y/canvas.height;
+    const broad=fbm(u*7+2.4,v*4.2-1.7,41,3);
+    const detail=fbm(u*18-3,v*11+2,57,2);
+    const density=Math.max(0,Math.min(1,(broad*.72+detail*.28-.57)*5.2));
+    const k=(y*canvas.width+x)*4;
+    d[k]=220;d[k+1]=237;d[k+2]=255;d[k+3]=Math.round(density*175);
+  }
+  ctx.putImageData(img,0,0);
+  const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=2;return tex;
+}
+const planetCloudTexture=makeCloudTexture();
+// Recursos planetarios PBR gratuitos (Solar System Scope, CC BY 4.0).
+// Cargan de forma asíncrona y conservan el mapa procedural como fallback sin bloquear el inicio.
+const planetaryAssetLoader=new THREE.TextureLoader();
+planetaryAssetLoader.setCrossOrigin("anonymous");
+const planetaryTextureQuality=qualityTier==="low"?"2k":"2k";
+const planetTextureFiles=["earth_daymap","mars","jupiter","saturn","venus_surface","uranus","neptune","mercury","earth_daymap","moon"];
+const planetTextureCache={};
+const planetTexturePending=new Set();
+let planetNightTexture=null;
+function configurePlanetTexture(texture){
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  texture.minFilter=THREE.LinearMipmapLinearFilter;
+  texture.magFilter=THREE.LinearFilter;
+  texture.generateMipmaps=true;
+  texture.needsUpdate=true;
+}
+planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_daymap.jpg",texture=>{
+  configurePlanetTexture(texture);
+  planetTextureCache[0]=texture;
+  planetMaterial.map=texture;
+  planetMaterial.needsUpdate=true;
+},undefined,()=>{ /* Fallback procedural ya activo. */ });
+planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_clouds.jpg",texture=>{
+  // El mapa de nubes es una máscara: el negro queda transparente y las nubes blancas visibles.
+  texture.colorSpace=THREE.NoColorSpace;
+  texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+  texture.minFilter=THREE.LinearMipmapLinearFilter;
+  texture.magFilter=THREE.LinearFilter;
+  texture.generateMipmaps=true;
+  planetCloudMaterial.map=null;
+  planetCloudMaterial.alphaMap=texture;
+  planetCloudMaterial.color.setHex(0xffffff);
+  planetCloudMaterial.opacity=.9;
+  planetCloudMaterial.needsUpdate=true;
+},undefined,()=>{ /* Mantener nubes procedurales si el CDN no responde. */ });
+planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_earth_nightmap.jpg",texture=>{
+  configurePlanetTexture(texture);
+  planetNightTexture=texture;
+  planetMaterial.emissive.setHex(0xffffff);
+  planetMaterial.emissiveMap=texture;
+  planetMaterial.emissiveIntensity=.34;
+  planetMaterial.needsUpdate=true;
+},undefined,()=>{ /* Iluminación nocturna opcional; la superficie diurna sigue funcionando. */ });
+const planetCloudMaterial=new THREE.MeshBasicMaterial({map:planetCloudTexture,transparent:true,opacity:.68,depthWrite:false,side:THREE.FrontSide});
+let planetClouds=null,planetRingMesh=null;
+function loadPlanetEraTexture(era){
+  if(planetTextureCache[era]||planetTexturePending.has(era)||era===0)return;
+  planetTexturePending.add(era);
+  const file=planetTextureFiles[era];
+  planetaryAssetLoader.load("https://www.solarsystemscope.com/textures/download/"+planetaryTextureQuality+"_"+file+".jpg",texture=>{
+    configurePlanetTexture(texture);
+    planetTextureCache[era]=texture;
+    planetTexturePending.delete(era);
+    if(currentWorldEra===era){planetMaterial.map=texture;planetMaterial.needsUpdate=true;}
+  },undefined,()=>{planetTexturePending.delete(era); /* Conservar el último planeta disponible si falla la descarga. */});
+}
+const worldEraColors=[
+  [0xc7dce9,0x42bfff,0x91b5c8],[0xb4d6d8,0x35e0d2,0x8ebeb7],
+  [0xd6b8a4,0xff9a62,0xd7a17c],[0xb9a8e4,0x9b72ff,0x9c87c7],
+  [0x9eb7d0,0x4e9dff,0x91a9d2],[0xd2c6a4,0xffd27b,0xc9b88b],
+  [0xa7c6b5,0x61e6b2,0x91bba7],[0xb9a6a6,0xff6e91,0xc18d9e],
+  [0x9eb1c4,0x62b7dc,0x8ea8bc],[0xc8b4d9,0xb18aff,0xa48cbe]
+];
+let planetRingMaterial=null, currentWorldEra=-1;
+function applyWorldEra(level){
+  const era=Math.max(0,Math.floor((Math.max(1,level)-1)/10))%worldEraColors.length;
+  if(era===currentWorldEra)return;
+  currentWorldEra=era;
+  const colors=worldEraColors[era];
+  // Cada bloque de diez sectores presenta un cuerpo celeste real diferente.
+  planetMaterial.color.setHex(0xffffff);
+  if(planetTextureCache[era]){planetMaterial.map=planetTextureCache[era];planetMaterial.needsUpdate=true;}
+  else loadPlanetEraTexture(era);
+  planetMaterial.emissiveMap=era===0?planetNightTexture:null;
+  planetMaterial.emissiveIntensity=era===0&&planetNightTexture ? .34 : 0;
+  if(planetClouds)planetClouds.visible=false;
+  if(planetRingMesh)planetRingMesh.visible=false;
+  atmosphere.material.color.setHex(colors[1]);
+  if(planetRingMaterial)planetRingMaterial.color.setHex(colors[2]);
+  sectorAccentMaterial.color.setHex(colors[1]);
+}
+const planet=new THREE.Mesh(new THREE.SphereGeometry(16.5,planetSegments,Math.max(16,planetSegments/2)),planetMaterial);
+planet.position.set(-68,27,-174);planet.scale.setScalar(2.02);worldBody.add(planet);
+// Capa nubosa independiente: deriva a otra velocidad para dar profundidad y movimiento.
+planetClouds=new THREE.Mesh(new THREE.SphereGeometry(16.78,planetSegments,Math.max(16,planetSegments/2)),planetCloudMaterial);
+planetClouds.position.copy(planet.position);planetClouds.scale.copy(planet.scale).multiplyScalar(1.012);planetClouds.visible=false;planet.visible=false;worldBody.add(planetClouds);
+// Estación orbital distante: pieza ambiental sin colisión ni interacción con la simulación.
+if(qualityTier!=="low"){
+  const station=new THREE.Group();
+  station.name="AETHER_ORBITAL_STATION";
+  const hull=new THREE.MeshStandardMaterial({color:0x647b8d,metalness:.78,roughness:.42});
+  const darkHull=new THREE.MeshStandardMaterial({color:0x172b3b,metalness:.68,roughness:.58});
+  const stationLight=new THREE.MeshStandardMaterial({color:0x69eaff,emissive:0x1689b8,emissiveIntensity:2.2,metalness:.2,roughness:.25});
+  const warmLight=new THREE.MeshStandardMaterial({color:0xffb36b,emissive:0x9b3b13,emissiveIntensity:1.1});
+  const addStationPart=(geometry,material,position,rotation=[0,0,0],scale=[1,1,1])=>{
+    const part=new THREE.Mesh(geometry,material);
+    part.position.set(...position);part.rotation.set(...rotation);part.scale.set(...scale);
+    station.add(part);return part;
+  };
+  // Núcleo presurizado y módulos longitudinales.
+  addStationPart(new THREE.CylinderGeometry(.82,.95,3.8,qualityTier==="medium"?10:16),hull,[0,0,0],[Math.PI/2,0,0]);
+  addStationPart(new THREE.CylinderGeometry(1.08,1.08,.28,20),darkHull,[0,0,0],[Math.PI/2,0,0]);
+  addStationPart(new THREE.CylinderGeometry(.46,.58,2.5,12),darkHull,[0,0,-2.25],[Math.PI/2,0,0]);
+  addStationPart(new THREE.CylinderGeometry(.3,.3,.22,16),stationLight,[0,0,-3.55],[Math.PI/2,0,0]);
+  // Anillo de atraque, cuatro brazos y cápsulas de servicio.
+  const dockRing=addStationPart(new THREE.TorusGeometry(4.35,.18,6,qualityTier==="medium"?48:80),hull,[0,0,0],[.18,.12,0]);
+  dockRing.name="station-docking-ring";
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2;
+    const x=Math.cos(a),y=Math.sin(a);
+    addStationPart(new THREE.BoxGeometry(2.45,.22,.3),darkHull,[x*2.55,y*2.55,0],[0,0,a]);
+    addStationPart(new THREE.BoxGeometry(1.05,.66,.95),hull,[x*4.2,y*4.2,0],[0,0,a]);
+    addStationPart(new THREE.BoxGeometry(.62,.055,.12),stationLight,[x*4.2,y*4.2,.51],[0,0,a]);
+    addStationPart(new THREE.BoxGeometry(.55,.16,.65),warmLight,[x*4.2,y*4.2,-.53],[0,0,a]);
+  }
+  // Paneles solares dobles con nervaduras estructurales.
+  for(const side of [-1,1]){
+    addStationPart(new THREE.BoxGeometry(2.7,.08,1.5),darkHull,[side*1.9,0,2.2],[0,0,side*.08]);
+    for(let rib=0;rib<4;rib++){
+      addStationPart(new THREE.BoxGeometry(2.45,.025,.035),stationLight,[side*1.9,-.52+rib*.34,2.27],[0,0,side*.08]);
+    }
+    addStationPart(new THREE.BoxGeometry(.22,.32,.28),hull,[side*1.9,0,1.25]);
+  }
+  station.position.set(28,7,-112);
+  station.scale.setScalar(qualityTier==="medium"?.78:1);
+  worldBody.add(station);
+}
+const atmosphere=new THREE.Mesh(
+  new THREE.SphereGeometry(17.15,planetSegments,Math.max(16,planetSegments/2)),
+  new THREE.MeshBasicMaterial({color:0x42bfff,transparent:true,opacity:.105,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
+);
+atmosphere.position.copy(planet.position);atmosphere.scale.copy(planet.scale).multiplyScalar(1.045);atmosphere.visible=false;worldBody.add(atmosphere);
+if(qualityTier!=="low"){
+  const ring=new THREE.Mesh(
+    new THREE.TorusGeometry(20.1,.82,6,qualityTier==="medium"?64:112),
+    (planetRingMaterial=new THREE.MeshStandardMaterial({color:0x91b5c8,metalness:.42,roughness:.72,transparent:true,opacity:.52,side:THREE.DoubleSide}))
+  );
+  ring.position.copy(planet.position);ring.rotation.set(1.19,.16,-.28);ring.scale.set(2.02,1.46,2.02);planetRingMesh=ring;worldBody.add(ring);
+  const moon=new THREE.Mesh(
+    new THREE.SphereGeometry(4.1,qualityTier==="medium"?20:32,16),
+    new THREE.MeshStandardMaterial({color:0x8995a6,roughness:.96,metalness:.02})
+  );
+  moon.position.set(25,-18,-153);moon.visible=false;worldBody.add(moon);
+  const moonRim=new THREE.Mesh(
+    new THREE.SphereGeometry(4.28,qualityTier==="medium"?20:32,16),
+    new THREE.MeshBasicMaterial({color:0x789bc0,transparent:true,opacity:.07,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
+  );
+  moonRim.position.copy(moon.position);moonRim.visible=false;worldBody.add(moonRim);
+}
+// Polvo espacial en profundidad: pocos puntos y sin luces individuales.
+const dustCount=qualityTier==="low"?48:qualityTier==="medium"?96:160;
+const dustPositions=[],dustColors=[];
+for(let i=0;i<dustCount;i++){
+  dustPositions.push((Math.random()-.5)*210,(Math.random()-.5)*118,-48-Math.random()*170);
+  const tint=new THREE.Color([0x6c9db8,0x8ab9ce,0xb2a0d5,0x9daec0][i%4]);
+  dustColors.push(tint.r,tint.g,tint.b);
+}
+const dustGeometry=new THREE.BufferGeometry();
+dustGeometry.setAttribute("position",new THREE.Float32BufferAttribute(dustPositions,3));
+dustGeometry.setAttribute("color",new THREE.Float32BufferAttribute(dustColors,3));
+const cosmicDust=new THREE.Points(dustGeometry,new THREE.PointsMaterial({
+  size:qualityTier==="low"?.32:.48,vertexColors:true,transparent:true,opacity:.24,
+  sizeAttenuation:true,depthWrite:false,blending:THREE.AdditiveBlending
+}));
+environment.add(cosmicDust);
+
+// AETHER NOVA — arquitectura ambiental sectorial y arena de jefes.
+// Todo este conjunto permanece detrás de la zona de combate y es decorativo.
+const sectorAccentMaterial=new THREE.MeshBasicMaterial({color:0x55cfff,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false});
+const wreckageMaterial=new THREE.MeshStandardMaterial({color:0x34485c,metalness:.78,roughness:.62});
+const wreckageDarkMaterial=new THREE.MeshStandardMaterial({color:0x101a2b,metalness:.72,roughness:.72});
+const sectorStructures=new THREE.Group();
+sectorStructures.name="AETHER_SECTOR_WRECKAGE";
+environment.add(sectorStructures);
+function addWreckageCluster(x,y,z,rotation,scale=1){
+  const cluster=new THREE.Group();
+  const core=new THREE.Mesh(new THREE.BoxGeometry(5.8,.72,1.15),wreckageDarkMaterial);
+  core.rotation.z=.16;cluster.add(core);
+  for(let side of [-1,1]){
+    const wing=new THREE.Mesh(new THREE.BoxGeometry(2.8,.24,.9),wreckageMaterial);
+    wing.position.set(side*3.25,.08,.12);wing.rotation.z=side*.34;cluster.add(wing);
+    const brokenEdge=new THREE.Mesh(new THREE.ConeGeometry(.38,1.55,5),wreckageDarkMaterial);
+    brokenEdge.position.set(side*4.65,.02,.2);brokenEdge.rotation.z=side*1.1;cluster.add(brokenEdge);
+    const seam=new THREE.Mesh(new THREE.BoxGeometry(1.6,.045,.07),sectorAccentMaterial);
+    seam.position.set(side*2.3,.42,.05);cluster.add(seam);
+  }
+  for(let i=0;i<3;i++){
+    const rib=new THREE.Mesh(new THREE.BoxGeometry(.12,.82,.18),wreckageMaterial);
+    rib.position.set(-1.4+i*1.4,.12,.22);cluster.add(rib);
+  }
+  cluster.position.set(x,y,z);cluster.rotation.z=rotation;cluster.scale.setScalar(scale);
+  sectorStructures.add(cluster);
+}
+addWreckageCluster(-61,-13,-96,.34,.82);
+addWreckageCluster(58,18,-142,-.48,1.12);
+addWreckageCluster(4,-31,-184,.12,.68);
+
+// Campo energético lejano por sector: un marco amplio, sin hitbox ni interacción.
+const sectorGate=new THREE.Group();
+sectorGate.name="AETHER_SECTOR_ENERGY_FIELD";
+const gateRing=new THREE.Mesh(new THREE.TorusGeometry(13,.16,8,96),sectorAccentMaterial);
+gateRing.rotation.x=.22;sectorGate.add(gateRing);
+const gateInner=new THREE.Mesh(new THREE.TorusGeometry(11.8,.045,5,80),sectorAccentMaterial);
+gateInner.rotation.x=.22;sectorGate.add(gateInner);
+for(let i=0;i<6;i++){
+  const angle=i*Math.PI/3;
+  const pylon=new THREE.Mesh(new THREE.BoxGeometry(.42,3.4,.48),wreckageMaterial);
+  pylon.position.set(Math.cos(angle)*13,Math.sin(angle)*13,0);
+  pylon.rotation.z=angle+Math.PI/2;sectorGate.add(pylon);
+}
+sectorGate.position.set(2,4,-178);sectorGate.scale.set(1.15,.82,1);
+environment.add(sectorGate);
+
+// Arena visual de jefes: anillos y balizas tras el modelo, nunca sobre el área de disparo.
+const bossArena=new THREE.Group();
+bossArena.name="AETHER_BOSS_ARENA";
+const bossArenaRingMat=new THREE.MeshBasicMaterial({color:0xff4c9a,transparent:true,opacity:.25,blending:THREE.AdditiveBlending,depthWrite:false});
+const bossArenaRing=new THREE.Mesh(new THREE.TorusGeometry(10.5,.12,6,112),bossArenaRingMat);
+bossArenaRing.rotation.x=Math.PI/2.15;bossArena.add(bossArenaRing);
+const bossArenaInner=new THREE.Mesh(new THREE.TorusGeometry(8.8,.045,5,96),bossArenaRingMat);
+bossArenaInner.rotation.x=Math.PI/2.15;bossArena.add(bossArenaInner);
+for(let i=0;i<8;i++){
+  const a=i*Math.PI/4;
+  const beacon=new THREE.Mesh(new THREE.BoxGeometry(.22,1.8,.22),bossArenaRingMat);
+  beacon.position.set(Math.cos(a)*10.5,Math.sin(a)*7.8,0);beacon.rotation.z=a;bossArena.add(beacon);
+}
+bossArena.visible=false;scene.add(bossArena);
+
+// Modelo 3D del jugador y catálogo de naves seleccionables.
+const ship = new THREE.Group(); ship.visible = false; scene.add(ship); // Cámara de cabina: la nave queda detrás del punto de vista del piloto.
 const shipModel = new THREE.Group(); shipModel.name="valkyrie"; ship.add(shipModel);
 const hullMat = new THREE.MeshPhysicalMaterial({ color: 0x9eb7c9, metalness: .94, roughness: .22, clearcoat: .8, clearcoatRoughness: .2 });
 const darkMat = new THREE.MeshStandardMaterial({ color: 0x101c2c, metalness: .88, roughness: .3 });
@@ -106,8 +407,29 @@ add(new THREE.BoxGeometry(.42,.22,2.1), panelMat, [0,-.28,.35]);
 add(new THREE.SphereGeometry(.47,32,20), canopyMat, [0,.39,-.58], [0,0,0], ship, [1,.68,1.65]);
 // Ala delta segmentada, con paneles superiores y bordes energéticos.
 for (const side of [-1,1]) {
-  const wing = add(new THREE.BoxGeometry(2.75,.18,2.5), darkMat, [side*1.23,-.10,.52], [0,side*.13,side*-.055]);
-  add(new THREE.BoxGeometry(2.28,.035,1.62), panelMat, [side*1.23,.005,.37], [0,side*.13,side*-.055]);
+  // Ala delta de contorno barrido: sustituye el bloque rectangular por una
+  // pieza facetada con borde de ataque largo y salida escalonada.
+  const wingShape=new THREE.Shape();
+  wingShape.moveTo(side*.42,-1.72);
+  wingShape.lineTo(side*.82,-1.34);
+  wingShape.lineTo(side*3.12,.24);
+  wingShape.lineTo(side*2.82,1.14);
+  wingShape.lineTo(side*1.12,1.72);
+  wingShape.lineTo(side*.55,1.12);
+  wingShape.closePath();
+  const wingGeo=new THREE.ExtrudeGeometry(wingShape,{depth:.20,steps:1,bevelEnabled:true,bevelThickness:.045,bevelSize:.055,bevelSegments:2,curveSegments:2});
+  wingGeo.translate(0,0,-.10);wingGeo.rotateX(Math.PI/2);
+  const wing=add(wingGeo,darkMat,[0,-.10,0],[0,side*.035,side*-.018]);
+  const panelShape=new THREE.Shape();
+  panelShape.moveTo(side*.83,-1.08);
+  panelShape.lineTo(side*1.10,-.82);
+  panelShape.lineTo(side*2.72,.34);
+  panelShape.lineTo(side*2.48,.78);
+  panelShape.lineTo(side*1.22,1.18);
+  panelShape.lineTo(side*.86,.82);
+  panelShape.closePath();
+  const panelGeo=new THREE.ShapeGeometry(panelShape,2);panelGeo.rotateX(Math.PI/2);
+  add(panelGeo,panelMat,[0,.012,0],[0,side*.035,side*-.018]);
   add(new THREE.BoxGeometry(.13,.10,2.12), glowMat, [side*1.23,.075,-.05], [0,side*.13,side*-.055]);
   add(new THREE.BoxGeometry(.22,.52,1.5), hullMat, [side*2.35,.12,.9], [0,0,side*-.18]);
   add(new THREE.ConeGeometry(.19,.92,8), goldMat, [side*2.35,.14,.1], [Math.PI/2,0,side*-.18]);
@@ -129,6 +451,34 @@ for(const side of [-1,1]){
   add(new THREE.SphereGeometry(.075,12,8), glowMat, [side*2.42,.16,.0]);
   add(new THREE.BoxGeometry(.12,.05,.58), glowMat, [side*.35,-.32,1.3]);
 }
+// Microgeometría de la Valkyrie: placas, respiraderos y guías de servicio.
+ // Se añade al modelo base antes de crear las variantes, sin tocar su hitbox 2D.
+for(const side of [-1,1]){
+  // Paneles de blindaje superpuestos sobre las alas.
+  add(new THREE.BoxGeometry(1.72,.055,1.08),hullMat,[side*1.58,.105,.34],[0,side*.13,side*-.055]);
+  add(new THREE.BoxGeometry(1.34,.026,.055),goldMat,[side*1.58,.143,-.12],[0,side*.13,side*-.055]);
+  add(new THREE.BoxGeometry(.82,.035,.07),glowMat,[side*1.58,.15,.78],[0,side*.13,side*-.055]);
+  // Rejillas de refrigeración oscuras con tres aletas metálicas.
+  add(new THREE.BoxGeometry(.48,.035,.32),darkMat,[side*1.02,.15,1.08]);
+  for(let vent=0;vent<3;vent++){
+    add(new THREE.BoxGeometry(.055,.022,.25),panelMat,[side*(.84+vent*.16),.174,1.08],[0,0,side*-.08]);
+  }
+  // Cañón reforzado con boca de energía y carcasa de montaje.
+  add(new THREE.BoxGeometry(.28,.20,.72),darkMat,[side*1.72,-.10,-.58],[0,side*.12,0]);
+  add(new THREE.CylinderGeometry(.12,.15,.16,16),goldMat,[side*1.72,-.10,-.98],[Math.PI/2,0,0]);
+  add(new THREE.TorusGeometry(.12,.025,6,18),glowMat,[side*1.72,-.10,-1.075]);
+  // Detalles de actuadores y uniones del ala.
+  for(let bolt=0;bolt<4;bolt++){
+    add(new THREE.SphereGeometry(.026,8,6),goldMat,[side*(.95+bolt*.36),.17,-.18+bolt*.09]);
+  }
+  add(new THREE.BoxGeometry(.12,.12,.82),darkMat,[side*2.18,.04,.96],[0,0,side*-.18]);
+}
+for(const side of [-1,1]){
+  add(new THREE.TorusGeometry(.255,.038,8,24),goldMat,[side*.62,-.08,2.28]);
+  add(new THREE.CylinderGeometry(.145,.18,.12,20),darkMat,[side*.62,-.08,2.34],[Math.PI/2,0,0]);
+  add(new THREE.SphereGeometry(.105,16,12),glowMat,[side*.62,-.08,2.42]);
+}
+
 // Modelos de silueta diferenciada para cada clase de caza.
 const shipVariants = Object.create(null);
 const variantMats = {
@@ -273,8 +623,14 @@ function attachEngineFX(group,id){
 attachEngineFX(shipModel,"valkyrie");
 for(const [id,group] of Object.entries(shipVariants))attachEngineFX(group,id);
 
-const shield = new THREE.Mesh(new THREE.SphereGeometry(2.65, 24, 16), new THREE.MeshBasicMaterial({ color: 0x37dcff, wireframe: true, transparent: true, opacity: .13 }));
-shield.visible = false; ship.add(shield);
+const shield = new THREE.Mesh(new THREE.SphereGeometry(2.65, qualityTier==="low"?16:28, qualityTier==="low"?10:18), new THREE.MeshBasicMaterial({ color: 0x37dcff, wireframe: true, transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false }));
+shield.name="AETHER_PLAYER_SHIELD";
+shield.visible = false;
+const shieldRingA=new THREE.Mesh(new THREE.TorusGeometry(2.18,.035,qualityTier==="low"?4:7,qualityTier==="low"?32:64),new THREE.MeshBasicMaterial({color:0x9af7ff,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false}));
+shieldRingA.name="AETHER_SHIELD_RING_A";shieldRingA.rotation.set(.65,.25,0);shield.add(shieldRingA);
+const shieldRingB=new THREE.Mesh(new THREE.TorusGeometry(2.38,.022,qualityTier==="low"?4:6,qualityTier==="low"?32:64),new THREE.MeshBasicMaterial({color:0x37bfff,transparent:true,opacity:.3,blending:THREE.AdditiveBlending,depthWrite:false}));
+shieldRingB.name="AETHER_SHIELD_RING_B";shieldRingB.rotation.set(-.55,.8,.35);shield.add(shieldRingB);
+ship.add(shield);
 
 // Nave del segundo piloto: modelo 3D duplicado, materiales propios y firma naranja.
 const ship2 = ship.clone(true);
@@ -296,28 +652,110 @@ scene.add(ship2);
 // Asteroides 3D sincronizados con las instancias reales del motor 2D.
 // La simulación, impactos, vida y recompensas siguen controlados por game.js.
 const asteroidMeshes = new Map();
+// Textura mineral compartida: ruido geológico horneado una sola vez, nunca por frame.
+function makeRockAlbedoTexture(){
+  const canvas=document.createElement("canvas");
+  canvas.width=qualityTier==="low"?256:512;canvas.height=canvas.width/2;
+  const ctx=canvas.getContext("2d"),image=ctx.createImageData(canvas.width,canvas.height),data=image.data;
+  for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
+    const u=x/canvas.width,v=y/canvas.height;
+    const macro=fbm(u*8,v*5,73,3),fracture=fbm(u*25+4,v*17-2,91,2),grain=fbm(u*72,v*48,117,2);
+    const value=Math.max(28,Math.min(218,112+macro*72+fracture*35+grain*18));
+    const i=(y*canvas.width+x)*4;
+    data[i]=value;data[i+1]=value;data[i+2]=value;data[i+3]=255;
+  }
+  ctx.putImageData(image,0,0);
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+  texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
+  texture.needsUpdate=true;
+  return texture;
+}
+const rockAlbedoTexture=makeRockAlbedoTexture();
+const rockBumpTexture=rockAlbedoTexture.clone();
+rockBumpTexture.colorSpace=THREE.NoColorSpace;
+rockBumpTexture.needsUpdate=true;
 const asteroidMaterials = {
-  normal: new THREE.MeshStandardMaterial({ color: 0x68798a, metalness: .34, roughness: .94 }),
-  explosive: new THREE.MeshStandardMaterial({ color: 0x665044, metalness: .42, roughness: .78, emissive: 0x6a2108, emissiveIntensity: .38 }),
-  magnetic: new THREE.MeshStandardMaterial({ color: 0x425d75, metalness: .72, roughness: .42, emissive: 0x062b5b, emissiveIntensity: .6 }),
+  normal: new THREE.MeshStandardMaterial({ color: 0x59616a, map:rockAlbedoTexture, bumpMap:rockBumpTexture, bumpScale:.105, metalness:.12, roughness:.96, flatShading:false }),
+  explosive: new THREE.MeshStandardMaterial({ color: 0x725044, map:rockAlbedoTexture, bumpMap:rockBumpTexture, bumpScale:.13, metalness: .18, roughness: .92, flatShading:false, emissive: 0x351308, emissiveIntensity: .22 }),
+  magnetic: new THREE.MeshStandardMaterial({ color: 0x476a78, map:rockAlbedoTexture, bumpMap:rockBumpTexture, bumpScale:.09, metalness: .38, roughness: .66, flatShading:false, emissive: 0x062b5b, emissiveIntensity: .42 }),
   shooting_star: new THREE.MeshBasicMaterial({ color: 0x9df8ff })
 };
 function makeRockGeometry(seed) {
-  const geometry = new THREE.IcosahedronGeometry(1, 3);
-  const position = geometry.attributes.position;
-  for (let i = 0; i < position.count; i++) {
-    const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
-    const n = 1 + .17 * Math.sin((x * 17 + y * 11 + z * 7 + seed) * 2.1) + .09 * Math.cos((x * 9 - y * 15 + z * 13 + seed) * 1.7) + .045 * Math.sin((x*31+y*23-z*19+seed)*3.4);
-    position.setXYZ(i, x*n, y*n, z*n);
+  const geometry=new THREE.IcosahedronGeometry(1,qualityTier==="low"?1:qualityTier==="medium"?2:3);
+  const position=geometry.attributes.position;
+  for(let i=0;i<position.count;i++){
+    const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
+    const broad=Math.sin((x*5.7+y*4.3+z*6.1+seed)*2.1);
+    const fracture=Math.sin((x*13-y*11+z*9+seed*.7)*3.2);
+    const pits=Math.cos((x*23+y*17-z*19+seed)*2.4);
+    const n=1+broad*.105+fracture*.052+pits*.025;
+    position.setXYZ(i,x*n,y*n,z*n);
   }
   geometry.computeVertexNormals();
   return geometry;
+}
+// Detalles compartidos para que el acabado mineral no multiplique geometrías por asteroide.
+const rockDetailGeometry = {
+  crater: new THREE.SphereGeometry(1, 10, 7),
+  craterRim: new THREE.TorusGeometry(.78,.105,5,14),
+  crystal: new THREE.ConeGeometry(.19,.62,5,1),
+  seam: new THREE.CylinderGeometry(.018,.018,1,5)
+};
+const rockDetailMaterials = {
+  shadow: new THREE.MeshStandardMaterial({color:0x111923,roughness:1,metalness:0}),
+  rim: new THREE.MeshStandardMaterial({color:0x9aa7b2,roughness:.88,metalness:.12}),
+  ice: new THREE.MeshStandardMaterial({color:0x63dfff,emissive:0x0b5878,emissiveIntensity:.7,roughness:.32,metalness:.24}),
+  ore: new THREE.MeshStandardMaterial({color:0xffa15b,emissive:0x6e260b,emissiveIntensity:.42,roughness:.68,metalness:.3})
+};
+Object.values(rockDetailGeometry).forEach(geometry=>{geometry.userData.sharedGeometry=true;});
+function addRockSurfaceDetails(mesh,item){
+  const detail=new THREE.Group();
+  detail.name="asteroid-surface-details";
+  const seed=Math.abs(Number(item.id)||1);
+  const detailCount=qualityTier==="low"?1:qualityTier==="medium"?2:3;
+  for(let i=0;i<detailCount;i++){
+    const angle=(seed*.731+i*2.399)% (Math.PI*2);
+    const latitude=-.42+(i%3)*.39;
+    const normal=new THREE.Vector3(Math.cos(angle)*Math.cos(latitude),Math.sin(latitude),Math.sin(angle)*Math.cos(latitude)).normalize();
+    const crater=new THREE.Group();
+    crater.position.copy(normal.clone().multiplyScalar(.985));
+    crater.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+    const bowl=new THREE.Mesh(rockDetailGeometry.crater,rockDetailMaterials.shadow);
+    bowl.scale.set(.27+(i%2)*.065,.22,.045);
+    crater.add(bowl);
+    const rim=new THREE.Mesh(rockDetailGeometry.craterRim,rockDetailMaterials.rim);
+    rim.scale.set(.30+(i%2)*.065,.25,1);
+    rim.position.z=.012;
+    crater.add(rim);
+    detail.add(crater);
+  }
+  // Estratos minerales facetados: aristas de roca, placas fracturadas y vetas
+  // compartidas para dar volumen sin crear geometría nueva por fotograma.
+  // La silueta facetada principal aporta el relieve; se evita añadir seis mallas
+  // pequeñas por asteroide, reduciendo draw calls en equipos integrados.
+  if(item.kind==="magnetic"||item.kind==="explosive"){
+    const crystalMat=item.kind==="magnetic"?rockDetailMaterials.ice:rockDetailMaterials.ore;
+    const crystals=qualityTier==="low"?1:2;
+    for(let i=0;i<crystals;i++){
+      const shard=new THREE.Mesh(rockDetailGeometry.crystal,crystalMat);
+      const angle=(seed*.41+i*Math.PI)*1.7;
+      shard.position.set(Math.cos(angle)*.66,.42+(i%2)*.12,Math.sin(angle)*.66);
+      shard.rotation.set(.25+i*.18,angle,.45-i*.2);
+      shard.scale.setScalar(item.kind==="magnetic"?1:.72);
+      detail.add(shard);
+    }
+  }
+  mesh.add(detail);
+  mesh.userData.surfaceDetails=detail;
 }
 function addAsteroid3D(item) {
   const material = asteroidMaterials[item.kind] || asteroidMaterials.normal;
   const geometry = item.kind === 'shooting_star' ? new THREE.SphereGeometry(1, 14, 10) : makeRockGeometry(item.id);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = false; mesh.receiveShadow = false;
+  if(item.kind!=="shooting_star")addRockSurfaceDetails(mesh,item);
   if (item.kind === 'shooting_star') {
     const trail = new THREE.Mesh(new THREE.ConeGeometry(.32, 2.8, 10), new THREE.MeshBasicMaterial({ color: 0x16dfff, transparent: true, opacity: .52 }));
     trail.rotation.x = -Math.PI/2; trail.position.z = 1.45; mesh.add(trail);
@@ -338,16 +776,24 @@ function syncAsteroids(items, width, height, dt) {
     const viewW = viewH * camera.aspect;
     const centerY = camera.position.y + (z-camera.position.z) * ((-3.4)/23);
     mesh.position.set(((item.x/width)-.5)*viewW, centerY + (.5-item.y/height)*viewH, z);
-    const unit = viewH / height;
-    const r = Math.max(.08, item.radius * unit);
+    // Radio físico calculado a una distancia de referencia; al acercarse,
+    // la proyección de cámara aumenta su tamaño aparente de forma natural.
+    const referenceDepth = camera.position.z + 48;
+    const referenceViewH = 2 * tanHalf * referenceDepth;
+    const unit = referenceViewH / height;
+    const r = Math.max(.12, item.radius * unit);
     mesh.scale.set(r*(item.sx || 1), r*(item.sy || 1), r*(item.sz || 1));
     mesh.rotation.set(item.rot*.7, item.rot, item.rot*.42);
+    if (mesh.userData.surfaceDetails) {
+      const detail=mesh.userData.surfaceDetails;
+      detail.rotation.set(item.rot*.11,item.rot*.17,item.rot*.09);
+    }
     if (item.hitFlash > 0 && item.kind !== 'shooting_star') mesh.material = asteroidMaterials.explosive;
     else mesh.material = asteroidMaterials[item.kind] || asteroidMaterials.normal;
     mesh.visible = true;
   }
   for (const [id, mesh] of asteroidMeshes) {
-    if (!alive.has(id)) { spawn3DBurst(mesh.position.clone(),0xffbd68,Math.max(.65,mesh.scale.x*.55)); scene.remove(mesh); mesh.geometry.dispose(); if (mesh.children.length) mesh.children.forEach(child=>child.geometry?.dispose()); asteroidMeshes.delete(id); }
+    if (!alive.has(id)) { spawn3DBurst(mesh.position.clone(),0xffbd68,Math.max(.65,mesh.scale.x*.55)); scene.remove(mesh); mesh.geometry.dispose(); if (mesh.children.length) mesh.children.forEach(child=>{if(child.geometry&&!child.geometry.userData.sharedGeometry)child.geometry.dispose();}); asteroidMeshes.delete(id); }
   }
 }
 
@@ -372,55 +818,53 @@ function getShotMaterial(color) {
 function createShotMesh(item){
   const group=new THREE.Group();
   const mats=getShotMaterial(item.color);
+  const low=qualityTier==="low";
+  const radial=low?8:16;
   if(item.type==="laser"){
-    const beam=new THREE.Mesh(new THREE.CylinderGeometry(.075,.13,2.25,16),mats.core);
-    beam.position.y=-.58;
-    group.add(beam);
-    const aura=new THREE.Mesh(new THREE.CylinderGeometry(.19,.24,2.5,16),mats.glow);
-    aura.position.y=-.58;
-    group.add(aura);
-    const tip=new THREE.Mesh(new THREE.SphereGeometry(.18,20,16),mats.shell);
-    tip.position.y=.58;
-    group.add(tip);
-  } else {
-  // Orbe de plasma compacto con tres capas luminosas concéntricas.
-  const core=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.core);
-  core.scale.setScalar(item.type==="plasma"?.34:item.missile?.24:.205);
-  group.add(core);
-  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),mats.shell);
-  shell.scale.setScalar(item.type==="plasma"?.49:item.missile?.35:.30);
-  group.add(shell);
-  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,28,20),mats.glow);
-  halo.scale.setScalar(item.type==="plasma"?.66:item.missile?.49:.43);
-  group.add(halo);
-  // Estela continua: esferas solapadas para eliminar el efecto de puntos separados.
-  const trailSpecs=item.missile
-    ? [[.235,-.17],[.215,-.34],[.185,-.51],[.145,-.68],[.105,-.84],[.065,-.99]]
-    : [[.205,-.16],[.185,-.31],[.155,-.46],[.12,-.61],[.085,-.75],[.05,-.88]];
-  for(let i=0;i<trailSpecs.length;i++){
-    const [radius,offset]=trailSpecs[i];
-    const volume=new THREE.Mesh(
-      new THREE.SphereGeometry(1,24,18),
-      i<2?mats.shell:mats.tail
-    );
-    volume.scale.set(radius,radius*1.12,radius);
-    volume.position.y=offset;
-    group.add(volume);
-  }
-  // Brillo difuso central que une visualmente el orbe y la estela.
-  const bridge=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mats.glow);
-  bridge.scale.set(item.missile?.19:.16,item.missile?.53:.43,item.missile?.19:.16);
-  bridge.position.y=item.missile?-.39:-.32;
-  group.add(bridge);
-  }
-  if(item.missile){
-    const fins=new THREE.Group();
-    for(const side of [-1,1]){
-      const fin=new THREE.Mesh(new THREE.BoxGeometry(.12,.20,.035),mats.core);
-      fin.position.set(side*.22,-.02,0);
-      fins.add(fin);
+    // Haz de energía perforante: núcleo blanco, camisa cromática y punta afilada.
+    const beam=new THREE.Mesh(new THREE.CylinderGeometry(.055,.105,2.9,radial),mats.core);
+    beam.position.y=-.12;group.add(beam);
+    const aura=new THREE.Mesh(new THREE.CylinderGeometry(.16,.25,3.12,radial,1,true),mats.glow);
+    aura.position.y=-.12;group.add(aura);
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(.15,.48,radial),mats.shell);
+    tip.position.y=1.56;group.add(tip);
+    const wake=new THREE.Mesh(new THREE.ConeGeometry(.13,.72,radial,1,true),mats.tail);
+    wake.rotation.x=Math.PI;wake.position.y=-1.78;group.add(wake);
+  }else{
+    const plasma=item.type==="plasma", missile=!!item.missile;
+    const length=missile?2.35:plasma?2.05:1.55;
+    const width=missile?.25:plasma?.29:.23;
+    // Cuerpo ovalado de plasma: sin punta cónica ni aro mecánico.
+    const core=new THREE.Mesh(new THREE.SphereGeometry(1,low?12:18,low?8:12),mats.core);
+    core.scale.set(width,length*.48,width*.82);group.add(core);
+    const shell=new THREE.Mesh(new THREE.SphereGeometry(1,low?12:18,low?8:12),mats.shell);
+    shell.scale.set(width*1.52,length*.57,width*1.3);group.add(shell);
+    const halo=new THREE.Mesh(new THREE.SphereGeometry(1,low?10:16,low?8:10),mats.glow);
+    halo.scale.set(width*2.05,length*.66,width*1.75);group.add(halo);
+    // Cola de plasma que se estira hacia atrás en forma de flujo, no de proyectil sólido.
+    const wake=new THREE.Mesh(new THREE.ConeGeometry(width*1.35,missile?2.35:2.05,low?8:12,1,true),mats.tail);
+    wake.rotation.x=Math.PI;wake.position.y=-length*.56-.88;group.add(wake);
+    // Dos filamentos helicoidales muy finos sugieren energía en movimiento.
+    if(!low){
+      for(let side of [-1,1]){
+        const points=[];
+        for(let i=0;i<7;i++){
+          const t=i/6,angle=t*Math.PI*1.65+side*Math.PI;
+          points.push(new THREE.Vector3(Math.cos(angle)*width*(1.12-t*.45),-length*.42-t*.88,Math.sin(angle)*width*(1.12-t*.45)));
+        }
+        const curve=new THREE.CatmullRomCurve3(points);
+        const flow=new THREE.Mesh(new THREE.TubeGeometry(curve,10,.018,4,false),mats.shell);
+        group.add(flow);
+      }
     }
-    group.add(fins);
+    if(missile){
+      const fins=new THREE.Group();
+      for(const side of [-1,1]){
+        const fin=new THREE.Mesh(new THREE.BoxGeometry(.12,.24,.035),mats.core);
+        fin.position.set(side*width*1.5,-.16,0);fin.rotation.z=side*.24;fins.add(fin);
+      }
+      group.add(fins);
+    }
   }
   scene.add(group);
   shotMeshes.set(item.id,group);
@@ -444,31 +888,30 @@ function getEnemyShotMaterials(color){
 }
 function createEnemyShot(item){
   const group=new THREE.Group(),m=getEnemyShotMaterials(item.color);
-  const core=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),m.core);
-  core.scale.set(.15,.24,.15);group.add(core);
-  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),m.shell);
-  shell.scale.set(.23,.34,.23);group.add(shell);
-  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,20,16),m.glow);
-  halo.scale.set(.34,.48,.34);group.add(halo);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.27,.035,8,24),m.shell);
-  ring.rotation.x=Math.PI/2;group.add(ring);
-  for(let i=0;i<4;i++){
-    const bead=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),m.trail);
-    const r=[.18,.145,.105,.065][i];
-    bead.scale.set(r,r*1.2,r);
-    bead.position.y=.28+i*.16;
-    group.add(bead);
-  }
+  const core=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),m.core);
+  core.scale.set(.18,.30,.18);group.add(core);
+  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),m.shell);
+  shell.scale.set(.27,.40,.27);group.add(shell);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),m.glow);
+  halo.scale.set(.38,.52,.38);group.add(halo);
+  const wake=new THREE.Mesh(new THREE.ConeGeometry(.24,.88,8,1,true),m.trail);
+  wake.rotation.x=Math.PI;wake.position.y=.72;group.add(wake);
   scene.add(group);enemyShotMeshes.set(item.id,group);return group;
 }
-function syncEnemyShots(items,width,height){
+function syncEnemyShots(items,width,height,playerX,playerY){
   const alive=new Set();
   for(const item of items||[]){
     if(item.id==null)continue;
     alive.add(item.id);
     const mesh=enemyShotMeshes.get(item.id)||createEnemyShot(item);
-    mesh.position.copy(worldPos(item.x,item.y,width,height,-7.2));
-    // El eje +Y apunta en la dirección de movimiento; la estela queda detrás.
+    const sourceY=Number.isFinite(item.originY)?item.originY:item.y;
+    const travel=THREE.MathUtils.clamp((item.y-sourceY)/Math.max(1,playerY-sourceY),0,1);
+    const sourceZ=-7.5-(Number.isFinite(item.depth)?item.depth:24);
+    const start=worldPos(Number.isFinite(item.originX)?item.originX:item.x,sourceY,width,height,sourceZ);
+    const end=worldPos(playerX,playerY-18,width,height,-10);
+    mesh.position.copy(start).lerp(end,travel);
+    const apparent=.32+travel*.92;
+    mesh.scale.setScalar(apparent);
     const vx=Number(item.vx)||0, vy=Number(item.vy)||1;
     mesh.rotation.z=Math.atan2(-vx,-vy);
     mesh.visible=true;
@@ -482,15 +925,31 @@ function syncEnemyShots(items,width,height){
   }
 }
 
-function syncShots(items, width, height) {
+function syncShots(items, width, height, playerX, playerY) {
   const alive = new Set();
   for (const item of items || []) {
     if (item.id == null) continue;
     alive.add(item.id);
     const mesh = shotMeshes.get(item.id) || createShotMesh(item);
-    mesh.position.copy(worldPos(item.x, item.y, width, height, -7.5));
-    mesh.rotation.set(0, 0, 0);
-    mesh.visible = true;
+    // Cada disparo conserva su vector de apuntado individual: no converge a un horizonte común.
+    const originX=Number.isFinite(item.originX)?item.originX:playerX;
+    const originY=Number.isFinite(item.originY)?item.originY:playerY-23;
+    const totalDistance=Math.max(1,Number(item.aimDistance)||Math.hypot(width*.5-originX,40-originY));
+    const traveled=Math.hypot(item.x-originX,item.y-originY);
+    const progress=THREE.MathUtils.clamp(traveled/totalDistance,0,1);
+    const depth=-10.4-progress*62;
+    mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
+    const apparent=1-progress*.18;
+    // Proyectiles de plasma más contundentes y legibles desde la cabina.
+    mesh.scale.setScalar(apparent*(item.type==="laser"?1.85:1.65));
+    // Mantener la dirección sobre el plano de combate: añadir una inclinación
+    // artificial en Z hacía que los disparos parecieran pasar por encima de los objetivos.
+    const nextX=item.x+(Number(item.vx)||0)*2;
+    const nextY=item.y+(Number(item.vy)||-1)*2;
+    const ahead=worldPos(nextX,nextY,width,height,depth);
+    const travelDirection=ahead.clone().sub(mesh.position).normalize();
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),travelDirection);
+    mesh.visible=true;
   }
   for (const [id, mesh] of shotMeshes) {
     if (!alive.has(id)) {
@@ -505,23 +964,57 @@ function syncShots(items, width, height) {
 const fxBursts=[];
 let lastImpactSerial=0;
 function spawn3DBurst(position,color=0xff9a55,scale=1){
+ // Limitar simultaneidad para evitar picos de draw calls en equipos modestos.
+ const maxBursts=qualityTier==="low"?2:qualityTier==="medium"?4:7;
+ while(fxBursts.length>=maxBursts){
+  const oldest=fxBursts.shift();scene.remove(oldest.group);
+  oldest.group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});
+ }
  const group=new THREE.Group();group.position.copy(position);scene.add(group);const particles=[];
- for(let i=0;i<30;i++){
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.035+Math.random()*.085,8,6),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+ const particleCount=qualityTier==="low"?10:qualityTier==="medium"?18:30;
+ for(let i=0;i<particleCount;i++){
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.035+Math.random()*.085,qualityTier==="low"?6:8,qualityTier==="low"?4:6),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
   const u=Math.random()*2-1,angle=Math.random()*Math.PI*2,q=Math.sqrt(1-u*u),v=.85+Math.random()*3.2;
   group.add(mesh);particles.push({mesh,vx:Math.cos(angle)*q*v,vy:u*v,vz:Math.sin(angle)*q*v});
  }
  const rings=[];
- for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(.3+i*.12,.035-i*.006,8,40),new THREE.MeshBasicMaterial({color:i===1?0xffffff:color,transparent:true,opacity:.92-i*.16,blending:THREE.AdditiveBlending,depthWrite:false}));ring.rotation.set(i*.78,Math.PI/2.3+i*.52,i*.6);group.add(ring);rings.push(ring);}
- const flash=new THREE.Mesh(new THREE.SphereGeometry(.32,20,14),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
+ for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(.3+i*.12,.035-i*.006,qualityTier==="low"?5:8,qualityTier==="low"?20:40),new THREE.MeshBasicMaterial({color:i===1?0xffffff:color,transparent:true,opacity:.92-i*.16,blending:THREE.AdditiveBlending,depthWrite:false}));ring.rotation.set(i*.78,Math.PI/2.3+i*.52,i*.6);group.add(ring);rings.push(ring);}
+ const flash=new THREE.Mesh(new THREE.SphereGeometry(.32,qualityTier==="low"?10:20,qualityTier==="low"?8:14),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
  group.add(flash);group.scale.setScalar(scale);fxBursts.push({group,particles,rings,flash,life:30,maxLife:30});
+}
+function spawn3DHitEffect(position,color=0x66eaff,scale=1){
+ // Impacto de blindaje: destello compacto, un anillo de contacto y chispas cortas.
+ const maxBursts=qualityTier==="low"?2:qualityTier==="medium"?4:7;
+ while(fxBursts.length>=maxBursts){
+  const oldest=fxBursts.shift();scene.remove(oldest.group);
+  oldest.group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});
+ }
+ const group=new THREE.Group();group.position.copy(position);scene.add(group);
+ const particles=[],count=qualityTier==="low"?5:9;
+ for(let i=0;i<count;i++){
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.025+Math.random()*.035,6,5),new THREE.MeshBasicMaterial({color:i%3===0?0xffffff:color,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const angle=Math.random()*Math.PI*2,speed=.65+Math.random()*1.25;
+  group.add(mesh);particles.push({mesh,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,vz:(Math.random()-.5)*.28});
+ }
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.22,.025,6,qualityTier==="low"?16:28),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+ group.add(ring);
+ const flash=new THREE.Mesh(new THREE.SphereGeometry(.17,8,6),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+ group.add(flash);group.scale.setScalar(scale);
+ fxBursts.push({group,particles,rings:[ring],flash,life:18,maxLife:18,compact:true});
 }
 function update3DBursts(dt){
  for(let i=fxBursts.length-1;i>=0;i--){
   const fx=fxBursts[i];fx.life-=dt*60;const k=Math.max(0,fx.life/fx.maxLife),progress=1-k;
   for(const p of fx.particles){p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;p.mesh.position.z+=p.vz*dt;p.mesh.material.opacity=k;}
-  fx.rings.forEach((ring,j)=>{ring.scale.setScalar(.8+progress*(3.6+j*.8));ring.material.opacity=k*(.9-j*.18);});
-  fx.flash.scale.setScalar(.4+progress*3.8);fx.flash.material.opacity=Math.max(0,.82*(1-progress*3.2));
+  if(fx.compact){
+   fx.rings[0].scale.setScalar(.72+progress*1.45);
+   fx.rings[0].material.opacity=k*.88;
+   fx.flash.scale.setScalar(.35+progress*1.1);
+   fx.flash.material.opacity=Math.max(0,.95*(1-progress*2.2));
+  }else{
+   fx.rings.forEach((ring,j)=>{ring.scale.setScalar(.8+progress*(3.6+j*.8));ring.material.opacity=k*(.9-j*.18);});
+   fx.flash.scale.setScalar(.4+progress*3.8);fx.flash.material.opacity=Math.max(0,.82*(1-progress*3.2));
+  }
   if(fx.life<=0){scene.remove(fx.group);fx.group.traverse(o=>{o.geometry?.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();}});fxBursts.splice(i,1);}
  }
 }
@@ -556,12 +1049,12 @@ function buildEnemy(variant='scout'){
    ring.rotation.z=i*.5;
   }
  } else if(variant==='bomber'){
-  add(new THREE.BoxGeometry(2.7,.5,2.8),enemyDark,[0,-.2,.7]);
+  add(new THREE.BoxGeometry(2.7,.5,2.8),enemyDark,[0,-.2,.7],[0,0,0],g);
   for(const s of [-1,1]) add(new THREE.SphereGeometry(.32,16,12),enemyGold,[s*.75,-.35,1.35],[0,0,0],g);
  } else if(variant==='carrier'){
-  add(new THREE.BoxGeometry(4.5,.55,3.5),enemyDark,[0,-.2,.7]);
+  add(new THREE.BoxGeometry(4.5,.55,3.5),enemyDark,[0,-.2,.7],[0,0,0],g);
   for(let i=-2;i<=2;i++) add(new THREE.BoxGeometry(.36,.22,1.7),enemyViolet,[i*.7,.18,1.3],[0,0,0],g);
-  add(new THREE.SphereGeometry(.55,20,14),enemyCyan,[0,.2,-.3]);
+  add(new THREE.SphereGeometry(.55,20,14),enemyCyan,[0,.2,-.3],[0,0,0],g);
  } else if(variant==='interceptor'){
   for(const s of [-1,1]) add(new THREE.ConeGeometry(.2,1.35,8),enemyRed,[s*1.15,0,.1],[0,0,s*.8],g);
  }
@@ -580,28 +1073,183 @@ function buildEnemy(variant='scout'){
   exhaust.rotation.x=Math.PI/2;exhaust.position.set(side*.55,-.14,2.72);exhaust.userData.enemyFlame=true;g.add(exhaust);
  }
  for(let i=0;i<3;i++)add(new THREE.BoxGeometry(.18,.045,.28),enemyDark,[-.25+i*.25,.25,.55],[0,0,0],g);
+ // Microdetalle industrial compartido: paneles, ranuras de ventilación y sensores.
+ const bodySpan=variant==='carrier'?2.8:variant==='bomber'?1.9:1.25;
+ for(const side of [-1,1]){
+  add(new THREE.BoxGeometry(bodySpan*.42,.035,.42),enemyHull,[side*bodySpan*.27,.205,-.48],[0,side*.08,0],g);
+  for(let vent=0;vent<3;vent++){
+   add(new THREE.BoxGeometry(.055,.025,.34),enemyCyan,[side*(.28+vent*.105),.235,.12],[0,0,0],g);
+  }
+  const sensor=add(new THREE.SphereGeometry(.095,12,8),accent,[side*(variant==='carrier'?2.05:.82),.22,-.82],[0,0,0],g);
+  sensor.userData.enemySensor=side;
+ }
+ // Cañones compactos y abrazaderas de motor, con silueta diferenciada por clase.
+ const barrelCount=variant==='carrier'?4:variant==='bomber'?3:2;
+ for(let i=0;i<barrelCount;i++){
+  const x=(i-(barrelCount-1)/2)*(variant==='carrier'?.72:.42);
+  add(new THREE.CylinderGeometry(.075,.11,variant==='carrier'?1.25:.78,10),enemyDark,[x,-.12,-1.02],[Math.PI/2,0,0],g);
+  add(new THREE.CylinderGeometry(.105,.105,.12,10),accent,[x,-.12,-1.43],[Math.PI/2,0,0],g);
+ }
  return g;
 }
 
+// Recompensas 3D: orbes de energía cromática. Geometrías y materiales compartidos
+// para evitar recompilar shaders y crear/liberar recursos GPU en cada recogida.
+const pickupMeshes=new Map();
+const pickupGlyphCache=new Map();
+const pickupGlowCache=new Map();
+const pickupGeometry={
+ shell:new THREE.SphereGeometry(1,qualityTier==="low"?12:18,qualityTier==="low"?8:14),
+ core:new THREE.SphereGeometry(.48,qualityTier==="low"?10:16,qualityTier==="low"?8:12),
+ nucleus:new THREE.SphereGeometry(.2,8,6),
+ halo:new THREE.SphereGeometry(1.58,qualityTier==="low"?8:14,qualityTier==="low"?6:10),
+ ring:new THREE.TorusGeometry(1.08,.038,5,qualityTier==="low"?20:36),
+ ringFine:new THREE.TorusGeometry(.78,.022,4,qualityTier==="low"?18:32),
+ ringOuter:new THREE.TorusGeometry(1.34,.018,4,qualityTier==="low"?18:32)
+};
+const pickupMaterialCache=new Map();
+function pickupMaterials(color){
+ const key=color||"#45eaff";
+ if(pickupMaterialCache.has(key))return pickupMaterialCache.get(key);
+ const tint=new THREE.Color(key);
+ const materials={
+  shell:new THREE.MeshPhongMaterial({color:tint,emissive:tint,emissiveIntensity:.22,shininess:92,specular:0xffffff}),
+  core:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  nucleus:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.92,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  halo:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.DoubleSide}),
+  ring:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.62,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}),
+  ringFine:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false})
+ };
+ pickupMaterialCache.set(key,materials);return materials;
+}
+function pickupGlowTexture(color){
+ const key=color||"#55eaff";
+ if(pickupGlowCache.has(key))return pickupGlowCache.get(key);
+ const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;
+ const ctx=canvas.getContext("2d");
+ const gradient=ctx.createRadialGradient(64,64,2,64,64,62);
+ gradient.addColorStop(0,"rgba(255,255,255,.98)");
+ gradient.addColorStop(.12,key+"ee");
+ gradient.addColorStop(.38,key+"88");
+ gradient.addColorStop(1,"rgba(0,0,0,0)");
+ ctx.fillStyle=gradient;ctx.fillRect(0,0,128,128);
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+ pickupGlowCache.set(key,texture);return texture;
+}
+function pickupGlyphTexture(label,color){
+ const key=(label||"✦")+"|"+(color||"#55eaff");
+ if(pickupGlyphCache.has(key))return pickupGlyphCache.get(key);
+ const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;
+ const ctx=canvas.getContext("2d");
+ const glow=color||"#55eaff";
+ ctx.clearRect(0,0,128,128);
+ ctx.shadowColor=glow;ctx.shadowBlur=24;
+ ctx.fillStyle="rgba(2,10,25,.78)";ctx.beginPath();ctx.arc(64,64,48,0,Math.PI*2);ctx.fill();
+ ctx.shadowBlur=0;ctx.strokeStyle=glow;ctx.lineWidth=4;ctx.beginPath();ctx.arc(64,64,43,0,Math.PI*2);ctx.stroke();
+ ctx.shadowColor=glow;ctx.shadowBlur=18;ctx.fillStyle="#ffffff";
+ ctx.font=(String(label||"✦").length>2?"bold 34px":"bold 62px")+" sans-serif";
+ ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(String(label||"✦"),64,66);
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=2;
+ pickupGlyphCache.set(key,texture);return texture;
+}
+function makePickupSphere(kind,color,label){
+ const group=new THREE.Group(),m=pickupMaterials(color);
+ const shell=new THREE.Mesh(pickupGeometry.shell,m.shell);
+ const core=new THREE.Mesh(pickupGeometry.core,m.core);
+ const nucleus=new THREE.Mesh(pickupGeometry.nucleus,m.nucleus);
+ const halo=new THREE.Mesh(pickupGeometry.halo,m.halo);
+ const ring=new THREE.Mesh(pickupGeometry.ring,m.ring);
+ const ringFine=new THREE.Mesh(pickupGeometry.ringFine,m.ringFine);
+ const ringOuter=new THREE.Mesh(pickupGeometry.ringOuter,m.ringFine);
+ const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlowTexture(color),transparent:true,opacity:.9,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));
+ glow.scale.set(1.05,1.05,1);glow.position.set(0,0,-.32);glow.renderOrder=17;
+ const glyph=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupGlyphTexture(label,color),transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,toneMapped:false}));
+ glyph.scale.set(.34,.34,1);glyph.position.set(0,0,.38);glyph.renderOrder=19;
+ ring.rotation.x=Math.PI*.34;ringFine.rotation.set(Math.PI*.34,.72,.35);ringOuter.rotation.set(-Math.PI*.28,.42,-.5);
+ group.add(glow,halo,shell,core,nucleus,ring);
+ for(const part of group.children){part.renderOrder=part===glow?17:part===glyph?19:18;if(part.material){part.material.depthTest=false;part.material.depthWrite=false;if("toneMapped" in part.material)part.material.toneMapped=false;}}
+ group.renderOrder=18;group.frustumCulled=false;
+ group.userData={ring,core,nucleus,halo,shell,glow,kind};
+ scene.add(group);return group;
+}
+function syncPickups(powerups,coins,width,height,now){
+ const alive=new Set();
+ const syncOne=(item,kind,key,color)=>{
+  alive.add(key);
+  const glyph=kind==="credit"?"¢":(item.label||"✦");
+  let mesh=pickupMeshes.get(key);
+  if(!mesh){mesh=makePickupSphere(kind,color,glyph);pickupMeshes.set(key,mesh);}
+  const itemDepth=Number.isFinite(item.depth)?item.depth:(kind==="credit"?46:42);
+  mesh.position.copy(worldPos(item.x,item.y,width,height,-8-itemDepth));
+  // Orbes equilibrados: carcasa brillante y sólida, núcleo luminoso y halo suave.
+  const near=THREE.MathUtils.clamp(1.06-itemDepth/620,.96,1.08);
+  const pulse=1+Math.sin(now*.004+(item.spin||0))*.09;
+  mesh.scale.setScalar((kind==="credit"?.54:.68)*near*pulse);
+  mesh.userData.glow.material.opacity=.72+.2*(.5+.5*Math.sin(now*.006+(item.spin||0)));
+  mesh.userData.glow.scale.setScalar((kind==="credit"?1.02:1.18)*near);
+  mesh.rotation.set(0,0,0);
+  mesh.userData.shell.rotation.y=now*.0009+(item.spin||0);
+  mesh.userData.core.rotation.x=now*.0015;
+  mesh.userData.ring.rotation.z=-now*.00115;
+  
+  
+  mesh.userData.core.scale.setScalar(1+Math.sin(now*.006+(item.spin||0))*.16);
+  mesh.userData.nucleus.scale.setScalar(.82+Math.sin(now*.009)*.16);
+  mesh.userData.halo.scale.setScalar(.72+Math.sin(now*.005+(item.spin||0))*.035);
+  
+  mesh.visible=true;
+ };
+ for(const p of powerups||[])syncOne(p,"power",p.aether3dId||("power-"+p.id),p.color||"#55eaff");
+ for(const c of coins||[])syncOne(c,"credit",c.id||("credit-"+c.amount+"-"+Math.round(c.x)+"-"+Math.round(c.y)),"#ffd45c");
+ for(const [key,mesh] of pickupMeshes){
+  if(!alive.has(key)){scene.remove(mesh);pickupMeshes.delete(key);}
+ }
+}
 function syncEnemies(items,width,height){
  const alive=new Set();
  for(const item of items||[]){
   alive.add(item.id);
   let mesh=enemyMeshes.get(item.id);
   if(!mesh){mesh=buildEnemy(item.variant);scene.add(mesh);enemyMeshes.set(item.id,mesh);}
-  mesh.position.copy(worldPos(item.x,item.y,width,height,-11));
-  mesh.rotation.z=Math.sin((item.age||0)*.04)*.035;
+  const enemyZ = -7 - (Number.isFinite(item.depth) ? item.depth : 5);
+  mesh.position.copy(worldPos(item.x,item.y,width,height,enemyZ));
+  // Perspectiva real: los cazas lejanos son menores y crecen al acercarse.
+  const enemyDepth = camera.position.z - enemyZ;
+  const enemyWorldPerPixel = (2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*enemyDepth)/height;
+  // Feedback de impactos: comparar HP entre fotogramas, sin intervenir en el daño real.
+  if(Number.isFinite(item.hp)){
+   const previousHp=mesh.userData.lastHp;
+   if(previousHp!==undefined&&item.hp<previousHp){
+    const hitColor=item.variant==="carrier"||item.variant==="weaver"?0xb18aff:item.variant==="bomber"?0xffbd65:0x66eaff;
+    spawn3DBurst(mesh.position.clone(),hitColor,1.85);
+    mesh.userData.hitPulse=1;
+   }
+   mesh.userData.lastHp=item.hp;
+  }
+  if(mesh.userData.hitPulse>0){
+   mesh.userData.hitPulse=Math.max(0,mesh.userData.hitPulse-.12);
+   mesh.traverse(part=>{
+    if(part.isMesh&&part.material&&part.material.emissive){
+     if(part.material.userData.baseHitEmissive===undefined)part.material.userData.baseHitEmissive=part.material.emissiveIntensity||0;
+     part.material.emissiveIntensity=part.material.userData.baseHitEmissive+mesh.userData.hitPulse*1.8;
+    }
+   });
+  }
+  mesh.rotation.set(
+   THREE.MathUtils.clamp(-(item.vy||0)*.012,-.22,.22),
+   THREE.MathUtils.clamp((item.vx||0)*.035,-.42,.42),
+   Math.sin((item.age||0)*.04)*.035
+  );
   mesh.traverse(part=>{if(part.userData.enemyFlame){const pulse=.82+.2*Math.sin((item.age||0)*.22);part.scale.set(1,pulse,1);part.material.opacity=.26+.2*pulse;}});
   // El modelo 3D respeta el tamaño del hitbox 2D; antes era mucho más ancho
   // que su radio lógico y daba la impresión de que los disparos lo atravesaban.
   const modelWidth = item.variant==='carrier' ? 7 : item.variant==='bomber' ? 4.4 : 3.3;
-  const depth = camera.position.z - (-11);
-  const worldPerPixel = (2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*depth)/height;
-  const targetWidth = item.radius * 2 * 1.42;
-  const visualScale = THREE.MathUtils.clamp((targetWidth*worldPerPixel)/modelWidth,.22,.72);
+  // Escala física estable: la cámara hace que un caza lejano se vea pequeño
+  // y que crezca naturalmente al acercarse, sin compensación de tamaño por píxel.
+  const visualScale = item.variant==='carrier' ? 2.85 : item.variant==='bomber' ? 2.65 : item.variant==='weaver' ? 2.55 : 2.45;
   mesh.scale.setScalar(visualScale);
  }
- for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,1.15);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
+ for(const [id,mesh] of enemyMeshes){if(!alive.has(id)){spawn3DBurst(mesh.position.clone(),0xff5c91,2.05);scene.remove(mesh);mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();});enemyMeshes.delete(id);}}
 }
 
 const bossGroup=new THREE.Group();scene.add(bossGroup);bossGroup.visible=false;
@@ -625,6 +1273,23 @@ function buildBoss(v=0){
  else if(v===7){p(9,1.4,7,0,0,0,bossBlack);c(0,.7,-1.4,1.3);for(const q of [-1,1]){p(2,.7,5,q*5,0,1);for(let i=0;i<3;i++)add(new THREE.CylinderGeometry(.55,.8,2.2,12),bossCore,[q*(3.2+i*.9),-.2,3],[Math.PI/2,0,0],bossGroup);}}
  else if(v===8){c(0,0,0,1.15);for(let i=0;i<4;i++)add(new THREE.TorusGeometry(2.5+i*.6,.18,12,64),bossCore,[0,0,0],[Math.PI/2,i*.55,i*.8],bossGroup);for(let i=0;i<8;i++){const q=i*Math.PI/4;p(.5,.5,4,Math.cos(q)*3.8,Math.sin(q)*3,0,bossBlack,[0,0,q]);}}
  else{p(8,1.2,6,0,0,0,bossBlack);c(0,.5,-.7,1.7);for(const q of [-1,1]){p(3,.5,5,q*4,.1,.2,bossMat,[0,0,q*.35]);for(let i=0;i<3;i++)add(new THREE.ConeGeometry(.45,3,8),bossCore,[q*(2.4+i*.9),0,2.6],[Math.PI/2,0,q*.1],bossGroup);}add(new THREE.TorusGeometry(5,.16,12,96),bossCore,[0,0,0],[Math.PI/2,0,0],bossGroup);}
+ // Detalle de ingeniería del casco: blindaje segmentado, disipadores y bocas de cañón.
+ for(const side of [-1,1]){
+  for(let i=0;i<4;i++){
+   add(new THREE.BoxGeometry(.42,.12,1.55),bossBlack,[side*(1.35+i*.72),-.72,-.35],[0,0,side*.035],bossGroup);
+   add(new THREE.BoxGeometry(.22,.045,.9),bossCore,[side*(1.35+i*.72),-.635,-.36],[0,0,side*.035],bossGroup);
+  }
+  const cannon=add(new THREE.CylinderGeometry(.24,.34,2.2,16),bossBlack,[side*4.55,-.18,2.15],[Math.PI/2,0,0],bossGroup);
+  add(new THREE.CylinderGeometry(.29,.29,.16,16),bossCore,[side*4.55,-.18,3.22],[Math.PI/2,0,0],bossGroup);
+  const vent=add(new THREE.BoxGeometry(.72,.09,1.4),bossMat,[side*5.1,.42,-1.15],[0,0,side*.12],bossGroup);
+  vent.userData.bossVent=side;
+ }
+ // Sensores frontales y aletas de estabilización dan escala y lectura de amenaza.
+ for(let i=0;i<5;i++){
+  const x=(i-2)*.78;
+  add(new THREE.SphereGeometry(.16,14,10),bossCore,[x,.42,2.8],[0,0,0],bossGroup);
+  add(new THREE.BoxGeometry(.12,.7,1.8),bossMat,[x*.82,.08,-2.45],[0,0,(i-2)*.035],bossGroup);
+ }
  // Kit de comandante: placas laterales, aros de reactor y balizas de energía.
  for(const side of [-1,1]){
   add(new THREE.BoxGeometry(2.05,.22,2.65),bossMat,[side*3.25,-.58,.35],[0,0,side*.12],bossGroup);
@@ -639,15 +1304,42 @@ function buildBoss(v=0){
   const angle=i*Math.PI/4,beacon=add(new THREE.SphereGeometry(.105,12,8),bossCore,[Math.cos(angle)*5.25,Math.sin(angle)*3.15,.12],[0,0,0],bossGroup);
   beacon.userData.bossBeacon=i;
  }
+ // Escudo holográfico de emergencia: aparece en la tercera fase del jefe.
+ const shieldShell=new THREE.Mesh(
+  new THREE.IcosahedronGeometry(7.25,2),
+  new THREE.MeshBasicMaterial({color:colors[v],wireframe:true,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})
+ );
+ shieldShell.userData.bossShield=true;shieldShell.visible=false;bossGroup.add(shieldShell);
 }
+let lastBossVisual=null;
 function syncBoss(b,width,height,now){
- if(!b){bossGroup.visible=false;return;}
+ if(!b){
+  if(bossGroup.visible&&lastBossVisual){
+   // Una sola detonación visual al desaparecer el jefe; no altera su derrota ni recompensas.
+   spawn3DBurst(lastBossVisual.position,lastBossVisual.color,qualityTier==="low"?1.75:2.35);
+  }
+  lastBossVisual=null;
+  bossGroup.visible=false;bossArena.visible=false;return;
+ }
  if(currentBossVariant!==b.variant){currentBossVariant=b.variant;buildBoss(b.variant);}
  bossGroup.visible=true;bossGroup.position.copy(worldPos(b.x,b.y,width,height,-10));
+ bossArena.visible=true;bossArena.position.copy(worldPos(b.x,b.y,width,height,-16));bossArena.scale.setScalar(Math.max(.72,b.radius/58));bossArenaRing.rotation.z=now*.00012;bossArenaInner.rotation.z=-now*.00018;bossArenaRingMat.color.setHex(worldEraColors[currentWorldEra][1]);
  bossGroup.scale.setScalar(Math.max(.85,b.radius/52));
  bossGroup.rotation.y=Math.sin(now*.001)*.08;bossGroup.rotation.z=Math.sin(now*.002)*.035;
  bossGroup.traverse(part=>{if(part.userData.bossHalo!==undefined)part.rotation.z=now*.00035*(part.userData.bossHalo%2?-1:1);if(part.userData.bossBeacon!==undefined)part.material.emissiveIntensity=1.4+Math.sin(now*.009+part.userData.bossBeacon)*.8;});
  bossCore.emissiveIntensity=2.5+Math.sin(now*.012)*1.3+(b.phase===3?2:0);
+ bossGroup.traverse(part=>{
+  if(part.userData.bossVent!==undefined)part.material.emissiveIntensity=.45+.35*Math.sin(now*.006+part.userData.bossVent);
+  if(part.userData.bossShield){
+   part.visible=b.phase===3;
+   part.rotation.set(now*.00018,now*.00027,now*.00013);
+   part.material.opacity=b.phase===3?.10+.045*(.5+.5*Math.sin(now*.008)):.0;
+  }
+ });
+ lastBossVisual={
+  position:bossGroup.position.clone(),
+  color:worldEraColors[currentWorldEra]?.[1]||0xff4c9a
+ };
 }
 
 // Fenómenos cósmicos 3D: agujero negro, supernova, magnetar y púlsar.
@@ -837,7 +1529,7 @@ const renderInterval = 1000 / (window.AETHER_PLATFORM?.fps || 40); // Límite ad
 let targetX = 0, targetY = 0;
 function resize() {
   const w=window.innerWidth, h=window.innerHeight; camera.aspect=w/h; camera.updateProjectionMatrix();
-  renderer.setPixelRatio(window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, 1.15));
+  renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.72:platformTier==="medium"?.86:platformTier==="high"?1:1.1));
   renderer.shadowMap.enabled = false; renderer.setSize(w,h);
 }
 window.addEventListener('resize', resize, { passive: true });
@@ -848,6 +1540,41 @@ function animate(now) {
   const dt=Math.min(frameDelta,.05); last=now;
   const data=window.__AETHER3D_STATE;
   if (data && data.playing) {
+    // Cada bloque de diez sectores cambia la paleta del mundo sin reconstruir geometría.
+    applyWorldEra(data.level||1);
+    // Cabina despejada: ningún cuerpo planetario debe entrar en el parabrisas durante combate.
+    planet.visible=false; if(planetClouds)planetClouds.visible=false; atmosphere.visible=false; if(planetRingMesh)planetRingMesh.visible=false;
+    // Vuelo desde cabina: los mandos rotan la nave completa y la cámara,
+    // haciendo que TODO el universo cambie de perspectiva como en un simulador.
+    const steerX=THREE.MathUtils.clamp((data.x/data.width-.5)*2,-1,1);
+    const neutralY=data.height*.79;
+    const steerY=THREE.MathUtils.clamp((neutralY-data.y)/(data.height*.30),-1,1);
+    const targetYaw=steerX*.42;
+    const targetPitch=steerY*.27;
+    const yaw=camera.userData.yaw=THREE.MathUtils.damp(camera.userData.yaw||0,targetYaw,8.5,dt);
+    const pitch=camera.userData.pitch=THREE.MathUtils.damp(camera.userData.pitch||0,targetPitch,8.5,dt);
+    camera.position.x=THREE.MathUtils.damp(camera.position.x,Math.sin(yaw)*2.35,8.5,dt);
+    camera.position.y=THREE.MathUtils.damp(camera.position.y,3.4+pitch*2.7,8.5,dt);
+    camera.lookAt(Math.sin(yaw)*7, pitch*6, -7);
+    worldBody.rotation.y+=dt*.0011;
+    cosmicDust.rotation.z+=dt*.0007;
+    const impactQueue=window.__AETHER3D_IMPACTS;
+    if(Array.isArray(impactQueue)&&impactQueue.length){
+      const pending=impactQueue.splice(0,qualityTier==="low"?3:8);
+      for(const hit of pending){
+        const tint=new THREE.Color(hit.color||"#7cefff");
+        const fallbackDepth=hit.kind==="powerup-collected"||hit.kind==="credit-collected"?-15:-9;
+        const impactDepth=Number.isFinite(hit.depth)?hit.depth:fallbackDepth;
+        const impactPosition=worldPos(hit.x,hit.y,data.width,data.height,impactDepth);
+        if(hit.kind==="enemy-hit"||hit.kind==="asteroid-hit"){
+          spawn3DHitEffect(impactPosition,tint,hit.kind==="enemy-hit"?.92:.82);
+        }else{
+          const burstScale=hit.kind==="powerup-collected"||hit.kind==="credit-collected"?1.15:1.0;
+          spawn3DBurst(impactPosition,tint,burstScale);
+        }
+      }
+    }
+
     const impact=window.__AETHER3D_IMPACT;
     if(impact && impact.serial!==lastImpactSerial){lastImpactSerial=impact.serial;spawn3DBurst(worldPos(impact.x,impact.y,data.width,data.height,-8),impact.color==="#55eaff"?0x55eaff:0xff684d,1.35);}
     // Usar la misma proyección perspectiva que asteroides, enemigos y proyectiles.
@@ -870,26 +1597,43 @@ function animate(now) {
     ship.rotation.z=THREE.MathUtils.damp(ship.rotation.z,-(data.x-data.width/2)/(data.width/2)*.22,7,dt);
     ship.rotation.x=THREE.MathUtils.damp(ship.rotation.x,Math.sin(now*.002)*.018,3,dt);
     // Durante la invulnerabilidad la nave parpadea, pero nunca desaparece del todo.
-    ship.visible=true;
-    ship.traverse((part)=>{
-      if(!part.isMesh || !part.material) return;
-      const materials=Array.isArray(part.material)?part.material:[part.material];
-      for(const mat of materials){
-        if(mat.userData.baseOpacity===undefined) mat.userData.baseOpacity=mat.opacity;
-        if(data.invulnerable){
-          mat.transparent=true;
-          mat.opacity=Math.min(mat.userData.baseOpacity,.58);
-          mat.depthWrite=false;
-        } else {
-          mat.opacity=mat.userData.baseOpacity;
-          mat.depthWrite=true;
+    // La nave del jugador ya es la cabina: no dibujar el caza exterior delante del cristal.
+    ship.visible=false;
+    if(ship.userData.lastInvulnerable!==!!data.invulnerable){
+      ship.userData.lastInvulnerable=!!data.invulnerable;
+      ship.traverse((part)=>{
+        if(!part.isMesh || !part.material) return;
+        const materials=Array.isArray(part.material)?part.material:[part.material];
+        for(const mat of materials){
+          if(mat.userData.baseOpacity===undefined) mat.userData.baseOpacity=mat.opacity;
+          mat.transparent=!!data.invulnerable;
+          mat.opacity=data.invulnerable?Math.min(mat.userData.baseOpacity,.58):mat.userData.baseOpacity;
+          mat.depthWrite=!data.invulnerable;
         }
-      }
-    });
-    shield.visible=!!data.shield;
+      });
+    }
+    // Escudo AEGIS: burbuja facetada y dos órbitas de plasma con pulso suave.
+    const shieldPulse=1+.035*Math.sin(now*.012);
+    shield.visible=false; // El escudo se representa como indicador de cabina en primera persona.
+    shield.scale.setScalar(shieldPulse);
+    shield.rotation.y=now*.00042;shield.rotation.x=Math.sin(now*.0017)*.12;
+    shieldRingA.rotation.z=now*.00115;shieldRingB.rotation.x=-.55+now*.00082;
+    shield.material.opacity=.12+.055*(.5+.5*Math.sin(now*.014));
+    shieldRingA.material.opacity=.25+.24*(.5+.5*Math.sin(now*.017));
+    shieldRingB.material.opacity=.16+.2*(.5+.5*Math.sin(now*.011+1.4));
     const p2=data.coopPlayer2;
     if(p2){
-      ship2.visible=true;
+      ship2.visible=false;
+      const p2Shield=ship2.getObjectByName("AETHER_PLAYER_SHIELD");
+      if(p2Shield){
+        p2Shield.visible=!!p2.shield;
+        p2Shield.scale.setScalar(1+.035*Math.sin(now*.012+1.1));
+        p2Shield.rotation.y=-now*.00038;p2Shield.rotation.x=Math.sin(now*.0015+.6)*.12;
+        const ringA=p2Shield.getObjectByName("AETHER_SHIELD_RING_A"),ringB=p2Shield.getObjectByName("AETHER_SHIELD_RING_B");
+        if(ringA){ringA.rotation.z=-now*.00105;ringA.material.opacity=.25+.24*(.5+.5*Math.sin(now*.017+1));}
+        if(ringB){ringB.rotation.x=-.55-now*.00076;ringB.material.opacity=.16+.2*(.5+.5*Math.sin(now*.011));}
+        p2Shield.material.opacity=.12+.055*(.5+.5*Math.sin(now*.014+1));
+      }
       const p2ShipId=p2.selectedShip||"viper";
       ship2.children.forEach(child=>{if(child.name==="valkyrie"||shipVariants[child.name])child.visible=child.name===p2ShipId;});
       const p2Target=worldPos(p2.x,p2.y,data.width,data.height,-10);
@@ -898,16 +1642,19 @@ function animate(now) {
       ship2.position.z=THREE.MathUtils.damp(ship2.position.z,-10,16,dt);
       ship2.rotation.z=THREE.MathUtils.damp(ship2.rotation.z,-(p2.x-data.width/2)/(data.width/2)*.22,7,dt);
       ship2.rotation.x=THREE.MathUtils.damp(ship2.rotation.x,Math.sin(now*.002+.8)*.018,3,dt);
-      ship2.traverse(part=>{
-        if(!part.isMesh||!part.material)return;
-        const mats=Array.isArray(part.material)?part.material:[part.material];
-        for(const mat of mats){
-          if(mat.userData.coopBaseOpacity===undefined)mat.userData.coopBaseOpacity=mat.opacity;
-          mat.transparent=!!p2.invulnerable;
-          mat.opacity=p2.invulnerable?Math.min(mat.userData.coopBaseOpacity,.58):mat.userData.coopBaseOpacity;
-          mat.depthWrite=!p2.invulnerable;
-        }
-      });
+      if(ship2.userData.lastInvulnerable!==!!p2.invulnerable){
+        ship2.userData.lastInvulnerable=!!p2.invulnerable;
+        ship2.traverse(part=>{
+          if(!part.isMesh||!part.material)return;
+          const mats=Array.isArray(part.material)?part.material:[part.material];
+          for(const mat of mats){
+            if(mat.userData.coopBaseOpacity===undefined)mat.userData.coopBaseOpacity=mat.opacity;
+            mat.transparent=!!p2.invulnerable;
+            mat.opacity=p2.invulnerable?Math.min(mat.userData.coopBaseOpacity,.58):mat.userData.coopBaseOpacity;
+            mat.depthWrite=!p2.invulnerable;
+          }
+        });
+      }
     }else ship2.visible=false;
     glowMat.emissiveIntensity=2.4+Math.sin(now*.012)*.45;
     rim.position.x=ship.position.x; rim.position.y=ship.position.y;
@@ -915,18 +1662,20 @@ function animate(now) {
     camera.position.y=THREE.MathUtils.damp(camera.position.y,3.4+ship.position.y*.12,2.4,dt);
     camera.lookAt(camera.position.x*.25, camera.position.y*.18, -7);
     syncAsteroids(data.asteroids, data.width, data.height, dt);
-    syncShots(data.shots, data.width, data.height);
-    syncEnemyShots(data.enemyShots, data.width, data.height);
+    syncPickups(data.powerups,data.creditCoins,data.width,data.height,now);
+    syncShots(data.shots, data.width, data.height, data.x, data.y);
+    syncEnemyShots(data.enemyShots, data.width, data.height, data.x, data.y);
     syncEnemies(data.enemies, data.width, data.height);
     syncBoss(data.boss, data.width, data.height, now);
     syncPhenomena(data.phenomena, data.width, data.height, now);
   } else {
-    ship.visible=false; ship2.visible=false; shield.visible=false; bossGroup.visible=false;
+    ship.visible=false; ship2.visible=false; shield.visible=false; bossGroup.visible=false; bossArena.visible=false;
     for (const mesh of asteroidMeshes.values()) mesh.visible=false;
     for (const mesh of shotMeshes.values()) mesh.visible=false;
     for (const mesh of enemyShotMeshes.values()) mesh.visible=false;
     for (const mesh of enemyMeshes.values()) mesh.visible=false;
     for (const mesh of phenomenonMeshes.values()) mesh.visible=false;
+    for (const mesh of pickupMeshes.values()) mesh.visible=false;
   }
   if(window.__aetherStarFar) window.__aetherStarFar.rotation.z+=dt*.00008;
   if(window.__aetherStarNear) window.__aetherStarNear.rotation.z+=dt*.00018;

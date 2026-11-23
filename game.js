@@ -468,6 +468,8 @@ const state = {
 };
 
 const keys = { Left: false, Right: false };
+const aimKeys = { left:false, right:false, up:false, down:false };
+let playerAim = { x: W * .5, y: H * .38 };
 let bullets = [];
 let enemyBullets = [];
 let asteroids = [];
@@ -476,6 +478,11 @@ let boss = null;
 let phenomena = [];
 let powerups = [];
 let creditCoins = [];
+function publishAether3DImpact(x,y,color="#7cefff",kind="hit",depth=null){
+  const queue=window.__AETHER3D_IMPACTS||(window.__AETHER3D_IMPACTS=[]);
+  queue.push({x,y,color,kind,depth:Number.isFinite(depth)?depth:null,serial:(window.__AETHER3D_IMPACT_SERIAL=(window.__AETHER3D_IMPACT_SERIAL||0)+1)});
+  if(queue.length>24)queue.splice(0,queue.length-24);
+}
 let campaignPickupKills = 0;
 let campaignPickupIndex = 0;
 let particles = [];
@@ -929,6 +936,16 @@ class Player {
   update() {
     if (this.lives <= 0) return;
     this.prevX = this.x; this.prevY = this.y;
+    // La cruceta del teclado apunta en cuatro direcciones; A/D conserva el desplazamiento horizontal.
+    const aimSpeed = Math.max(4.5, Math.min(9, W * .006));
+    if (this.pilotId === 1) {
+      if (aimKeys.left) playerAim.x -= aimSpeed;
+      if (aimKeys.right) playerAim.x += aimSpeed;
+      if (aimKeys.up) playerAim.y -= aimSpeed;
+      if (aimKeys.down) playerAim.y += aimSpeed;
+      playerAim.x = Math.max(24, Math.min(W - 24, playerAim.x));
+      playerAim.y = Math.max(48, Math.min(this.y - 48, playerAim.y));
+    }
     let moveDir = 0;
     if (this.pilotId === 2) {
       if (keyboardInput2.left || phonepad2State.left) moveDir -= 1;
@@ -979,6 +996,7 @@ class Player {
     const baseDamage = (1 + Math.floor((mk - 1) * 0.5)) * (1 + (commercialData.upgrades?.cannon || 0) * 0.12) * this.shipDamageBonus;
     const dmg = Math.max(1, Math.round(baseDamage));
     SoundFX.play("laser");
+    const firstShotIndex = bullets.length;
 
     bullets.push({ x: this.x, y: this.y - 24, vx: 0, vy: -13.5, dmg, color: this.color, missile: false });
 
@@ -1035,6 +1053,21 @@ class Player {
       bullets.push({ x: this.x - 42, y: this.y - 5, vx: -0.35, vy: -12.5, dmg: droneDamage, color: "#72f7ff", missile: false });
       bullets.push({ x: this.x + 42, y: this.y - 5, vx: 0.35, vy: -12.5, dmg: droneDamage, color: "#72f7ff", missile: false });
     }
+    // Orienta el armamento directo hacia el punto de mira. Los misiles conservan su guiado autónomo.
+    for (let i = firstShotIndex; i < bullets.length; i++) {
+      const shot = bullets[i];
+      if (shot.missile) continue;
+      const sx = shot.x, sy = shot.y;
+      const dx = playerAim.x - sx, dy = playerAim.y - sy;
+      const distance = Math.max(1, Math.hypot(dx, dy));
+      const speed = Math.max(8, Math.hypot(shot.vx || 0, shot.vy || -13));
+      const spread = (shot.vx || 0) * .055;
+      const angle = Math.atan2(dy, dx) + spread;
+      shot.vx = Math.cos(angle) * speed;
+      shot.vy = Math.sin(angle) * speed;
+      shot.originX = sx; shot.originY = sy;
+      shot.aimDistance = distance;
+    }
   }
 
   absorbCosmicThreat(reason, countermeasure = null) {
@@ -1068,9 +1101,7 @@ class Player {
     // Señal audiovisual inmediata: el jugador siempre percibe el contacto.
     state.shake = Math.max(state.shake, 10);
     state.flash = Math.max(state.flash, .22);
-    const priorImpact = window.__AETHER3D_IMPACT || { serial: 0 };
-    window.__AETHER3D_IMPACT = { serial: priorImpact.serial + 1, x: this.x, y: this.y,
-      color: this.buffs.shield > 0 || this.permanentShieldCharges > 0 ? "#55eaff" : "#ff684d" };
+    publishAether3DImpact(this.x,this.y,this.buffs.shield > 0 || this.permanentShieldCharges > 0 ? "#55eaff" : "#ff684d","player-hit");
     spawnImpactBurst(this.x, this.y, this.buffs.shield > 0 || this.permanentShieldCharges > 0 ? "#55eaff" : "#ff684d", IS_LOW_POWER ? 8 : 15);
     if (this.permanentShieldCharges > 0) {
       this.permanentShieldCharges--;
@@ -1569,19 +1600,29 @@ function detonateAsteroidChain(x, y, source, depth = 0) {
 class Asteroid {
   constructor(x, y, radius, kind = "normal") {
     this.aether3dId = (Asteroid._next3DId = (Asteroid._next3DId || 0) + 1);
-    this.x = x ?? Math.random() * (W - 60) + 30;
-    this.y = y ?? -45;
     this.radius = radius;
     this.kind = kind;
     const diffMult = 1 + (state.level - 1) * 0.045;
-
+    // Los objetos nacen desde bordes distintos y convergen hacia el área de combate.
+    // Las coordenadas siguen siendo 2D para conservar colisiones y balance existentes.
+    const edge = (x == null || y == null) ? Math.floor(Math.random() * 4) : -1;
+    const targetX = player ? player.x : W * (.35 + Math.random() * .3);
+    const targetY = player ? Math.max(H * .18, player.y - 120) : H * .42;
+    const margin = Math.max(28, radius + 8);
+    this.x = x ?? (edge === 0 ? -margin : edge === 1 ? W + margin : Math.random() * (W - 60) + 30);
+    this.y = y ?? (edge === 2 ? -margin : edge === 3 ? H + margin : Math.random() * H * .72 + H * .08);
+    this.depth = x == null && y == null ? 28 + Math.random() * 34 : 8 + Math.random() * 8;
+    const dx = targetX - this.x, dy = targetY - this.y;
+    const angle = Math.atan2(dy, dx);
     if (kind === "shooting_star") {
-      this.vx = (Math.random() < 0.5 ? 1 : -1) * (3.5 + Math.random() * 2);
-      this.vy = 6.5 * diffMult;
+      const speed = (5.2 + Math.random() * 1.8) * diffMult;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
       this.hp = 1;
     } else {
-      this.vx = (Math.random() - 0.5) * 1.6 * diffMult;
-      this.vy = (1.5 + Math.random() * 1.4) * diffMult;
+      const speed = (1.7 + Math.random() * 1.35) * diffMult;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
       const baseHp = radius > 32 ? 4 : radius > 20 ? 2 : 1;
       this.hp = Math.ceil(baseHp * (1 + Math.floor(state.level / 10) * 0.4));
     }
@@ -1601,6 +1642,7 @@ class Asteroid {
 
     this.x += this.vx;
     this.y += this.vy;
+    this.depth = Math.max(0, (this.depth || 0) - (this.kind === 'shooting_star' ? .34 : .16));
     this.rot += this.rotSpeed;
     if (this.hitFlash > 0) this.hitFlash--;
 
@@ -1617,8 +1659,7 @@ class Asteroid {
       });
     }
 
-    if (this.x < this.radius || this.x > W - this.radius) this.vx *= -1;
-    if (this.y > H + 60) this.dead = true;
+    if (this.x < -this.radius * 2 || this.x > W + this.radius * 2 || this.y < -this.radius * 2 || this.y > H + this.radius * 2) this.dead = true;
   }
 
   draw() {
@@ -1655,12 +1696,18 @@ class Asteroid {
 class EnemyShip {
   constructor(variant) {
     this.variant = variant;
-    this.x = Math.random() * (W - 90) + 45;
-    this.y = -45;
+    // Los cazas aparecen en el espacio profundo, dentro del campo visible,
+    // y se aproximan al piloto mientras maniobran en los tres ejes.
+    this.x = W * (.18 + Math.random() * .64);
+    this.y = H * (.14 + Math.random() * .42);
     this.baseX = this.x;
     this.age = Math.floor(Math.random() * 90);
-    this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" || variant === "lancer" ? 2.8 : 1.6);
-    this.vy = variant === "bomber" || variant === "carrier" ? 0.9 : variant === "lancer" ? 2.2 : 1.4;
+    const entryAngle = Math.random() * Math.PI * 2;
+    const entrySpeed = variant === "interceptor" || variant === "lancer" ? 1.45 : .92;
+    this.vx = Math.cos(entryAngle) * entrySpeed;
+    this.vy = Math.sin(entryAngle) * entrySpeed;
+    this.entryFrames = 90 + Math.floor(Math.random() * 65);
+    this.depth = 48 + Math.random() * 20;
     this.radius = (variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16) * 1.35;
     // Resistencia enemiga con crecimiento suave durante los 100 sectores.
     const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
@@ -1677,7 +1724,18 @@ class EnemyShip {
 
   update() {
     this.age++;
-    if (this.variant === "weaver") {
+    if (this.entryFrames > 0) {
+      this.entryFrames--;
+      this.x += this.vx;
+      this.y += this.vy;
+      this.depth = Math.max(0, this.depth - .24);
+      // Suaviza el ingreso y evita que una nave aparezca quieta en una fila.
+      if (this.entryFrames === 0) {
+        this.vx *= .72;
+        this.vy = .82;
+        this.vx *= .38;
+      }
+    } else if (this.variant === "weaver") {
       this.x += Math.sin(this.age * .075) * 3.1;
       this.y += this.vy * 1.18;
     } else if (this.variant === "lancer") {
@@ -1699,8 +1757,20 @@ class EnemyShip {
       this.x += this.vx;
       this.y += this.vy;
     }
-    if (this.x < 35 || this.x > W - 35) this.vx *= -1;
-    if (this.y > H + 70) this.dead = true;
+    // Mantener a los cazas dentro del corredor de combate alcanzable.
+    // Evita que atraviesen la línea del piloto y queden detrás de la nave,
+    // donde los disparos frontales ya no pueden alcanzarlos.
+    const engagementLimit = Math.min(H * .68, (player ? player.y : H - 185) - Math.max(110, this.radius * 2.4));
+    if (this.y > engagementLimit) {
+      this.y = engagementLimit;
+      if (this.vy > 0) this.vy = 0;
+      if (this.variant === "lancer") {
+        this.vx *= .72;
+        this.dashTimer = Math.max(this.dashTimer, 55);
+      }
+    }
+    this.depth = Math.max(0, this.depth - .12);
+    if (this.x < -this.radius * 2 || this.x > W + this.radius * 2 || this.y < -this.radius * 2 || this.y > H + this.radius * 2) this.dead = true;
 
     this.fireTimer--;
     if (this.fireTimer <= 0 && this.y > 40 && this.y < H * .72) {
@@ -1714,7 +1784,7 @@ class EnemyShip {
     const targetPilot=getNearestPilot(this.x,this.y);const ang = Math.atan2(targetPilot.y - this.y, targetPilot.x - this.x);
     const shot = (angle, speed, color) => enemyBullets.push({
       x: this.x, y: this.y + 14, vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed, color
+      vy: Math.sin(angle) * speed, color, originX: this.x, originY: this.y, depth: this.depth
     });
     if (this.variant === "scout" || this.variant === "weaver") {
       shot(ang, this.variant === "weaver" ? 4.8 : 4.2, this.variant === "weaver" ? "#4df5ff" : "#ff4d6d");
@@ -2018,8 +2088,18 @@ function spawnPowerup() {
     item = available[Math.floor(Math.random() * available.length)];
   }
   if (!item) return;
-  const x = 34 + Math.random() * Math.max(1, W - 68);
-  powerups.push({ x, y: -24, vy: 2.0 + Math.random() * 0.55, vx: (Math.random() - 0.5) * 0.8, meteor: true, ...item });
+  // Recompensa 3D: aparece a distancia, flota en profundidad y no cae como objeto 2D.
+  const x = W * (.22 + Math.random() * .56);
+  const y = H * (.22 + Math.random() * .48);
+  const phase = Math.random() * Math.PI * 2;
+  powerups.push({
+    ...item, x, y, prevX:x, prevY:y,
+    aether3dId: "power-" + Math.random().toString(36).slice(2,12),
+    aether3dPhase:phase, depth:52 + Math.random() * 12,
+    depthSpeed:.3 + Math.random() * .08,
+    driftX:(Math.random()-.5)*.24, driftY:(Math.random()-.5)*.2,
+    spin:phase, life:2100, dead:false
+  });
 }
 
 function awardCombatCredits(amount, x, y, label) {
@@ -2031,14 +2111,13 @@ function awardCombatCredits(amount, x, y, label) {
 }
 
 function spawnCreditCoin(x, y, amount) {
+  const phase=Math.random()*Math.PI*2;
   creditCoins.push({
-    x, y, amount: Math.max(1, Math.floor(amount)),
-    vx: (Math.random() - 0.5) * 2.8,
-    vy: -2.8 - Math.random() * 1.8,
-    gravity: 0.075,
-    spin: Math.random() * Math.PI * 2,
-    life: 900,
-    dead: false
+    id:"credit-"+Math.random().toString(36).slice(2,10),
+    x, y, prevX:x, prevY:y, depth:60+Math.random()*12,
+    depthSpeed:.2, amount:Math.max(1,Math.floor(amount)),
+    driftX:(Math.random()-.5)*.1, driftY:(Math.random()-.5)*.1,
+    spin:phase, aether3dPhase:phase, life:1500, dead:false
   });
 }
 
@@ -2740,33 +2819,37 @@ function updateAndDraw() {
   // colisiones, armas, progresión y guardado siguen perteneciendo al motor original.
   if (window.__AETHER3D_ACTIVE) {
     window.__AETHER3D_STATE = {
-      x: player.x, y: player.y, width: W, height: H, level: state.level, tilt: player.tilt,
+      x: player.x, y: player.y, aimX:playerAim.x, aimY:playerAim.y, width: W, height: H, level: state.level, tilt: player.tilt,
       selectedShip: state.selectedShip, type: player.type, color: player.color, accent: player.accent,
       invulnerable: player.invuln > 0 && Math.floor(player.invuln / 5) % 2 === 0,
       shield: player.buffs.shield > 0, playing: state.mode === "PLAYING",
       coopPlayer2: player2 && player2.lives > 0 ? {x:player2.x,y:player2.y,tilt:player2.tilt,color:player2.color,selectedShip:player2.type,invulnerable:player2.invuln>0&&Math.floor(player2.invuln/5)%2===0,shield:player2.buffs.shield>0} : null,
       enemyShots: enemyBullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "enemy-shot-" + Math.random().toString(36).slice(2)),
-        x: b.x, y: b.y, vx: b.vx, vy: b.vy, color: b.color || "#ff4d6d"
+        x: b.x, y: b.y, vx: b.vx, vy: b.vy, originX: b.originX, originY: b.originY, depth: b.depth, color: b.color || "#ff4d6d"
       })),
       shots: bullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "shot-" + Math.random().toString(36).slice(2)),
-        x: b.x, y: b.y, color: b.color || "#39eaff", missile: !!b.missile, type: b.type || "bolt"
+        x: b.x, y: b.y, vx:b.vx, vy:b.vy, originX:b.originX, originY:b.originY, aimDistance:b.aimDistance,
+        color: b.color || "#39eaff", missile: !!b.missile, type: b.type || "bolt"
       })),
       asteroids: asteroids.filter(a => !a.dead).map(a => ({
         id: a.aether3dId, x: a.x, y: a.y, radius: a.radius, kind: a.kind,
-        rot: a.rot, hitFlash: a.hitFlash, depth: Math.min(18, Math.max(0, a.radius * 0.12)),
+        rot: a.rot, hitFlash: a.hitFlash, depth: Number.isFinite(a.depth) ? a.depth : 12,
         sx: a.kind === "magnetic" ? 1.15 : 1, sy: a.kind === "shooting_star" ? .72 : 1,
         sz: a.kind === "shooting_star" ? .72 : 1
       })),
       enemies: enemies.filter(e => !e.dead).map(e => ({
         id: e.aether3dId || (e.aether3dId = "enemy-" + (e._aether3dId || (e._aether3dId = Math.random().toString(36).slice(2)))),
-        x: e.x, y: e.y, radius: e.radius, variant: e.variant, age: e.age || 0
+        x: e.x, y: e.y, radius: e.radius, variant: e.variant, age: e.age || 0, depth: Number.isFinite(e.depth) ? e.depth : 12,
+        hp: e.hp
       })),
       boss: boss && !boss.dead ? {
         x: boss.x, y: boss.y, radius: boss.radius, variant: boss.variant,
         phase: boss.phase, hp: boss.hp, maxHp: boss.maxHp, weakAngle: boss.weakAngle
       } : null,
+      powerups: powerups.filter(p => !p.dead).map(p => ({id:p.aether3dId||(p.aether3dId="power-"+Math.random().toString(36).slice(2)),x:p.x,y:p.y,depth:Number.isFinite(p.depth)?p.depth:42,color:p.color,label:p.label,spin:p.spin})),
+      creditCoins: creditCoins.filter(c => !c.dead).map(c => ({id:c.aether3dId||(c.aether3dId="credit-"+Math.random().toString(36).slice(2)),x:c.x,y:c.y,depth:Number.isFinite(c.depth)?c.depth:46,amount:c.amount,spin:c.spin})),
       phenomena: phenomena.filter(ph => !ph.dead).map(ph => ({
         id: ph.aether3dId || (ph.aether3dId = "phenomenon-" + Math.random().toString(36).slice(2)),
         kind: ph.kind, x: ph.x, y: ph.y, radius: ph.radius,
@@ -2819,6 +2902,7 @@ function updateAndDraw() {
   });
 
   asteroids.forEach((a) => {
+    a.prevX=a.x;a.prevY=a.y;
     a.update();
     if (!window.__AETHER3D_ACTIVE) a.draw();
 
@@ -2829,11 +2913,24 @@ function updateAndDraw() {
     }
 
     bullets.forEach((b) => {
-      if (!b.dead && !a.dead && Math.hypot(b.x - a.x, b.y - a.y) < a.radius + (b.type === "laser" ? 12 : b.type === "plasma" ? 10 : 6)) {
-        if (b.pierce > 0) b.pierce--; else b.dead = true;
-        a.hp -= b.dmg;
-        a.hitFlash = 12;
-        spawnImpactBurst(b.x, b.y, a.kind === "magnetic" ? "#70e7ff" : "#ffd27a", IS_LOW_POWER ? 3 : 6);
+      if(b.dead||a.dead)return;
+      const bx0=Number.isFinite(b.prevX)?b.prevX:b.x,by0=Number.isFinite(b.prevY)?b.prevY:b.y;
+      const ax0=Number.isFinite(a.prevX)?a.prevX:a.x,ay0=Number.isFinite(a.prevY)?a.prevY:a.y;
+      const rx=(b.x-bx0)-(a.x-ax0),ry=(b.y-by0)-(a.y-ay0),sx=bx0-ax0,sy=by0-ay0;
+      const len2=rx*rx+ry*ry;
+      const t=len2>0?Math.max(0,Math.min(1,-(sx*rx+sy*ry)/len2)):0;
+      const closestX=sx+rx*t,closestY=sy+ry*t;
+      const hitRadius=a.radius+(b.type==="laser"?12:b.type==="plasma"?10:6);
+      if(Math.hypot(closestX,closestY)<hitRadius){
+        if(b.pierce>0)b.pierce--;else b.dead=true;
+        a.hp-=b.dmg;
+        a.hitFlash=12;
+        const travelX=bx0+(b.x-bx0)*t,travelY=by0+(b.y-by0)*t;
+        const nx=travelX-a.x,ny=travelY-a.y,norm=Math.max(.001,Math.hypot(nx,ny));
+        const contactX=a.x+nx/norm*a.radius*.9,contactY=a.y+ny/norm*a.radius*.9;
+        const hitColor=a.kind==="magnetic"?"#70e7ff":"#ffd27a";
+        publishAether3DImpact(contactX,contactY,hitColor,"asteroid-hit",-5-(Number.isFinite(a.depth)?a.depth:12));
+        spawnImpactBurst(contactX,contactY,hitColor,IS_LOW_POWER?4:8);
         SoundFX.play("targetHit");
         if (a.hp <= 0) {
           a.dead = true;
@@ -2880,7 +2977,12 @@ function updateAndDraw() {
       if (distance < e.radius + (b.missile ? 13 : b.type === "laser" ? 18 : b.type === "plasma" ? 14 : 11)) {
         if (b.pierce > 0) b.pierce--; else b.dead = true;
         e.hp -= b.dmg;
-        spawnImpactBurst(b.x, b.y, "#ff8bc8", IS_LOW_POWER ? 3 : 6);
+        const travelX=bx0+(b.x-bx0)*t,travelY=by0+(b.y-by0)*t;
+        const nx=travelX-e.x,ny=travelY-e.y,norm=Math.max(.001,Math.hypot(nx,ny));
+        const contactX=e.x+nx/norm*e.radius*.88,contactY=e.y+ny/norm*e.radius*.88;
+        const hitColor=e.variant==="carrier"?"#b18aff":e.variant==="bomber"?"#ffbd65":"#ff6f9d";
+        publishAether3DImpact(contactX,contactY,hitColor,"enemy-hit",-7-(Number.isFinite(e.depth)?e.depth:5));
+        spawnImpactBurst(contactX,contactY,hitColor,IS_LOW_POWER?4:8);
         SoundFX.play("targetHit");
         if (e.hp <= 0) {
           e.dead = true;
@@ -2948,16 +3050,18 @@ function updateAndDraw() {
   });
 
   creditCoins.forEach((coin) => {
-    coin.x += coin.vx;
-    coin.y += coin.vy;
-    coin.vy = Math.min(5.2, coin.vy + (coin.gravity || 0.075));
-    coin.vx *= 0.992;
-    coin.spin += 0.16;
+    coin.prevX=coin.x;coin.prevY=coin.y;
+    const phase=coin.aether3dPhase||0;
+    coin.x+=Math.sin(phase+performance.now()*.00048)*.16+(coin.driftX||0);
+    coin.y+=Math.cos(phase+performance.now()*.00041)*.13+(coin.driftY||0);
+    coin.depth=Math.max(8,(coin.depth||86)-(coin.depthSpeed||.16));
+    coin.spin+=.035;
     coin.life--;
-    if (coin.y > H + 24 || coin.life <= 0) coin.dead = true;
+    if(coin.life<=0||coin.x < -80||coin.x > W+80||coin.y < -80||coin.y > H+80)coin.dead=true;
 
     // Moneda dorada visible: brillo, canto y símbolo de crédito.
     const squash = Math.max(0.22, Math.abs(Math.cos(coin.spin)));
+    if(!window.__AETHER3D_ACTIVE){
     ctx.save();
     ctx.translate(coin.x, coin.y);
     ctx.shadowBlur = 17;
@@ -2980,20 +3084,33 @@ function updateAndDraw() {
     ctx.textBaseline = "middle";
     ctx.fillText(String(coin.amount), 0, 0);
     ctx.restore();
+    }
 
+    const coinShot=bullets.find(b=>!b.dead&&Math.hypot(b.x-coin.x,b.y-coin.y)<34);
+    if(coinShot&&!coin.dead){
+      coinShot.dead=true;coin.dead=true;
+      publishAether3DImpact(coin.x,coin.y,"#ffd45c","credit-collected",-8-(coin.depth||46));
+      spawnImpactBurst(coin.x,coin.y,"#ffd45c",IS_LOW_POWER?7:12);
+      awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");
+      SoundFX.play("powerup");
+      addFloatingText(coin.x,coin.y-20,`+${coin.amount} CRÉDITOS`,"#ffd34e");
+    }
     if (!coin.dead && (Math.hypot(coin.x-player.x,coin.y-player.y)<player.radius+15 || (player2&&player2.lives>0&&Math.hypot(coin.x-player2.x,coin.y-player2.y)<player2.radius+15))) {
       coin.dead=true;awardCombatCredits(coin.amount,coin.x,coin.y,"MONEDA");SoundFX.play("powerup");addFloatingText(coin.x,coin.y-20,`+${coin.amount} CRÉDITOS`,"#ffd34e");
     }
   });
 
   powerups.forEach((p) => {
-    p.prevX = p.x; p.prevY = p.y;
-    p.y += p.vy;
-    p.x += (p.vx || 0);
-    // Sin atracción magnética: los potenciadores mantienen su trayectoria de caída.
-    if (p.y > H + 30) p.dead = true;
+    p.prevX=p.x;p.prevY=p.y;
+    // Orbe flotante: deriva orbital suave mientras se aproxima por el eje de profundidad.
+    const phase=p.aether3dPhase||0;
+    p.x+=Math.sin(phase+performance.now()*.0005)*.2+(p.driftX||0);
+    p.y+=Math.cos(phase+performance.now()*.00043)*.16+(p.driftY||0);
+    p.depth=Math.max(7,(p.depth||104)-(p.depthSpeed||.2));
+    p.life=(p.life??2100)-1;
+    if(p.life<=0||p.x < -90||p.x > W+90||p.y < -90||p.y > H+90)p.dead=true;
 
-    if (p.meteor) {
+    if (!window.__AETHER3D_ACTIVE && p.meteor) {
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(-0.32);
@@ -3009,17 +3126,19 @@ function updateAndDraw() {
       ctx.moveTo(0, -13); ctx.lineTo(12, 0); ctx.lineTo(0, 13); ctx.lineTo(-12, 0);
       ctx.closePath(); ctx.fill();
       ctx.restore();
-    } else {
+    } else if(!window.__AETHER3D_ACTIVE) {
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = "#050711";
-    ctx.font = "bold 13px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(p.label, p.x, p.y);
+    if(!window.__AETHER3D_ACTIVE){
+      ctx.fillStyle = "#050711";
+      ctx.font = "bold 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(p.label, p.x, p.y);
+    }
 
     if (!p.dead) {
       // Colisión barrida: comprueba el recorrido relativo entre dos frames, no solo la posición final.
@@ -3030,7 +3149,28 @@ function updateAndDraw() {
       const lengthSq = vx * vx + vy * vy;
       const t = lengthSq > 0 ? Math.max(0, Math.min(1, -(sx * vx + sy * vy) / lengthSq)) : 0;
       const closest = Math.hypot(sx + vx * t, sy + vy * t);
-      if (closest < player.radius + 14) {p.dead=true;applyPowerup(p,player);}
+      const plasmaHit=bullets.find(b=>{
+        if(b.dead)return false;
+        const hitRadius=b.type==="plasma"?38:b.type==="laser"?30:34;
+        if(Math.hypot(b.x-p.x,b.y-p.y)>hitRadius)return false;
+        // Cuando el proyectil trae trayectoria 3D, exigir proximidad de profundidad evita impactos falsos.
+        if(Number.isFinite(b.originX)&&Number.isFinite(b.originY)&&Number.isFinite(b.aimDistance)){
+          const traveled=Math.hypot(b.x-b.originX,b.y-b.originY);
+          const progress=Math.max(0,Math.min(1,traveled/Math.max(1,b.aimDistance)));
+          const shotDepth=10.4+progress*96;
+          if(Math.abs(shotDepth-(8+(p.depth||104)))>30)return false;
+        }
+        return true;
+      });
+      if(plasmaHit){
+        plasmaHit.dead=true;p.dead=true;
+        publishAether3DImpact(p.x,p.y,p.color||"#55eaff","powerup-collected",-8-(p.depth||42));
+        spawnImpactBurst(p.x,p.y,p.color||"#55eaff",IS_LOW_POWER?8:15);
+        applyPowerup(p,player);
+        addFloatingText(p.x,p.y-24,p.text||"PODER ADQUIRIDO",p.color||"#55eaff");
+        SoundFX.play("powerup");
+      }
+      else if (closest < player.radius + 14) {p.dead=true;applyPowerup(p,player);}
       else if(player2&&player2.lives>0){
         const sx2=(p.prevX??p.x)-(player2.prevX??player2.x),sy2=(p.prevY??p.y)-(player2.prevY??player2.y),ex2=p.x-player2.x,ey2=p.y-player2.y,vx2=ex2-sx2,vy2=ey2-sy2,len2=vx2*vx2+vy2*vy2,t2=len2>0?Math.max(0,Math.min(1,-(sx2*vx2+sy2*vy2)/len2)):0;
         if(Math.hypot(sx2+vx2*t2,sy2+vy2*t2)<player2.radius+14){p.dead=true;applyPowerup(p,player2);}
@@ -4241,9 +4381,13 @@ bindTap("btn-local-coop",()=>{localCoopEnabled=!localCoopEnabled;const b=documen
 bindTap("btn-phonepad-copy",()=>{if(phonepadState.code)navigator.clipboard?.writeText(new URL("https://mariotonygomez81-debug.github.io/aether-nova-mobile-controller/?code="+phonepadState.code).href).catch(()=>{});});
 
 window.addEventListener("keydown", (e) => {
-  if (["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
-  if (e.code === "ArrowLeft" || e.code === "KeyA") keyboardInput.left = true;
-  if (e.code === "ArrowRight" || e.code === "KeyD") keyboardInput.right = true;
+  if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "ArrowLeft") aimKeys.left = true;
+  if (e.code === "ArrowRight") aimKeys.right = true;
+  if (e.code === "ArrowUp") aimKeys.up = true;
+  if (e.code === "ArrowDown") aimKeys.down = true;
+  if (e.code === "KeyA") keyboardInput.left = true;
+  if (e.code === "KeyD") keyboardInput.right = true;
   refreshHorizontalInput();
   if (e.code === "KeyJ") keyboardInput2.left = true;
   if (e.code === "KeyL") keyboardInput2.right = true;
@@ -4264,13 +4408,17 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("keyup", (e) => {
-  if (e.code === "ArrowLeft" || e.code === "KeyA") keyboardInput.left = false;
-  if (e.code === "ArrowRight" || e.code === "KeyD") keyboardInput.right = false;
+  if (e.code === "ArrowLeft") aimKeys.left = false;
+  if (e.code === "ArrowRight") aimKeys.right = false;
+  if (e.code === "ArrowUp") aimKeys.up = false;
+  if (e.code === "ArrowDown") aimKeys.down = false;
+  if (e.code === "KeyA") keyboardInput.left = false;
+  if (e.code === "KeyD") keyboardInput.right = false;
   refreshHorizontalInput();
   if (e.code === "KeyJ") keyboardInput2.left = false;
   if (e.code === "KeyL") keyboardInput2.right = false;
 });
-window.addEventListener("blur", () => { keyboardInput.left=keyboardInput.right=false;keyboardInput2.left=keyboardInput2.right=false;touchInput.left=touchInput.right=false;gamepadState.left=gamepadState.right=false;phonepadRelease();refreshHorizontalInput(); });
+window.addEventListener("blur", () => { aimKeys.left=aimKeys.right=aimKeys.up=aimKeys.down=false; keyboardInput.left=keyboardInput.right=false;keyboardInput2.left=keyboardInput2.right=false;touchInput.left=touchInput.right=false;gamepadState.left=gamepadState.right=false;phonepadRelease();refreshHorizontalInput(); });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && state.mode === "PLAYING") togglePause();
 });

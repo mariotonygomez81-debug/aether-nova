@@ -1404,3 +1404,61 @@ body.aether3d-ready #aether3dCanvas { opacity: 1; }
 .squad-member-row small{color:#9eb4cf;font-size:.62rem}
 .squad-member-row small:last-child{grid-column:2;grid-row:1/3;align-self:center}
 @media(max-width:640px){.coop-social-grid{grid-template-columns:1fr}}
+
+
+/* FASE 8 — HUD de combate: paneles de cristal, jerarquía y respuesta luminosa */
+#hud{padding:12px 14px 8px;align-items:flex-start}
+#hud .pill{position:relative;min-width:66px;padding:7px 10px 6px;border:1px solid rgba(80,220,255,.42);border-radius:12px;background:linear-gradient(145deg,rgba(9,28,48,.88),rgba(3,9,22,.76));box-shadow:inset 0 1px 0 rgba(220,250,255,.12),0 5px 18px rgba(0,0,0,.22),0 0 16px rgba(0,210,255,.07);backdrop-filter:blur(12px)}
+#hud .pill:after{content:"";position:absolute;left:10px;right:10px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(145,245,255,.75),transparent)}
+#hud .pill .lbl{font-size:8px;letter-spacing:1.35px;color:#8caec9}
+#hud .pill strong{font-size:15px;line-height:1.25;color:#8ffaff;text-shadow:0 0 12px rgba(0,230,255,.5);font-variant-numeric:tabular-nums}
+#hud .credit-pill strong{color:#ffd875;text-shadow:0 0 12px rgba(255,190,72,.4)}
+#hud .hud-center{max-width:min(340px,30vw);padding-top:4px}
+#ui-sector-name{font-size:10px;letter-spacing:1.7px;text-shadow:0 0 12px rgba(255,195,66,.42)}
+#hud .progress-bar{height:7px;border:1px solid rgba(104,222,255,.42);background:rgba(3,12,27,.82);box-shadow:0 0 14px rgba(0,211,255,.12)}
+#ui-progress{background:linear-gradient(90deg,#38f4ff 0%,#4a8dff 48%,#bb67ff 100%);box-shadow:0 0 12px rgba(59,220,255,.65)}
+#hud .icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid rgba(91,219,255,.48);background:linear-gradient(145deg,rgba(12,34,55,.92),rgba(4,11,25,.94));box-shadow:inset 0 1px 0 rgba(220,250,255,.12),0 5px 16px rgba(0,0,0,.25);transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+#hud .icon-btn:hover{transform:translateY(-2px);border-color:#8df7ff;box-shadow:0 0 18px rgba(0,220,255,.22)}
+#hud .pause-btn{border-color:rgba(255,208,80,.8);background:linear-gradient(145deg,rgba(80,55,12,.75),rgba(22,16,7,.92));box-shadow:0 0 15px rgba(255,190,50,.12)}
+#touch-controls .ctrl-btn{position:relative;border:1px solid rgba(48,224,255,.65);border-radius:15px;background:linear-gradient(155deg,rgba(7,48,68,.88),rgba(4,12,28,.96) 72%);box-shadow:inset 0 1px 0 rgba(225,253,255,.18),inset 0 -8px 18px rgba(0,0,0,.24),0 7px 20px rgba(0,0,0,.3),0 0 16px rgba(0,218,255,.11);text-shadow:0 0 12px rgba(0,238,255,.58);transition:transform .13s ease,filter .13s ease,border-color .13s ease}
+#touch-controls .ctrl-btn:before{content:"";position:absolute;top:0;left:13%;right:13%;height:1px;background:linear-gradient(90deg,transparent,rgba(190,250,255,.78),transparent)}
+#touch-controls .ctrl-btn:active,#touch-controls .ctrl-btn.pressed{transform:translateY(2px) scale(.97);filter:brightness(1.45);box-shadow:inset 0 0 22px rgba(0,236,255,.24),0 0 22px rgba(0,236,255,.3)}
+#touch-controls .bomb-btn{border-color:rgba(255,55,145,.86);background:linear-gradient(155deg,rgba(83,14,54,.92),rgba(22,7,24,.97));color:#ff83c0;text-shadow:0 0 12px rgba(255,40,145,.6);box-shadow:inset 0 1px 0 rgba(255,220,245,.18),0 0 18px rgba(255,30,130,.13)}
+#touch-controls .bomb-btn:before{background:linear-gradient(90deg,transparent,rgba(255,180,220,.85),transparent)}
+#touch-controls .weapon-btn:nth-of-type(3){border-color:rgba(80,230,255,.8)}
+@media(max-width:900px){#hud{padding:8px 8px 6px}#hud .pill{min-width:48px;padding:5px 6px}#hud .pill strong{font-size:12px}#hud .icon-btn{width:34px;height:34px}}
+@media(prefers-reduced-motion:reduce){#hud .icon-btn,#touch-controls .ctrl-btn{transition:none}}
+
+
+/* FASE 18 — cabina de piloto inmersiva, con el centro de combate despejado. */
+#cockpit-overlay{position:fixed;inset:0;z-index:8;display:none;pointer-events:none;overflow:hidden;contain:layout paint}
+body:has(#hud:not(.hidden)) #cockpit-overlay{display:block}
+.cockpit-glass{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.cockpit-frame{fill:rgba(2,8,18,.18);stroke:url(#cockpitMetal);stroke-width:8;stroke-linejoin:round}
+.cockpit-strut{fill:none;stroke:#102b40;stroke-width:34;stroke-linecap:round;opacity:.78}
+.cockpit-dash{fill:rgba(2,7,16,.86);stroke:#1c526d;stroke-width:5}
+.cockpit-edge{fill:none;stroke:#67eaff;stroke-width:2;opacity:.7}
+.cockpit-hud-lines{fill:none;stroke:#58eaff;stroke-width:2;opacity:.66}
+.cockpit-labels{fill:#8df5ff;font:700 13px 'Segoe UI',sans-serif;letter-spacing:2px;opacity:.76}
+.cockpit-instruments{fill:rgba(3,17,31,.42);stroke:rgba(88,232,255,.55);stroke-width:2}
+.cockpit-radar{position:absolute;left:50%;bottom:17%;width:clamp(110px,13vw,210px);aspect-ratio:1;transform:translateX(-50%);border:1px solid rgba(91,228,255,.48);border-radius:50%;background:radial-gradient(circle,rgba(0,153,255,.28),rgba(0,40,90,.12) 65%,transparent 70%);box-shadow:0 0 32px rgba(0,160,255,.22),inset 0 0 22px rgba(0,170,255,.2)}
+.cockpit-radar:before,.cockpit-radar:after{content:"";position:absolute;inset:15%;border:1px solid rgba(100,230,255,.35);border-radius:50%}
+.cockpit-radar:after{inset:35%;border-style:dashed}
+.cockpit-radar span{position:absolute;left:50%;top:50%;width:48%;height:1px;transform-origin:left;background:linear-gradient(90deg,#67f5ff,transparent);animation:radarSweep 5s linear infinite}
+.cockpit-radar i{position:absolute;width:5px;height:5px;left:64%;top:38%;border-radius:50%;background:#9affff;box-shadow:0 0 9px #3cf}
+.cockpit-radar b{position:absolute;left:50%;bottom:-22px;transform:translateX(-50%);font:700 9px 'Segoe UI',sans-serif;letter-spacing:2px;color:#83edff;white-space:nowrap}
+.cockpit-speed,.cockpit-status{position:absolute;color:#83efff;text-shadow:0 0 8px rgba(0,210,255,.5);font:700 10px 'Segoe UI',sans-serif;letter-spacing:1px}
+.cockpit-speed{left:38%;bottom:13%;display:flex;flex-direction:column;gap:4px}
+.cockpit-speed strong{font-size:22px}.cockpit-speed small,.cockpit-status small{font-size:8px;opacity:.7}
+.cockpit-status{bottom:28%;display:flex;gap:5px;align-items:center;flex-wrap:wrap;width:clamp(100px,12vw,210px)}
+.cockpit-status.left{left:5%}.cockpit-status.right{right:5%}
+.cockpit-status b{width:100%;font-size:11px}
+.cockpit-status span{height:4px;flex:1;background:linear-gradient(90deg,#53f5ff,#1685bd);box-shadow:0 0 7px #1ad}
+.cockpit-status small{width:100%}
+@keyframes radarSweep{to{transform:rotate(360deg)}}
+@media(max-width:700px){
+ .cockpit-labels,.cockpit-instruments,.cockpit-speed,.cockpit-status{display:none}
+ .cockpit-radar{bottom:22%;width:100px;opacity:.55}
+ .cockpit-strut{stroke-width:22}.cockpit-dash{opacity:.72}
+}
+@media(prefers-reduced-motion:reduce){.cockpit-radar span{animation:none}}

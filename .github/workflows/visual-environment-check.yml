@@ -1,0 +1,86 @@
+name: Visual environment quality checks
+
+on:
+  pull_request:
+    paths:
+      - "aether3d.js"
+      - "game.js"
+      - "index.html"
+      - "platform-runtime.js"
+      - ".github/workflows/visual-environment-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visual-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate 3D renderer JavaScript syntax
+        run: node --input-type=module --check < aether3d.js
+      - name: Validate game engine JavaScript syntax
+        run: node --check < game.js
+      - name: Verify adaptive environment safeguards
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const renderer = fs.readFileSync("aether3d.js", "utf8");
+          const game = fs.readFileSync("game.js", "utf8");
+          const html = fs.readFileSync("index.html", "utf8");
+          const checks = [
+            ["low quality particle cap", renderer, 'qualityTier==="low"?40'],
+            ["quality tier safeguard", renderer, 'qualityTier!=="low"'],
+            ["planetary backdrop", renderer, "AETHER_PLANETARY_BACKDROP"],
+            ["cosmic dust", renderer, "cosmicDust"],
+            ["enemy sensor", renderer, "enemySensor"],
+            ["boss vent", renderer, "bossVent"],
+            ["boss shield", renderer, "bossShield"],
+            ["asteroid surface details", renderer, "asteroid-surface-details"],
+            ["shared geometry", renderer, "sharedGeometry"],
+            ["quality particle tiers", renderer, 'qualityTier==="low"?1:qualityTier==="medium"?2:3'],
+            ["orbital station", renderer, "AETHER_ORBITAL_STATION"],
+            ["station docking ring", renderer, "station-docking-ring"],
+            ["bounded burst count", renderer, "maxBursts=qualityTier"],
+            ["pickup depth speed", game, "depthSpeed"],
+            ["powerup collection", game, "powerup-collected"],
+            ["credit collection", game, "credit-collected"],
+            ["pickup identity", game, "aether3dId"],
+            ["pickup scale", renderer, "visualScale = item.variant"],
+            ["depth test", renderer, "depthTest:false"],
+            ["impact depth", renderer, "hit.depth"],
+            ["pickup glow texture", renderer, "pickupGlowTexture"],
+            ["power orb scale", renderer, 'kind==="credit"?.54:.68'],
+            ["power orb glow", renderer, 'kind==="credit"?1.02:1.18'],
+            ["enemy engagement cache", html, "enemy-engagement-range-v1"],
+            ["enemy engagement boundary", game, "const engagementLimit = Math.min(H"],
+            ["enemy engagement clamp", game, "this.y = engagementLimit"],
+            ["projectile depth alignment", renderer, "const depth=-10.4-progress*62"],
+            ["compact hit effect", renderer, "function spawn3DHitEffect"],
+            ["compact hit animation", renderer, "if(fx.compact)"],
+            ["surface hit effect", renderer, "spawn3DHitEffect(impactPosition"],
+            ["enemy contact point", game, "contactX=e.x+nx/norm"],
+            ["asteroid contact point", game, "contactX=a.x+nx/norm"],
+            ["projectile plane alignment", renderer, "const ahead=worldPos(nextX,nextY,width,height,depth)"],
+            ["pickup collection depth", game, 'powerup-collected",-8-'],
+            ["enemy cache bust", html, "aether3d.js?v=enemy-engagement-range-v1"]
+          ];
+          const missing = checks.filter(([name, source, value]) => !source.includes(value)).map(([name]) => name);
+          const forbidden = [
+            ["central 3D reticle", renderer, "aimReticle"],
+            ["central SVG reticle", html, 'cx="960" cy="405"']
+          ].filter(([name, source, value]) => source.includes(value)).map(([name]) => name);
+          if (missing.length || forbidden.length) {
+            console.error("Missing checks:", missing);
+            console.error("Forbidden elements:", forbidden);
+            process.exit(1);
+          }
+          console.log("Adaptive environment and combat checks passed:", checks.length);
+          NODE
+
