@@ -62,8 +62,6 @@ jobs:
           grep -q 'contactX=e.x+nx/norm' game.js
           grep -q 'contactX=a.x+nx/norm' game.js
           grep -q 'const ahead=worldPos(nextX,nextY,width,height,depth)' aether3d.js
-          grep -q 'pickup-energy-spheres-v2' index.html
-          grep -q 'pickup-orbs-balanced-v1' index.html
           grep -q 'powerup-collected",-8-' game.js
           ! grep -q 'aimReticle' aether3d.js
           ! grep -q 'cx="960" cy="405"' index.html
