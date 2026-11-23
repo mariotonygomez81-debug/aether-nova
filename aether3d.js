@@ -3,8 +3,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 // Renderizador 3D transparente: representa la nave real del jugador.
 // La lógica y las colisiones siguen ejecutándose en game.js.
 const canvas = document.getElementById('aether3dCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, 1.15));
+const platformTier = window.AETHER_PLATFORM?.tier || "medium";
+const platformPixelRatio = window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, platformTier==="low"?.78:platformTier==="medium"?.95:1.15);
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: platformTier==="high", powerPreference: 'high-performance', precision: platformTier==="low"?"low":"mediump" });
+renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.85:platformTier==="medium"?1:1.2));
 renderer.shadowMap.enabled = false;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 0);
@@ -32,7 +34,7 @@ camera.position.set(0, 3.4, 16);
 camera.lookAt(0, 0, -7);
 scene.add(new THREE.HemisphereLight(0xc8e6ff, 0x171126, 1.65));
 const ambientFill = new THREE.AmbientLight(0x526b9a, .38); scene.add(ambientFill);
-const key = new THREE.DirectionalLight(0xe2f1ff, 3.8); key.position.set(-28, 24, 38); key.castShadow = true; key.shadow.mapSize.set(1024,1024); scene.add(key);
+const key = new THREE.DirectionalLight(0xe2f1ff, 3.8); key.position.set(-28, 24, 38); key.castShadow = false; scene.add(key);
 const rim = new THREE.PointLight(0x16cfff, 24, 36); rim.position.set(0, 1, 2); scene.add(rim);
 const warmFill = new THREE.PointLight(0xff8a58, 9, 90); warmFill.position.set(-34,12,-72); scene.add(warmFill);
 const violetFill = new THREE.PointLight(0x875dff, 11, 110); violetFill.position.set(38,-15,-112); scene.add(violetFill);
@@ -562,7 +564,7 @@ function addRockSurfaceDetails(mesh,item){
   const detail=new THREE.Group();
   detail.name="asteroid-surface-details";
   const seed=Math.abs(Number(item.id)||1);
-  const detailCount=qualityTier==="low"?1:qualityTier==="medium"?2:3;
+  const detailCount=qualityTier==="low"?0:qualityTier==="medium"?1:2;
   for(let i=0;i<detailCount;i++){
     const angle=(seed*.731+i*2.399)% (Math.PI*2);
     const latitude=-.42+(i%3)*.39;
@@ -581,20 +583,8 @@ function addRockSurfaceDetails(mesh,item){
   }
   // Estratos minerales facetados: aristas de roca, placas fracturadas y vetas
   // compartidas para dar volumen sin crear geometría nueva por fotograma.
-  const shardGeometry=rockDetailGeometry.surfaceShard || (rockDetailGeometry.surfaceShard=new THREE.ConeGeometry(.115,.48,5,1));
-  shardGeometry.userData.sharedGeometry=true;
-  const ridgeCount=qualityTier==="low"?2:qualityTier==="medium"?4:6;
-  for(let i=0;i<ridgeCount;i++){
-    const angle=(seed*.293+i*2.399)%(Math.PI*2);
-    const latitude=-.58+((i*7)%5)*.27;
-    const normal=new THREE.Vector3(Math.cos(angle)*Math.cos(latitude),Math.sin(latitude),Math.sin(angle)*Math.cos(latitude)).normalize();
-    const ridge=new THREE.Mesh(shardGeometry,(item.kind==="magnetic"&&i%2===0)?rockDetailMaterials.ice:rockDetailMaterials.rim);
-    ridge.position.copy(normal.clone().multiplyScalar(.91));
-    ridge.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),normal);
-    ridge.rotateY(angle*.7);
-    ridge.scale.set(.62+(i%3)*.2,.58+(i%2)*.24,.72);
-    detail.add(ridge);
-  }
+  // La silueta facetada principal aporta el relieve; se evita añadir seis mallas
+  // pequeñas por asteroide, reduciendo draw calls en equipos integrados.
   if(item.kind==="magnetic"||item.kind==="explosive"){
     const crystalMat=item.kind==="magnetic"?rockDetailMaterials.ice:rockDetailMaterials.ore;
     const crystals=qualityTier==="low"?1:2;
@@ -781,13 +771,6 @@ function syncShots(items, width, height) {
     const mesh = shotMeshes.get(item.id) || createShotMesh(item);
     mesh.position.copy(worldPos(item.x, item.y, width, height, -7.5));
     mesh.rotation.set(0, 0, 0);
-    // La estela respira con un pulso corto sin crear geometría ni materiales nuevos.
-    mesh.userData.trailPulse=(mesh.userData.trailPulse||0)+.16;
-    const pulse=1+.075*Math.sin(mesh.userData.trailPulse+(item.age||0)*.08);
-    mesh.traverse(part=>{
-      const trail=part.userData.shotTrail;
-      if(trail)part.scale.set(trail.radius*pulse,trail.radius*1.12*(1+(pulse-1)*.45),trail.radius*pulse);
-    });
     mesh.visible = true;
   }
   for (const [id, mesh] of shotMeshes) {
@@ -1222,7 +1205,7 @@ const renderInterval = 1000 / (window.AETHER_PLATFORM?.fps || 40); // Límite ad
 let targetX = 0, targetY = 0;
 function resize() {
   const w=window.innerWidth, h=window.innerHeight; camera.aspect=w/h; camera.updateProjectionMatrix();
-  renderer.setPixelRatio(window.AETHER_PLATFORM?.pixelRatio || Math.min(window.devicePixelRatio || 1, 1.15));
+  renderer.setPixelRatio(Math.min(platformPixelRatio, platformTier==="low"?.85:platformTier==="medium"?1:1.2));
   renderer.shadowMap.enabled = false; renderer.setSize(w,h);
 }
 window.addEventListener('resize', resize, { passive: true });
@@ -1262,21 +1245,19 @@ function animate(now) {
     ship.rotation.x=THREE.MathUtils.damp(ship.rotation.x,Math.sin(now*.002)*.018,3,dt);
     // Durante la invulnerabilidad la nave parpadea, pero nunca desaparece del todo.
     ship.visible=true;
-    ship.traverse((part)=>{
-      if(!part.isMesh || !part.material) return;
-      const materials=Array.isArray(part.material)?part.material:[part.material];
-      for(const mat of materials){
-        if(mat.userData.baseOpacity===undefined) mat.userData.baseOpacity=mat.opacity;
-        if(data.invulnerable){
-          mat.transparent=true;
-          mat.opacity=Math.min(mat.userData.baseOpacity,.58);
-          mat.depthWrite=false;
-        } else {
-          mat.opacity=mat.userData.baseOpacity;
-          mat.depthWrite=true;
+    if(ship.userData.lastInvulnerable!==!!data.invulnerable){
+      ship.userData.lastInvulnerable=!!data.invulnerable;
+      ship.traverse((part)=>{
+        if(!part.isMesh || !part.material) return;
+        const materials=Array.isArray(part.material)?part.material:[part.material];
+        for(const mat of materials){
+          if(mat.userData.baseOpacity===undefined) mat.userData.baseOpacity=mat.opacity;
+          mat.transparent=!!data.invulnerable;
+          mat.opacity=data.invulnerable?Math.min(mat.userData.baseOpacity,.58):mat.userData.baseOpacity;
+          mat.depthWrite=!data.invulnerable;
         }
-      }
-    });
+      });
+    }
     // Escudo AEGIS: burbuja facetada y dos órbitas de plasma con pulso suave.
     const shieldPulse=1+.035*Math.sin(now*.012);
     shield.visible=!!data.shield;
@@ -1307,16 +1288,19 @@ function animate(now) {
       ship2.position.z=THREE.MathUtils.damp(ship2.position.z,-10,16,dt);
       ship2.rotation.z=THREE.MathUtils.damp(ship2.rotation.z,-(p2.x-data.width/2)/(data.width/2)*.22,7,dt);
       ship2.rotation.x=THREE.MathUtils.damp(ship2.rotation.x,Math.sin(now*.002+.8)*.018,3,dt);
-      ship2.traverse(part=>{
-        if(!part.isMesh||!part.material)return;
-        const mats=Array.isArray(part.material)?part.material:[part.material];
-        for(const mat of mats){
-          if(mat.userData.coopBaseOpacity===undefined)mat.userData.coopBaseOpacity=mat.opacity;
-          mat.transparent=!!p2.invulnerable;
-          mat.opacity=p2.invulnerable?Math.min(mat.userData.coopBaseOpacity,.58):mat.userData.coopBaseOpacity;
-          mat.depthWrite=!p2.invulnerable;
-        }
-      });
+      if(ship2.userData.lastInvulnerable!==!!p2.invulnerable){
+        ship2.userData.lastInvulnerable=!!p2.invulnerable;
+        ship2.traverse(part=>{
+          if(!part.isMesh||!part.material)return;
+          const mats=Array.isArray(part.material)?part.material:[part.material];
+          for(const mat of mats){
+            if(mat.userData.coopBaseOpacity===undefined)mat.userData.coopBaseOpacity=mat.opacity;
+            mat.transparent=!!p2.invulnerable;
+            mat.opacity=p2.invulnerable?Math.min(mat.userData.coopBaseOpacity,.58):mat.userData.coopBaseOpacity;
+            mat.depthWrite=!p2.invulnerable;
+          }
+        });
+      }
     }else ship2.visible=false;
     glowMat.emissiveIntensity=2.4+Math.sin(now*.012)*.45;
     rim.position.x=ship.position.x; rim.position.y=ship.position.y;
