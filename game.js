@@ -1729,6 +1729,7 @@ class EnemyShip {
       this.x += this.vx;
       this.y += this.vy;
     }
+    this.depth = Math.max(0, this.depth - .12);
     if (this.x < -this.radius * 2 || this.x > W + this.radius * 2 || this.y < -this.radius * 2 || this.y > H + this.radius * 2) this.dead = true;
 
     this.fireTimer--;
@@ -1743,7 +1744,7 @@ class EnemyShip {
     const targetPilot=getNearestPilot(this.x,this.y);const ang = Math.atan2(targetPilot.y - this.y, targetPilot.x - this.x);
     const shot = (angle, speed, color) => enemyBullets.push({
       x: this.x, y: this.y + 14, vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed, color
+      vy: Math.sin(angle) * speed, color, originX: this.x, originY: this.y, depth: this.depth
     });
     if (this.variant === "scout" || this.variant === "weaver") {
       shot(ang, this.variant === "weaver" ? 4.8 : 4.2, this.variant === "weaver" ? "#4df5ff" : "#ff4d6d");
@@ -2776,7 +2777,7 @@ function updateAndDraw() {
       coopPlayer2: player2 && player2.lives > 0 ? {x:player2.x,y:player2.y,tilt:player2.tilt,color:player2.color,selectedShip:player2.type,invulnerable:player2.invuln>0&&Math.floor(player2.invuln/5)%2===0,shield:player2.buffs.shield>0} : null,
       enemyShots: enemyBullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "enemy-shot-" + Math.random().toString(36).slice(2)),
-        x: b.x, y: b.y, vx: b.vx, vy: b.vy, color: b.color || "#ff4d6d"
+        x: b.x, y: b.y, vx: b.vx, vy: b.vy, originX: b.originX, originY: b.originY, depth: b.depth, color: b.color || "#ff4d6d"
       })),
       shots: bullets.filter(b => !b.dead).map(b => ({
         id: b.aether3dId || (b.aether3dId = "shot-" + Math.random().toString(36).slice(2)),
@@ -2790,7 +2791,7 @@ function updateAndDraw() {
       })),
       enemies: enemies.filter(e => !e.dead).map(e => ({
         id: e.aether3dId || (e.aether3dId = "enemy-" + (e._aether3dId || (e._aether3dId = Math.random().toString(36).slice(2)))),
-        x: e.x, y: e.y, radius: e.radius, variant: e.variant, age: e.age || 0,
+        x: e.x, y: e.y, radius: e.radius, variant: e.variant, age: e.age || 0, depth: Number.isFinite(e.depth) ? e.depth : 12,
         hp: e.hp
       })),
       boss: boss && !boss.dead ? {
