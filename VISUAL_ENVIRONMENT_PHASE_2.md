@@ -88,3 +88,14 @@ After these checks, extend sector-specific environments and convert the validate
 - Ejecutar el workflow de la rama y revisar la sintaxis del renderer.
 - Confirmar visualmente que la nueva silueta se distingue sobre fondos claros y oscuros, y que no tapa enemigos pequeños.
 - Revisar rendimiento en calidad baja y media; la prueba manual en dispositivos reales sigue pendiente.
+
+
+## Fase 8 — detalle mineral y HUD táctico
+- Se añadieron estratos minerales facetados y aristas superficiales a los asteroides mediante geometría compartida por instancia; la densidad respeta los perfiles low/medium/high.
+- Se rediseñaron visualmente los paneles del HUD y los controles táctiles con capas de cristal, reflejos superiores, jerarquía tipográfica, gradientes y estados de interacción.
+- Se conservaron identificadores, distribución, dimensiones funcionales, eventos de entrada, datos de combate y progresión.
+- No se añadieron dependencias ni luces por asteroide. La mejora de geometría se construye al crear cada asteroide, no en el bucle de renderizado.
+
+## Fase 8 — estado de validación
+- Cambios guardados en la rama de desarrollo; pendientes los resultados de GitHub Actions y la comprobación visual en navegador/dispositivos reales.
+- La versión pública de GitHub Pages no se modificó; estos cambios todavía no están publicados en producción.
