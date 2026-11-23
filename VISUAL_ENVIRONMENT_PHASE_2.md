@@ -30,3 +30,16 @@ GitHub Actions runs a syntax check for the 3D renderer and verifies that the ada
 
 ## Next phase
 After these checks, extend sector-specific environments and convert the validated Valkyrie Blender asset to a production-ready GLB only after visual review and size/performance checks.
+
+## Phase 3 — sector architecture and boss arenas
+- Added distant, decorative wreckage clusters with broken hull sections, exposed ribs and restrained emissive seams.
+- Added a large sector energy-gate silhouette with a ring and six pylons, positioned behind the combat plane.
+- Added a dedicated boss-arena frame with two rotating rings and eight perimeter beacons. It follows the active boss at a deeper camera plane and is hidden when no boss is active.
+- Sector accent materials follow the existing ten-era palette without rebuilding geometry.
+- All new structures are decorative only: no collision, hitbox, projectile, damage or progression changes.
+- Existing quality tier remains in force; these are low-poly background structures with shared materials and no new runtime dependency.
+
+## Phase 3 validation status
+- Source change committed to the existing development branch.
+- Automated GitHub Actions syntax and visual safeguard checks have not yet been observed for this commit.
+- Manual review remains required on desktop, Android TV and mobile to confirm framing, draw-call cost and combat readability.
