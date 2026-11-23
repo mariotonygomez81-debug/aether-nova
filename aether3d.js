@@ -18,10 +18,10 @@ const scene = new THREE.Scene();
 // Mira holográfica: posición independiente controlada por las cuatro direcciones.
 const aimReticle = new THREE.Group();
 const aimReticleMat = new THREE.MeshBasicMaterial({color:0x53f5ff,transparent:true,opacity:.92,depthTest:false});
-const aimReticleRing = new THREE.Mesh(new THREE.TorusGeometry(.58,.018,5,40),aimReticleMat);
+const aimReticleRing = new THREE.Mesh(new THREE.TorusGeometry(.88,.026,6,56),aimReticleMat);
 aimReticle.add(aimReticleRing);
 for(const axis of [0,Math.PI/2]){
- const tick=new THREE.Mesh(new THREE.BoxGeometry(axis===0?.22:.018,axis===0?.018:.22,.012),aimReticleMat);
+ const tick=new THREE.Mesh(new THREE.BoxGeometry(axis===0?.34:.026,axis===0?.026:.34,.016),aimReticleMat);
  tick.rotation.z=axis;aimReticle.add(tick);
 }
 aimReticle.renderOrder=20;scene.add(aimReticle);
@@ -243,7 +243,7 @@ function applyWorldEra(level){
   else loadPlanetEraTexture(era);
   planetMaterial.emissiveMap=era===0?planetNightTexture:null;
   planetMaterial.emissiveIntensity=era===0&&planetNightTexture ? .34 : 0;
-  if(planetClouds)planetClouds.visible=era===0;
+  if(planetClouds)planetClouds.visible=false;
   if(planetRingMesh)planetRingMesh.visible=false;
   atmosphere.material.color.setHex(colors[1]);
   if(planetRingMaterial)planetRingMaterial.color.setHex(colors[2]);
@@ -841,8 +841,8 @@ function createShotMesh(item){
     wake.rotation.x=Math.PI;wake.position.y=-1.78;group.add(wake);
   }else{
     const plasma=item.type==="plasma", missile=!!item.missile;
-    const length=missile?1.52:plasma?1.18:.96;
-    const width=missile?.17:plasma?.205:.16;
+    const length=missile?2.35:plasma?2.05:1.55;
+    const width=missile?.25:plasma?.29:.23;
     // Cuerpo ovalado de plasma: sin punta cónica ni aro mecánico.
     const core=new THREE.Mesh(new THREE.SphereGeometry(1,low?12:18,low?8:12),mats.core);
     core.scale.set(width,length*.48,width*.82);group.add(core);
@@ -851,8 +851,8 @@ function createShotMesh(item){
     const halo=new THREE.Mesh(new THREE.SphereGeometry(1,low?10:16,low?8:10),mats.glow);
     halo.scale.set(width*2.05,length*.66,width*1.75);group.add(halo);
     // Cola de plasma que se estira hacia atrás en forma de flujo, no de proyectil sólido.
-    const wake=new THREE.Mesh(new THREE.ConeGeometry(width*1.12,missile?1.35:1.08,low?8:12,1,true),mats.tail);
-    wake.rotation.x=Math.PI;wake.position.y=-length*.56-.48;group.add(wake);
+    const wake=new THREE.Mesh(new THREE.ConeGeometry(width*1.35,missile?2.35:2.05,low?8:12,1,true),mats.tail);
+    wake.rotation.x=Math.PI;wake.position.y=-length*.56-.88;group.add(wake);
     // Dos filamentos helicoidales muy finos sugieren energía en movimiento.
     if(!low){
       for(let side of [-1,1]){
@@ -948,9 +948,9 @@ function syncShots(items, width, height, playerX, playerY) {
     const progress=THREE.MathUtils.clamp(traveled/totalDistance,0,1);
     const depth=-10.4-progress*96;
     mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
-    const apparent=1-progress*.28;
+    const apparent=1-progress*.18;
     // Proyectiles de plasma más contundentes y legibles desde la cabina.
-    mesh.scale.setScalar(apparent*1.85);
+    mesh.scale.setScalar(apparent*3.15);
     // Orientación 3D según el vector real de movimiento del proyectil.
     const nextX=item.x+(Number(item.vx)||0)*2;
     const nextY=item.y+(Number(item.vy)||-1)*2;
@@ -1419,17 +1419,19 @@ function animate(now) {
     aimReticle.visible=true;
     // Cada bloque de diez sectores cambia la paleta del mundo sin reconstruir geometría.
     applyWorldEra(data.level||1);
+    // Cabina despejada: ningún cuerpo planetario debe entrar en el parabrisas durante combate.
+    planet.visible=false; if(planetClouds)planetClouds.visible=false; atmosphere.visible=false; if(planetRingMesh)planetRingMesh.visible=false;
     // Vuelo desde cabina: los mandos rotan la nave completa y la cámara,
     // haciendo que TODO el universo cambie de perspectiva como en un simulador.
     const steerX=THREE.MathUtils.clamp((data.x/data.width-.5)*2,-1,1);
     const neutralY=data.height*.79;
     const steerY=THREE.MathUtils.clamp((neutralY-data.y)/(data.height*.30),-1,1);
-    const targetYaw=steerX*.30;
-    const targetPitch=steerY*.19;
-    const yaw=camera.userData.yaw=THREE.MathUtils.damp(camera.userData.yaw||0,targetYaw,2.8,dt);
-    const pitch=camera.userData.pitch=THREE.MathUtils.damp(camera.userData.pitch||0,targetPitch,2.8,dt);
-    camera.position.x=THREE.MathUtils.damp(camera.position.x,Math.sin(yaw)*1.9,2.8,dt);
-    camera.position.y=THREE.MathUtils.damp(camera.position.y,3.4+pitch*2.2,2.8,dt);
+    const targetYaw=steerX*.42;
+    const targetPitch=steerY*.27;
+    const yaw=camera.userData.yaw=THREE.MathUtils.damp(camera.userData.yaw||0,targetYaw,8.5,dt);
+    const pitch=camera.userData.pitch=THREE.MathUtils.damp(camera.userData.pitch||0,targetPitch,8.5,dt);
+    camera.position.x=THREE.MathUtils.damp(camera.position.x,Math.sin(yaw)*2.35,8.5,dt);
+    camera.position.y=THREE.MathUtils.damp(camera.position.y,3.4+pitch*2.7,8.5,dt);
     camera.lookAt(Math.sin(yaw)*7, pitch*6, -7);
     worldBody.rotation.y+=dt*.0011;
     cosmicDust.rotation.z+=dt*.0007;
