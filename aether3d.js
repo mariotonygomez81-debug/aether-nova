@@ -104,7 +104,7 @@ environment.add(worldBody);
 // Superficie planetaria con continentes definidos, océanos profundos y nubes.
  // Resolución suficiente para evitar el aspecto borroso observado en la vista previa.
 function makePlanetSurface(seed){
-  const size=qualityTier==="low"?[192,96]:qualityTier==="medium"?[256,128]:[384,192];
+  const size=qualityTier==="low"?[192,96]:qualityTier==="medium"?[320,160]:[512,256];
   const canvas=document.createElement("canvas");canvas.width=size[0];canvas.height=size[1];
   const ctx=canvas.getContext("2d"),img=ctx.createImageData(canvas.width,canvas.height),d=img.data;
   for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
@@ -114,21 +114,24 @@ function makePlanetSurface(seed){
     const fine=fbm(u*29+seed,v*21-seed,seed+37,2);
     const elevation=continental*.72+regional*.22+fine*.06;
     const polar=Math.pow(Math.abs(v-.5)*2,7);
-    const landMask=Math.max(0,Math.min(1,(elevation-.505)*17+.5));
-    const shelf=Math.max(0,Math.min(1,(elevation-.465)*18));
-    const ocean=[7+24*shelf,34+68*shelf,76+91*shelf];
-    const coast=[22,105,119],continent=[69,119,91],highland=[139,133,105];
-    const landColor=elevation>.62?highland:continent;
-    const mix=landMask;
-    const cloudNoise=fbm(u*17+seed*2,v*12-seed,seed+51,2);
-    const cloud=Math.max(0,Math.min(1,(cloudNoise-.67)*4.2))*(1-polar*.65);
+    const rawLand=(elevation-.505)*15+.5;
+    const landT=Math.max(0,Math.min(1,rawLand));
+    const landMask=landT*landT*(3-2*landT);
+    const shelf=Math.max(0,Math.min(1,(elevation-.455)*13));
+    const ocean=[3+17*shelf,18+54*shelf,49+105*shelf];
+    const coast=[30,128,145],lowland=[48,112,76],forest=[28,82,57],highland=[133,119,91],snow=[190,207,211];
+    const landColor=elevation>.665?snow:elevation>.60?highland:elevation>.545?forest:lowland;
+    const cloudNoise=fbm(u*14+seed*2,v*10-seed,seed+51,2);
+    const cloudBand=Math.max(0,Math.min(1,(cloudNoise-.62)*3.8))*(1-polar*.62);
+    const cloud=cloudBand*.68;
     const k=(y*canvas.width+x)*4;
     for(let ch=0;ch<3;ch++){
-      let terrain=ocean[ch]*(1-mix)+landColor[ch]*mix;
-      terrain=terrain*(1-cloud*.36)+[207,224,235][ch]*cloud*.36;
-      // Costa turquesa fina para separar claramente tierra y océano.
-      if(landMask>.05&&landMask<.42)terrain=terrain*.72+coast[ch]*.28;
-      d[k+ch]=Math.max(0,Math.min(255,terrain));
+      let terrain=ocean[ch]*(1-landMask)+landColor[ch]*landMask;
+      const coastWeight=Math.max(0,Math.min(1,(.18-landT)*5))*(landT>0?1:0);
+      terrain=terrain*(1-coastWeight*.42)+coast[ch]*coastWeight*.42;
+      terrain=terrain*(1-cloud)+[205,222,235][ch]*cloud;
+      const latitudeShade=1-polar*.16;
+      d[k+ch]=Math.max(0,Math.min(255,terrain*latitudeShade));
     }
     d[k+3]=255;
   }
@@ -566,18 +569,21 @@ scene.add(ship2);
 // La simulación, impactos, vida y recompensas siguen controlados por game.js.
 const asteroidMeshes = new Map();
 const asteroidMaterials = {
-  normal: new THREE.MeshStandardMaterial({ color: 0x68798a, metalness: .34, roughness: .94 }),
-  explosive: new THREE.MeshStandardMaterial({ color: 0x665044, metalness: .42, roughness: .78, emissive: 0x6a2108, emissiveIntensity: .38 }),
-  magnetic: new THREE.MeshStandardMaterial({ color: 0x425d75, metalness: .72, roughness: .42, emissive: 0x062b5b, emissiveIntensity: .6 }),
+  normal: new THREE.MeshStandardMaterial({ color: 0x59616a, metalness: .12, roughness: .96, flatShading:true }),
+  explosive: new THREE.MeshStandardMaterial({ color: 0x725044, metalness: .18, roughness: .92, flatShading:true, emissive: 0x351308, emissiveIntensity: .22 }),
+  magnetic: new THREE.MeshStandardMaterial({ color: 0x476a78, metalness: .38, roughness: .66, flatShading:true, emissive: 0x062b5b, emissiveIntensity: .42 }),
   shooting_star: new THREE.MeshBasicMaterial({ color: 0x9df8ff })
 };
 function makeRockGeometry(seed) {
-  const geometry = new THREE.IcosahedronGeometry(1, qualityTier==="low"?1:qualityTier==="medium"?2:3);
-  const position = geometry.attributes.position;
-  for (let i = 0; i < position.count; i++) {
-    const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
-    const n = 1 + .17 * Math.sin((x * 17 + y * 11 + z * 7 + seed) * 2.1) + .09 * Math.cos((x * 9 - y * 15 + z * 13 + seed) * 1.7) + .045 * Math.sin((x*31+y*23-z*19+seed)*3.4);
-    position.setXYZ(i, x*n, y*n, z*n);
+  const geometry=new THREE.IcosahedronGeometry(1,qualityTier==="low"?1:qualityTier==="medium"?2:3);
+  const position=geometry.attributes.position;
+  for(let i=0;i<position.count;i++){
+    const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
+    const broad=Math.sin((x*5.7+y*4.3+z*6.1+seed)*2.1);
+    const fracture=Math.sin((x*13-y*11+z*9+seed*.7)*3.2);
+    const pits=Math.cos((x*23+y*17-z*19+seed)*2.4);
+    const n=1+broad*.105+fracture*.052+pits*.025;
+    position.setXYZ(i,x*n,y*n,z*n);
   }
   geometry.computeVertexNormals();
   return geometry;
@@ -600,19 +606,19 @@ function addRockSurfaceDetails(mesh,item){
   const detail=new THREE.Group();
   detail.name="asteroid-surface-details";
   const seed=Math.abs(Number(item.id)||1);
-  const detailCount=qualityTier==="low"?0:qualityTier==="medium"?1:2;
+  const detailCount=qualityTier==="low"?1:qualityTier==="medium"?2:3;
   for(let i=0;i<detailCount;i++){
     const angle=(seed*.731+i*2.399)% (Math.PI*2);
     const latitude=-.42+(i%3)*.39;
     const normal=new THREE.Vector3(Math.cos(angle)*Math.cos(latitude),Math.sin(latitude),Math.sin(angle)*Math.cos(latitude)).normalize();
     const crater=new THREE.Group();
-    crater.position.copy(normal.clone().multiplyScalar(.965));
+    crater.position.copy(normal.clone().multiplyScalar(.985));
     crater.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
     const bowl=new THREE.Mesh(rockDetailGeometry.crater,rockDetailMaterials.shadow);
-    bowl.scale.set(.19+(i%2)*.055,.15,.035);
+    bowl.scale.set(.27+(i%2)*.065,.22,.045);
     crater.add(bowl);
     const rim=new THREE.Mesh(rockDetailGeometry.craterRim,rockDetailMaterials.rim);
-    rim.scale.set(.22+(i%2)*.055,.18,1);
+    rim.scale.set(.30+(i%2)*.065,.25,1);
     rim.position.z=.012;
     crater.add(rim);
     detail.add(crater);
@@ -713,28 +719,37 @@ function createShotMesh(item){
     const wake=new THREE.Mesh(new THREE.ConeGeometry(.13,.72,radial,1,true),mats.tail);
     wake.rotation.x=Math.PI;wake.position.y=-1.78;group.add(wake);
   }else{
-    // Proyectil de plasma estilizado: punta, núcleo alargado, aro de confinamiento y estela cónica.
-    // Sustituye la silueta esférica tipo bombilla por un dardo energético direccional.
     const plasma=item.type==="plasma", missile=!!item.missile;
-    const length=missile?1.48:plasma?1.32:1.08;
-    const width=missile?.15:plasma?.19:.135;
-    const body=new THREE.Mesh(new THREE.CylinderGeometry(width*.56,width,length,radial,1,false),mats.core);
-    body.position.y=.02;group.add(body);
-    const sheath=new THREE.Mesh(new THREE.CylinderGeometry(width*.9,width*1.35,length*.94,radial,1,true),mats.shell);
-    sheath.position.y=.02;group.add(sheath);
-    const tip=new THREE.Mesh(new THREE.ConeGeometry(width*1.02,missile?.46:.34,radial),mats.core);
-    tip.position.y=length*.5+.12;group.add(tip);
-    const wake=new THREE.Mesh(new THREE.ConeGeometry(width*.95,missile?1.02:.78,radial,1,true),mats.glow);
-    wake.rotation.x=Math.PI;wake.position.y=-length*.5-.28;group.add(wake);
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(width*1.22,.025,6,radial*2),mats.shell);
-    ring.rotation.x=Math.PI/2;ring.position.y=-.12;group.add(ring);
-    const coreFlare=new THREE.Mesh(new THREE.SphereGeometry(width*.48,radial,Math.max(6,radial-2)),mats.shell);
-    coreFlare.position.y=length*.18;group.add(coreFlare);
+    const length=missile?1.52:plasma?1.18:.96;
+    const width=missile?.17:plasma?.205:.16;
+    // Cuerpo ovalado de plasma: sin punta cónica ni aro mecánico.
+    const core=new THREE.Mesh(new THREE.SphereGeometry(1,low?12:18,low?8:12),mats.core);
+    core.scale.set(width,length*.48,width*.82);group.add(core);
+    const shell=new THREE.Mesh(new THREE.SphereGeometry(1,low?12:18,low?8:12),mats.shell);
+    shell.scale.set(width*1.52,length*.57,width*1.3);group.add(shell);
+    const halo=new THREE.Mesh(new THREE.SphereGeometry(1,low?10:16,low?8:10),mats.glow);
+    halo.scale.set(width*2.05,length*.66,width*1.75);group.add(halo);
+    // Cola de plasma que se estira hacia atrás en forma de flujo, no de proyectil sólido.
+    const wake=new THREE.Mesh(new THREE.ConeGeometry(width*1.12,missile?1.35:1.08,low?8:12,1,true),mats.tail);
+    wake.rotation.x=Math.PI;wake.position.y=-length*.56-.48;group.add(wake);
+    // Dos filamentos helicoidales muy finos sugieren energía en movimiento.
+    if(!low){
+      for(let side of [-1,1]){
+        const points=[];
+        for(let i=0;i<7;i++){
+          const t=i/6,angle=t*Math.PI*1.65+side*Math.PI;
+          points.push(new THREE.Vector3(Math.cos(angle)*width*(1.12-t*.45),-length*.42-t*.88,Math.sin(angle)*width*(1.12-t*.45)));
+        }
+        const curve=new THREE.CatmullRomCurve3(points);
+        const flow=new THREE.Mesh(new THREE.TubeGeometry(curve,10,.018,4,false),mats.shell);
+        group.add(flow);
+      }
+    }
     if(missile){
       const fins=new THREE.Group();
       for(const side of [-1,1]){
-        const fin=new THREE.Mesh(new THREE.BoxGeometry(.11,.28,.035),mats.core);
-        fin.position.set(side*width*1.45,-.12,0);fin.rotation.z=side*.22;fins.add(fin);
+        const fin=new THREE.Mesh(new THREE.BoxGeometry(.12,.24,.035),mats.core);
+        fin.position.set(side*width*1.5,-.16,0);fin.rotation.z=side*.24;fins.add(fin);
       }
       group.add(fins);
     }
@@ -761,21 +776,14 @@ function getEnemyShotMaterials(color){
 }
 function createEnemyShot(item){
   const group=new THREE.Group(),m=getEnemyShotMaterials(item.color);
-  const core=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),m.core);
-  core.scale.set(.15,.24,.15);group.add(core);
-  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),m.shell);
-  shell.scale.set(.23,.34,.23);group.add(shell);
-  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,20,16),m.glow);
-  halo.scale.set(.34,.48,.34);group.add(halo);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.27,.035,8,24),m.shell);
-  ring.rotation.x=Math.PI/2;group.add(ring);
-  for(let i=0;i<4;i++){
-    const bead=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),m.trail);
-    const r=[.18,.145,.105,.065][i];
-    bead.scale.set(r,r*1.2,r);
-    bead.position.y=.28+i*.16;
-    group.add(bead);
-  }
+  const core=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),m.core);
+  core.scale.set(.18,.30,.18);group.add(core);
+  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),m.shell);
+  shell.scale.set(.27,.40,.27);group.add(shell);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),m.glow);
+  halo.scale.set(.38,.52,.38);group.add(halo);
+  const wake=new THREE.Mesh(new THREE.ConeGeometry(.24,.88,8,1,true),m.trail);
+  wake.rotation.x=Math.PI;wake.position.y=.72;group.add(wake);
   scene.add(group);enemyShotMeshes.set(item.id,group);return group;
 }
 function syncEnemyShots(items,width,height){
