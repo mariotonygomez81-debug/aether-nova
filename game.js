@@ -1569,19 +1569,29 @@ function detonateAsteroidChain(x, y, source, depth = 0) {
 class Asteroid {
   constructor(x, y, radius, kind = "normal") {
     this.aether3dId = (Asteroid._next3DId = (Asteroid._next3DId || 0) + 1);
-    this.x = x ?? Math.random() * (W - 60) + 30;
-    this.y = y ?? -45;
     this.radius = radius;
     this.kind = kind;
     const diffMult = 1 + (state.level - 1) * 0.045;
-
+    // Los objetos nacen desde bordes distintos y convergen hacia el área de combate.
+    // Las coordenadas siguen siendo 2D para conservar colisiones y balance existentes.
+    const edge = (x == null || y == null) ? Math.floor(Math.random() * 4) : -1;
+    const targetX = player ? player.x : W * (.35 + Math.random() * .3);
+    const targetY = player ? Math.max(H * .18, player.y - 120) : H * .42;
+    const margin = Math.max(28, radius + 8);
+    this.x = x ?? (edge === 0 ? -margin : edge === 1 ? W + margin : Math.random() * (W - 60) + 30);
+    this.y = y ?? (edge === 2 ? -margin : edge === 3 ? H + margin : Math.random() * H * .72 + H * .08);
+    this.depth = Math.random() * 13;
+    const dx = targetX - this.x, dy = targetY - this.y;
+    const angle = Math.atan2(dy, dx);
     if (kind === "shooting_star") {
-      this.vx = (Math.random() < 0.5 ? 1 : -1) * (3.5 + Math.random() * 2);
-      this.vy = 6.5 * diffMult;
+      const speed = (5.2 + Math.random() * 1.8) * diffMult;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
       this.hp = 1;
     } else {
-      this.vx = (Math.random() - 0.5) * 1.6 * diffMult;
-      this.vy = (1.5 + Math.random() * 1.4) * diffMult;
+      const speed = (1.7 + Math.random() * 1.35) * diffMult;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
       const baseHp = radius > 32 ? 4 : radius > 20 ? 2 : 1;
       this.hp = Math.ceil(baseHp * (1 + Math.floor(state.level / 10) * 0.4));
     }
@@ -1617,8 +1627,7 @@ class Asteroid {
       });
     }
 
-    if (this.x < this.radius || this.x > W - this.radius) this.vx *= -1;
-    if (this.y > H + 60) this.dead = true;
+    if (this.x < -this.radius * 2 || this.x > W + this.radius * 2 || this.y < -this.radius * 2 || this.y > H + this.radius * 2) this.dead = true;
   }
 
   draw() {
@@ -1655,12 +1664,21 @@ class Asteroid {
 class EnemyShip {
   constructor(variant) {
     this.variant = variant;
-    this.x = Math.random() * (W - 90) + 45;
-    this.y = -45;
+    // Entradas tridimensionales: arriba, laterales y desde el borde inferior del encuadre.
+    const edge = Math.floor(Math.random() * 4);
+    const targetX = W * (.32 + Math.random() * .36);
+    const targetY = H * (.22 + Math.random() * .2);
+    const margin = 58;
+    this.x = edge === 0 ? -margin : edge === 1 ? W + margin : Math.random() * (W - 90) + 45;
+    this.y = edge === 2 ? -margin : edge === 3 ? H + margin : Math.random() * H * .62 + H * .12;
     this.baseX = this.x;
     this.age = Math.floor(Math.random() * 90);
-    this.vx = (Math.random() < 0.5 ? 1 : -1) * (variant === "interceptor" || variant === "lancer" ? 2.8 : 1.6);
-    this.vy = variant === "bomber" || variant === "carrier" ? 0.9 : variant === "lancer" ? 2.2 : 1.4;
+    const entryAngle = Math.atan2(targetY - this.y, targetX - this.x);
+    const entrySpeed = variant === "interceptor" || variant === "lancer" ? 3.1 : 2.05;
+    this.vx = Math.cos(entryAngle) * entrySpeed;
+    this.vy = Math.sin(entryAngle) * entrySpeed;
+    this.entryFrames = 72;
+    this.depth = 3 + Math.random() * 12;
     this.radius = (variant === "bomber" || variant === "carrier" ? 28 : variant === "interceptor" || variant === "lancer" ? 20 : variant === "weaver" ? 18 : 16) * 1.35;
     // Resistencia enemiga con crecimiento suave durante los 100 sectores.
     const progress = Math.max(0, Math.min(1, (state.level - 1) / 99));
@@ -1677,7 +1695,16 @@ class EnemyShip {
 
   update() {
     this.age++;
-    if (this.variant === "weaver") {
+    if (this.entryFrames > 0) {
+      this.entryFrames--;
+      this.x += this.vx;
+      this.y += this.vy;
+      // Suaviza el ingreso y evita que una nave aparezca quieta en una fila.
+      if (this.entryFrames === 0) {
+        this.vx *= .72;
+        this.vy = Math.max(.65, Math.abs(this.vy) * .72);
+      }
+    } else if (this.variant === "weaver") {
       this.x += Math.sin(this.age * .075) * 3.1;
       this.y += this.vy * 1.18;
     } else if (this.variant === "lancer") {
@@ -1699,8 +1726,7 @@ class EnemyShip {
       this.x += this.vx;
       this.y += this.vy;
     }
-    if (this.x < 35 || this.x > W - 35) this.vx *= -1;
-    if (this.y > H + 70) this.dead = true;
+    if (this.x < -this.radius * 2 || this.x > W + this.radius * 2 || this.y < -this.radius * 2 || this.y > H + this.radius * 2) this.dead = true;
 
     this.fireTimer--;
     if (this.fireTimer <= 0 && this.y > 40 && this.y < H * .72) {
