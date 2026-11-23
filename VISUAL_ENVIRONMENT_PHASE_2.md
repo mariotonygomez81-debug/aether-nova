@@ -282,3 +282,14 @@ After these checks, extend sector-specific environments and convert the validate
 - La limpieza de un orbe ya no destruye recursos GPU compartidos. Se evita crear arreglos temporales de objetos clonados en cada fotograma durante la sincronización.
 - No se modifican puntuación, economía, daño, colisiones, cadencia, progresión, cuentas, Supabase, Joystick ni contratos multijugador.
 - Validación automática de sintaxis y rendimiento pendiente; se requiere comprobar visualmente que cada tipo de orbe se distingue y medir fluidez en el equipo de gama baja.
+
+
+## Fase 10 — recompensas 3D reales y adquisición por impacto
+- Los potenciadores dejan de generarse como cápsulas/meteoritos 2D: nacen como orbes con identidad única, posición de pantalla inicial y profundidad de entrada.
+- Los orbes derivan suavemente en X/Y y avanzan por el eje Z hacia la cabina; ya no se eliminan por una caída vertical fuera de pantalla.
+- Los créditos también se convierten en orbes dorados tridimensionales que flotan y se aproximan en profundidad, en lugar de seguir una parábola 2D.
+- Los disparos pueden recoger orbes de poder y créditos; el contacto produce un destello/ráfaga en la posición del orbe, reproduce el sonido y aplica la habilidad o suma los créditos.
+- La comprobación de impacto usa un radio mayor y, cuando el proyectil contiene datos de trayectoria, valida también la proximidad en profundidad para reducir falsos impactos.
+- Cada recompensa tiene identidad de malla independiente para que dos orbes del mismo tipo no compartan posición ni se oculten entre sí.
+- Se mantienen las funciones de aplicación de poderes, límites de inventario, importes, economía y progresión existentes.
+- Validación automática de sintaxis de game.js y aether3d.js y comprobaciones específicas de recompensas: pendiente de ejecución en CI. Prueba manual visual y de rendimiento: pendiente.
