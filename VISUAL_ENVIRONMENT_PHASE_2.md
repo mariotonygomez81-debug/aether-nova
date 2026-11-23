@@ -377,3 +377,11 @@ After these checks, extend sector-specific environments and convert the validate
 - Los impactos sobre enemigos y asteroides dejan de usar la explosión genérica de tres anillos; los efectos grandes quedan reservados para destrucciones y eventos que realmente lo requieren.
 - El nuevo efecto reutiliza el límite de simultaneidad y la calidad adaptativa del renderer; no cambia daño, velocidad de disparo ni colisiones.
 - Cache bust actualizado a projectile-depth-hitfx-v2. Despliegue y validación visual pendientes.
+
+
+## Fase 21 — corredor de combate y alcance de enemigos
+- Se limita el avance vertical de las naves enemigas a un corredor de combate alcanzable: el límite es el menor entre el 68% de la altura de pantalla y la posición del piloto menos una distancia de seguridad proporcional al radio de la nave.
+- Al alcanzar ese límite, el enemigo deja de avanzar hacia abajo en lugar de cruzar la línea del jugador y quedar detrás de la nave, fuera del alcance de los disparos frontales.
+- Los lancer reducen su impulso y reinician el temporizador de embestida para que no atraviesen la posición del piloto.
+- Se conservan aparición, movimiento lateral, variantes, disparos enemigos, vida y recompensas. Se actualiza el cache bust.
+- Validación automática y prueba visual de combate pendientes.
