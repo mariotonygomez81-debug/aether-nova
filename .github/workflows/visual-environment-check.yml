@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "aether3d.js"
+      - "game.js"
       - "platform-runtime.js"
       - ".github/workflows/visual-environment-check.yml"
   workflow_dispatch:
@@ -23,6 +24,8 @@ jobs:
           node-version: 22
       - name: Validate 3D renderer JavaScript syntax
         run: node --input-type=module --check < aether3d.js
+      - name: Validate game engine JavaScript syntax
+        run: node --check < game.js
       - name: Verify adaptive environment safeguards
         run: |
           grep -q 'qualityTier==="low"?40' aether3d.js
@@ -38,5 +41,10 @@ jobs:
           grep -q 'AETHER_ORBITAL_STATION' aether3d.js
           grep -q 'station-docking-ring' aether3d.js
           grep -q 'maxBursts=qualityTier' aether3d.js
+          grep -q 'depthSpeed' game.js
+          grep -q 'powerup-collected' game.js
+          grep -q 'credit-collected' game.js
+          grep -q 'aether3dId' game.js
+          grep -q 'p.aether3dId||("power-"+p.id)' aether3d.js
           grep -q 'particleCount=qualityTier' aether3d.js
-          echo "Adaptive planetary environment, enemy, boss and asteroid detail checks passed."
+          echo "Adaptive environment and 3D reward-orb checks passed."
