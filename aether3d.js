@@ -1134,8 +1134,8 @@ function syncPickups(powerups,coins,width,height,now){
   mesh.userData.ringFine.rotation.z=now*.00155;
   mesh.visible=true;
  };
- for(const p of powerups||[])syncOne(p,"power","power-"+p.id,p.color||"#55eaff");
- for(const c of coins||[])syncOne(c,"credit","credit-"+c.id,"#ffd45c");
+ for(const p of powerups||[])syncOne(p,"power",p.aether3dId||("power-"+p.id),p.color||"#55eaff");
+ for(const c of coins||[])syncOne(c,"credit",c.id||("credit-"+c.amount+"-"+Math.round(c.x)+"-"+Math.round(c.y)),"#ffd45c");
  for(const [key,mesh] of pickupMeshes){
   if(!alive.has(key)){scene.remove(mesh);pickupMeshes.delete(key);}
  }
