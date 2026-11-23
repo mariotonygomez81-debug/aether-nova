@@ -75,3 +75,16 @@ After these checks, extend sector-specific environments and convert the validate
 ## Phase 6 validation status
 - Renderer and documentation changes are committed on the existing visual development branch.
 - GitHub Actions syntax and safeguard checks must be reviewed for the renderer commit. Manual playtesting is still required to assess trail readability and boss burst framing on desktop, Android TV and low-end mobile.
+
+
+## Fase 7 — silueta cinematográfica de armamento
+- Se reemplazó la forma esférica de los proyectiles del jugador por dardos de plasma direccionales: núcleo alargado, punta cónica, camisa energética translúcida, aro de confinamiento y estela posterior.
+- Los láseres perforantes ahora tienen un haz más largo con punta definida y una envolvente luminosa; los misiles conservan sus aletas.
+- Se mantiene el color del arma, la identificación por ID, la sincronización con los proyectiles reales y la limpieza de geometrías al desaparecer.
+- La geometría utiliza menos segmentos en calidad baja y no añade luces, texturas ni dependencias externas.
+- No se modificaron velocidad, trayectoria, daño, colisiones, cadencia ni reglas de armamento.
+
+## Fase 7 — validación pendiente
+- Ejecutar el workflow de la rama y revisar la sintaxis del renderer.
+- Confirmar visualmente que la nueva silueta se distingue sobre fondos claros y oscuros, y que no tapa enemigos pequeños.
+- Revisar rendimiento en calidad baja y media; la prueba manual en dispositivos reales sigue pendiente.
