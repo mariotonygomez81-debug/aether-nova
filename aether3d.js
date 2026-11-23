@@ -101,32 +101,43 @@ const worldBody=new THREE.Group();
 worldBody.name="AETHER_PLANETARY_BACKDROP";
 environment.add(worldBody);
 
-function makePlanetSurface(seed,base,land,ice){
-  const canvas=document.createElement("canvas");
-  const surfaceSize=qualityTier==="low"?[160,80]:qualityTier==="medium"?[224,112]:[288,144];
-  canvas.width=surfaceSize[0];canvas.height=surfaceSize[1];
-  const c=canvas.getContext("2d"),img=c.createImageData(canvas.width,canvas.height),d=img.data;
+// Superficie planetaria con continentes definidos, océanos profundos y nubes.
+ // Resolución suficiente para evitar el aspecto borroso observado en la vista previa.
+function makePlanetSurface(seed){
+  const size=qualityTier==="low"?[256,128]:qualityTier==="medium"?[384,192]:[512,256];
+  const canvas=document.createElement("canvas");canvas.width=size[0];canvas.height=size[1];
+  const ctx=canvas.getContext("2d"),img=ctx.createImageData(canvas.width,canvas.height),d=img.data;
   for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
     const u=x/canvas.width,v=y/canvas.height;
-    const broad=fbm(u*7+seed,v*5-seed,seed,3);
-    const detail=fbm(u*18+seed*2,v*12+seed,seed+11,2);
-    const ridges=Math.max(0,Math.min(1,(broad*.72+detail*.38-.53)*3.2));
-    const polar=Math.pow(Math.abs(v-.5)*2,5);
-    const mix=Math.max(0,Math.min(1,ridges*.82+polar*.24));
+    const continental=fbm(u*4.6+seed,v*3.4-seed,seed,3);
+    const regional=fbm(u*10.5-seed*.7,v*8.2+seed,seed+19,2);
+    const fine=fbm(u*29+seed,v*21-seed,seed+37,2);
+    const elevation=continental*.72+regional*.22+fine*.06;
+    const polar=Math.pow(Math.abs(v-.5)*2,7);
+    const landMask=Math.max(0,Math.min(1,(elevation-.505)*17+.5));
+    const shelf=Math.max(0,Math.min(1,(elevation-.465)*18));
+    const ocean=[7+24*shelf,34+68*shelf,76+91*shelf];
+    const coast=[22,105,119],continent=[69,119,91],highland=[139,133,105];
+    const landColor=elevation>.62?highland:continent;
+    const mix=landMask;
+    const cloudNoise=fbm(u*17+seed*2,v*12-seed,seed+51,2);
+    const cloud=Math.max(0,Math.min(1,(cloudNoise-.67)*4.2))*(1-polar*.65);
     const k=(y*canvas.width+x)*4;
-    for(let channel=0;channel<3;channel++){
-      const terrain=base[channel]*(1-mix)+land[channel]*mix;
-      d[k+channel]=Math.max(0,Math.min(255,terrain*(1-polar*.28)+ice[channel]*polar*.28));
+    for(let ch=0;ch<3;ch++){
+      let terrain=ocean[ch]*(1-mix)+landColor[ch]*mix;
+      terrain=terrain*(1-cloud*.36)+[207,224,235][ch]*cloud*.36;
+      // Costa turquesa fina para separar claramente tierra y océano.
+      if(landMask>.05&&landMask<.42)terrain=terrain*.72+coast[ch]*.28;
+      d[k+ch]=Math.max(0,Math.min(255,terrain));
     }
     d[k+3]=255;
   }
-  c.putImageData(img,0,0);
+  ctx.putImageData(img,0,0);
   const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
-  tex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
-  return tex;
+  tex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());return tex;
 }
-const planetTexture=makePlanetSurface(13,[34,75,105],[102,119,112],[174,202,220]);
-const planetMaterial=new THREE.MeshStandardMaterial({map:planetTexture,color:0xc7dce9,roughness:.88,metalness:.06});
+const planetTexture=makePlanetSurface(13);
+const planetMaterial=new THREE.MeshStandardMaterial({map:planetTexture,color:0xffffff,roughness:.94,metalness:0});
 const worldEraColors=[
   [0xc7dce9,0x42bfff,0x91b5c8],[0xb4d6d8,0x35e0d2,0x8ebeb7],
   [0xd6b8a4,0xff9a62,0xd7a17c],[0xb9a8e4,0x9b72ff,0x9c87c7],
