@@ -65,3 +65,13 @@ After these checks, extend sector-specific environments and convert the validate
 ## Phase 5 validation status
 - Changes are committed on the existing visual development branch.
 - Automated workflow result and full visual/performance checks are to be reviewed before merge; desktop, Android TV and mobile device testing remains necessary.
+
+## Phase 6 — weapon trail response and boss destruction
+- Existing projectile trail geometry now receives a subtle animated pulse during synchronization, using the already-created trail meshes and shared shot materials; no per-frame geometry or material allocation is added.
+- When the renderer observes the active boss transition to the absent state, it emits one enlarged burst at the last synchronized boss position. The event is guarded by the visible/last-position state so it does not repeat every frame.
+- The boss burst uses the existing capped burst system and scales down on the low quality tier.
+- Boss defeat, rewards, sector progression, projectile movement, collisions, hitboxes, multiplayer and persistence remain unchanged. This is renderer-only feedback.
+
+## Phase 6 validation status
+- Renderer and documentation changes are committed on the existing visual development branch.
+- GitHub Actions syntax and safeguard checks must be reviewed for the renderer commit. Manual playtesting is still required to assess trail readability and boss burst framing on desktop, Android TV and low-end mobile.
