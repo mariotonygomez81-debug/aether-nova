@@ -52,7 +52,9 @@ jobs:
           grep -q 'pickupGlowTexture' aether3d.js
           grep -q 'kind==="credit"?.54:.68' aether3d.js
           grep -q 'kind==="credit"?1.02:1.18' aether3d.js
-          grep -q 'projectile-depth-hitfx-v2' index.html
+          grep -q 'enemy-engagement-range-v1' index.html
+          grep -q 'const engagementLimit = Math.min(H \* .68' game.js
+          grep -q 'this.y = engagementLimit' game.js
           grep -q 'const depth=-10.4-progress*62' aether3d.js
           grep -q 'function spawn3DHitEffect' aether3d.js
           grep -q 'if(fx.compact)' aether3d.js
