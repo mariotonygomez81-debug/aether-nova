@@ -54,3 +54,14 @@ After these checks, extend sector-specific environments and convert the validate
 ## Phase 4 validation status
 - Source update committed to the existing development branch.
 - Automated syntax checks and manual visual/performance checks on desktop, Android TV and mobile are still required; no successful run is claimed here.
+
+## Phase 5 — Reactive enemy armor impacts
+- The existing enemy render-state payload now includes the current enemy HP value; this is read-only presentation data and does not change combat calculations.
+- The 3D renderer compares consecutive HP snapshots and emits a brief, low-cost colored impact burst when an enemy takes damage, plus a short emissive armor pulse.
+- Impact colors follow enemy families (violet for carrier/weaver, gold for bomber, cyan for other classes).
+- Existing burst concurrency and particle-count caps remain in force for low/medium/high quality tiers.
+- No new collision checks, damage events, hitboxes, weapon rules, network messages or database fields were introduced.
+
+## Phase 5 validation status
+- Changes are committed on the existing visual development branch.
+- Automated workflow result and full visual/performance checks are to be reviewed before merge; desktop, Android TV and mobile device testing remains necessary.
