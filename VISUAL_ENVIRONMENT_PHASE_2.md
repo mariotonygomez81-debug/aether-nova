@@ -369,3 +369,11 @@ After these checks, extend sector-specific environments and convert the validate
 - Se ajusta el tamaño de las ráfagas 3D de impacto para que sean visibles pero localizadas en la superficie, evitando grandes anillos flotantes.
 - No se cambian daño, cadencia, precisión lógica del juego, vida ni recompensas; se mejora la coincidencia visual y el registro de colisiones.
 - La revisión visual y pruebas de rendimiento quedan pendientes tras desplegar.
+
+
+## Fase 19 — profundidad de disparos y contacto de blindaje
+- Se corrige la profundidad de avance de proyectiles 3D: el recorrido pasa de un rango de 96 unidades a 62, alineándose mejor con los planos de enemigos (-55 a -75) y asteroides (-33 a -67) en el combate actual.
+- Se incorpora un efecto específico de impacto de blindaje: destello blanco breve, un único anillo pequeño y chispas cortas que nacen en el punto de contacto.
+- Los impactos sobre enemigos y asteroides dejan de usar la explosión genérica de tres anillos; los efectos grandes quedan reservados para destrucciones y eventos que realmente lo requieren.
+- El nuevo efecto reutiliza el límite de simultaneidad y la calidad adaptativa del renderer; no cambia daño, velocidad de disparo ni colisiones.
+- Cache bust actualizado a projectile-depth-hitfx-v2. Despliegue y validación visual pendientes.
