@@ -1075,6 +1075,47 @@ function buildEnemy(variant='scout'){
  return g;
 }
 
+// Recompensas 3D: esferas de contención con núcleo, órbita y halo cromático.
+const pickupMeshes=new Map();
+function makePickupSphere(kind,color){
+ const group=new THREE.Group();
+ const tint=new THREE.Color(color||"#45eaff");
+ const shell=new THREE.Mesh(new THREE.SphereGeometry(1,qualityTier==="low"?12:20,qualityTier==="low"?8:14),
+  new THREE.MeshPhysicalMaterial({color:tint,metalness:.28,roughness:.2,transparent:true,opacity:.24,transmission:.18,emissive:tint,emissiveIntensity:.42}));
+ group.add(shell);
+ const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.48,2),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.96}));
+ core.userData.pickupCore=true;group.add(core);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.78,.035,6,qualityTier==="low"?20:36),
+  new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+ ring.rotation.x=Math.PI*.34;group.add(ring);
+ const halo=new THREE.Mesh(new THREE.SphereGeometry(1.16,12,8),
+  new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.11,blending:THREE.AdditiveBlending,depthWrite:false}));
+ group.add(halo);group.userData.ring=ring;group.userData.kind=kind;
+ scene.add(group);return group;
+}
+function syncPickups(powerups,coins,width,height,now){
+ const alive=new Set();
+ const all=[...(powerups||[]).map(p=>({...p,pickupKind:"power",key:"power-"+p.id})),
+            ...(coins||[]).map(c=>({...c,pickupKind:"credit",key:"credit-"+c.id}))];
+ for(const item of all){
+  const key=item.key;alive.add(key);
+  const color=item.pickupKind==="credit"?"#ffd45c":(item.color||"#55eaff");
+  let mesh=pickupMeshes.get(key);
+  if(!mesh){mesh=makePickupSphere(item.pickupKind,color);pickupMeshes.set(key,mesh);}
+  const depth=-8-(Number.isFinite(item.depth)?item.depth:42);
+  mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
+  const near=THREE.MathUtils.clamp(1-(Number.isFinite(item.depth)?item.depth:42)/115,.42,1.18);
+  const pulse=1+Math.sin(now*.004+(item.spin||0))*0.075;
+  const size=(item.pickupKind==="credit"?.72:1.05)*near*pulse;
+  mesh.scale.setScalar(size);
+  mesh.rotation.y=now*.0008+(item.spin||0);mesh.rotation.z=now*.00045;
+  if(mesh.userData.ring)mesh.userData.ring.rotation.z=-now*.0012;
+  mesh.visible=true;
+ }
+ for(const [key,mesh] of pickupMeshes){
+  if(!alive.has(key)){scene.remove(mesh);mesh.traverse(part=>{if(part.geometry)part.geometry.dispose();if(part.material)part.material.dispose();});pickupMeshes.delete(key);}
+ }
+}
 function syncEnemies(items,width,height){
  const alive=new Set();
  for(const item of items||[]){
@@ -1416,7 +1457,7 @@ function animate(now) {
     aimReticle.position.copy(worldPos(data.width*.5,data.height*.43,data.width,data.height,-8.4));
     const aimPulse=1+Math.sin(now*.006)*.045;
     aimReticle.scale.setScalar(aimPulse);
-    aimReticle.visible=true;
+    aimReticle.visible=false;
     // Cada bloque de diez sectores cambia la paleta del mundo sin reconstruir geometría.
     applyWorldEra(data.level||1);
     // Cabina despejada: ningún cuerpo planetario debe entrar en el parabrisas durante combate.
@@ -1522,6 +1563,7 @@ function animate(now) {
     camera.position.y=THREE.MathUtils.damp(camera.position.y,3.4+ship.position.y*.12,2.4,dt);
     camera.lookAt(camera.position.x*.25, camera.position.y*.18, -7);
     syncAsteroids(data.asteroids, data.width, data.height, dt);
+    syncPickups(data.powerups,data.creditCoins,data.width,data.height,now);
     syncShots(data.shots, data.width, data.height, data.x, data.y);
     syncEnemyShots(data.enemyShots, data.width, data.height, data.x, data.y);
     syncEnemies(data.enemies, data.width, data.height);
@@ -1534,6 +1576,7 @@ function animate(now) {
     for (const mesh of enemyShotMeshes.values()) mesh.visible=false;
     for (const mesh of enemyMeshes.values()) mesh.visible=false;
     for (const mesh of phenomenonMeshes.values()) mesh.visible=false;
+    for (const mesh of pickupMeshes.values()) mesh.visible=false;
   }
   if(window.__aetherStarFar) window.__aetherStarFar.rotation.z+=dt*.00008;
   if(window.__aetherStarNear) window.__aetherStarNear.rotation.z+=dt*.00018;
