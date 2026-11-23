@@ -1075,45 +1075,69 @@ function buildEnemy(variant='scout'){
  return g;
 }
 
-// Recompensas 3D: esferas de contención con núcleo, órbita y halo cromático.
+// Recompensas 3D: orbes de energía cromática. Geometrías y materiales compartidos
+// para evitar recompilar shaders y crear/liberar recursos GPU en cada recogida.
 const pickupMeshes=new Map();
+const pickupGeometry={
+ shell:new THREE.SphereGeometry(1,qualityTier==="low"?12:16,qualityTier==="low"?8:12),
+ core:new THREE.SphereGeometry(.43,qualityTier==="low"?10:14,qualityTier==="low"?8:10),
+ nucleus:new THREE.SphereGeometry(.17,8,6),
+ halo:new THREE.SphereGeometry(1.42,qualityTier==="low"?8:12,qualityTier==="low"?6:8),
+ ring:new THREE.TorusGeometry(.92,.032,5,qualityTier==="low"?20:28),
+ ringFine:new THREE.TorusGeometry(.68,.018,4,qualityTier==="low"?18:24)
+};
+const pickupMaterialCache=new Map();
+function pickupMaterials(color){
+ const key=color||"#45eaff";
+ if(pickupMaterialCache.has(key))return pickupMaterialCache.get(key);
+ const tint=new THREE.Color(key);
+ const materials={
+  shell:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.2,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),
+  core:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.98,blending:THREE.AdditiveBlending,depthWrite:false}),
+  nucleus:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.98,blending:THREE.AdditiveBlending,depthWrite:false}),
+  halo:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.105,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),
+  ring:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}),
+  ringFine:new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.62,blending:THREE.AdditiveBlending,depthWrite:false})
+ };
+ pickupMaterialCache.set(key,materials);return materials;
+}
 function makePickupSphere(kind,color){
- const group=new THREE.Group();
- const tint=new THREE.Color(color||"#45eaff");
- const shell=new THREE.Mesh(new THREE.SphereGeometry(1,qualityTier==="low"?12:20,qualityTier==="low"?8:14),
-  new THREE.MeshPhysicalMaterial({color:tint,metalness:.28,roughness:.2,transparent:true,opacity:.24,transmission:.18,emissive:tint,emissiveIntensity:.42}));
- group.add(shell);
- const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.48,2),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.96}));
- core.userData.pickupCore=true;group.add(core);
- const ring=new THREE.Mesh(new THREE.TorusGeometry(.78,.035,6,qualityTier==="low"?20:36),
-  new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));
- ring.rotation.x=Math.PI*.34;group.add(ring);
- const halo=new THREE.Mesh(new THREE.SphereGeometry(1.16,12,8),
-  new THREE.MeshBasicMaterial({color:tint,transparent:true,opacity:.11,blending:THREE.AdditiveBlending,depthWrite:false}));
- group.add(halo);group.userData.ring=ring;group.userData.kind=kind;
+ const group=new THREE.Group(),m=pickupMaterials(color);
+ const shell=new THREE.Mesh(pickupGeometry.shell,m.shell);
+ const core=new THREE.Mesh(pickupGeometry.core,m.core);
+ const nucleus=new THREE.Mesh(pickupGeometry.nucleus,m.nucleus);
+ const halo=new THREE.Mesh(pickupGeometry.halo,m.halo);
+ const ring=new THREE.Mesh(pickupGeometry.ring,m.ring);
+ const ringFine=new THREE.Mesh(pickupGeometry.ringFine,m.ringFine);
+ ring.rotation.x=Math.PI*.34;ringFine.rotation.set(Math.PI*.34,.72,.35);
+ group.add(halo,shell,core,nucleus,ring,ringFine);
+ group.userData={ring,ringFine,core,nucleus,kind};
  scene.add(group);return group;
 }
 function syncPickups(powerups,coins,width,height,now){
  const alive=new Set();
- const all=[...(powerups||[]).map(p=>({...p,pickupKind:"power",key:"power-"+p.id})),
-            ...(coins||[]).map(c=>({...c,pickupKind:"credit",key:"credit-"+c.id}))];
- for(const item of all){
-  const key=item.key;alive.add(key);
-  const color=item.pickupKind==="credit"?"#ffd45c":(item.color||"#55eaff");
+ const syncOne=(item,kind,key,color)=>{
+  alive.add(key);
   let mesh=pickupMeshes.get(key);
-  if(!mesh){mesh=makePickupSphere(item.pickupKind,color);pickupMeshes.set(key,mesh);}
-  const depth=-8-(Number.isFinite(item.depth)?item.depth:42);
-  mesh.position.copy(worldPos(item.x,item.y,width,height,depth));
-  const near=THREE.MathUtils.clamp(1-(Number.isFinite(item.depth)?item.depth:42)/115,.42,1.18);
-  const pulse=1+Math.sin(now*.004+(item.spin||0))*0.075;
-  const size=(item.pickupKind==="credit"?1.02:1.38)*near*pulse;
-  mesh.scale.setScalar(size);
-  mesh.rotation.y=now*.0008+(item.spin||0);mesh.rotation.z=now*.00045;
-  if(mesh.userData.ring)mesh.userData.ring.rotation.z=-now*.0012;
+  if(!mesh){mesh=makePickupSphere(kind,color);pickupMeshes.set(key,mesh);}
+  const itemDepth=Number.isFinite(item.depth)?item.depth:(kind==="credit"?46:42);
+  mesh.position.copy(worldPos(item.x,item.y,width,height,-8-itemDepth));
+  // El orbe crece de forma perceptible al aproximarse por el eje Z.
+  const near=THREE.MathUtils.clamp(1-itemDepth/125,.58,1.32);
+  const pulse=1+Math.sin(now*.004+(item.spin||0))*.095;
+  mesh.scale.setScalar((kind==="credit"?1.5:2.05)*near*pulse);
+  mesh.rotation.y=now*.00072+(item.spin||0);
+  mesh.rotation.z=now*.00038;
+  mesh.userData.core.scale.setScalar(1+Math.sin(now*.006+(item.spin||0))*.13);
+  mesh.userData.nucleus.scale.setScalar(.82+Math.sin(now*.009)*.16);
+  mesh.userData.ring.rotation.z=-now*.00115;
+  mesh.userData.ringFine.rotation.z=now*.00155;
   mesh.visible=true;
- }
+ };
+ for(const p of powerups||[])syncOne(p,"power","power-"+p.id,p.color||"#55eaff");
+ for(const c of coins||[])syncOne(c,"credit","credit-"+c.id,"#ffd45c");
  for(const [key,mesh] of pickupMeshes){
-  if(!alive.has(key)){scene.remove(mesh);mesh.traverse(part=>{if(part.geometry)part.geometry.dispose();if(part.material)part.material.dispose();});pickupMeshes.delete(key);}
+  if(!alive.has(key)){scene.remove(mesh);pickupMeshes.delete(key);}
  }
 }
 function syncEnemies(items,width,height){
