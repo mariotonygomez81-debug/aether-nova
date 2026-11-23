@@ -99,3 +99,17 @@ After these checks, extend sector-specific environments and convert the validate
 ## Fase 8 — estado de validación
 - Cambios guardados en la rama de desarrollo; pendientes los resultados de GitHub Actions y la comprobación visual en navegador/dispositivos reales.
 - La versión pública de GitHub Pages no se modificó; estos cambios todavía no están publicados en producción.
+
+
+## Fase 9 — optimización de rendimiento 3D
+- El renderizador usa antialiasing únicamente en perfil alto; perfiles bajo/medio reducen el pixel ratio y solicitan precisión de shader adecuada para GPU integrada.
+- Se desactivó la solicitud de sombras de la luz direccional (el mapa de sombras ya estaba desactivado), evitando trabajo inútil.
+- Se eliminó el recorrido de todos los subobjetos de cada proyectil en cada fotograma; los proyectiles conservan su forma y estela estáticas.
+- Los recorridos de materiales de invulnerabilidad de ambos pilotos ahora se ejecutan solo cuando cambia el estado, no en todos los fotogramas.
+- Se redujeron mallas decorativas por asteroide; se mantiene la geometría facetada principal y los detalles de cráter según el perfil.
+- No se modificó el paso de simulación, la velocidad de entidades, la cadencia de disparo, las colisiones ni el balance. El objetivo es reducir coste de renderizado, no ralentizar el juego.
+
+## Fase 9 — arte 3D asistido por IA
+- Se seleccionó Hyper3D Rodin V2.5 mediante fal.ai para generar una nave GLB PBR optimizada para Three.js.
+- La generación no pudo comenzar: la cuenta fal.ai conectada no tiene créditos disponibles. No se creó ni se integró ningún modelo externo.
+- Para reanudar la generación, la cuenta conectada debe cargar créditos desde https://fal.ai/connect/credits?utm_medium=fal_mcp&utm_campaign=balance_exhausted&utm_content=openai. La tarifa publicada para esta generación es USD 0.40 por unidad; el coste final depende de las unidades consumidas.
